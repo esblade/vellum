@@ -285,12 +285,19 @@ async function sync(){
     const now = new Date();
     const from = iso(new Date(now.getFullYear(), now.getMonth() - 1, 1));
     const to = iso(now);
-    const cards = [], tx = [];
+    const cards = [], tx = [], found = [];
     for (const itemId of cfg.itemIds) {
-      let bank = '';
-      try { const it = await api(`/items/${encodeURIComponent(itemId)}`); bank = it.connector?.name || ''; } catch {}
+      let bank = '', status = '';
+      try {
+        const it = await api(`/items/${encodeURIComponent(itemId)}`);
+        bank = it.connector?.name || '';
+        status = [it.status, it.executionStatus].filter(Boolean).join('/');
+      } catch { status = 'conexão não encontrada'; }
       const acc = await api(`/accounts?itemId=${encodeURIComponent(itemId)}`);
-      for (const a of acc.results || []) {
+      const list = acc.results || [];
+      found.push(`${bank || itemId.slice(0, 8) + '…'} (${status || 'sem status'}): ` +
+        (list.length ? list.map(a => `${a.name || 'conta'} [${a.type}${a.subtype ? '/' + a.subtype : ''}]`).join(', ') : 'nenhuma conta'));
+      for (const a of list) {
         if (a.type !== 'CREDIT') continue;
         const cd = a.creditData || {};
         const card = {
@@ -314,7 +321,7 @@ async function sync(){
     store.set(K.cache, data);
     markNew();
     lastError = '';
-    if (!cards.length) lastError = 'Nenhum cartão de crédito encontrado nessas conexões. Confira os IDs nos ajustes.';
+    if (!cards.length) lastError = 'Nenhum cartão de crédito encontrado. O que veio de cada conexão: ' + found.join('; ') + '.';
   } catch (e) {
     lastError = e.message || String(e);
   } finally {
