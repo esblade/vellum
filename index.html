@@ -1,0 +1,560 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Cartões">
+<meta name="theme-color" content="#EEF1F5" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#10151F" media="(prefers-color-scheme: dark)">
+<title>Meus cartões</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💳</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EEF1F5;--surface:#FFFFFF;--ink:#182235;--muted:#5A6476;--line:#D8DEE7;
+  --accent:#2F55D4;--accent-ink:#FFFFFF;--accent-soft:#E3E9FB;--ok:#12775A;--warn:#B3561C;--danger:#B42335;
+  --c1:#2F55D4;--c2:#0E8A7E;--c3:#C27A12;--c4:#8E3FA8;--c5:#6B7586;
+  --display:"Bricolage Grotesque","Avenir Next","Segoe UI",system-ui,sans-serif;
+  --body:"IBM Plex Sans",-apple-system,"Segoe UI",Roboto,sans-serif;
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#10151F;--surface:#19202D;--ink:#E8ECF3;--muted:#98A2B3;--line:#2A3343;
+    --accent:#7D9BFF;--accent-ink:#0E1424;--accent-soft:#1F2A47;--ok:#4CC79A;--warn:#F0A060;--danger:#FF7A8A;
+    --c1:#7D9BFF;--c2:#3CC3B4;--c3:#E9A84A;--c4:#C783E0;--c5:#98A2B3;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#10151F;--surface:#19202D;--ink:#E8ECF3;--muted:#98A2B3;--line:#2A3343;
+  --accent:#7D9BFF;--accent-ink:#0E1424;--accent-soft:#1F2A47;--ok:#4CC79A;--warn:#F0A060;--danger:#FF7A8A;
+  --c1:#7D9BFF;--c2:#3CC3B4;--c3:#E9A84A;--c4:#C783E0;--c5:#98A2B3;
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 64px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.5 var(--body);-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+button,input,textarea{font:inherit;color:inherit}
+h1,h2,h3{font-family:var(--display);margin:0;line-height:1.15}
+p{margin:0}
+
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg)}
+.top-in,main{max-width:760px;margin:0 auto;padding-inline:20px}
+.top-in{display:flex;align-items:center;justify-content:space-between;gap:12px;height:60px}
+.top h1{font-size:1.35rem;font-weight:700}
+.actions{display:flex;gap:8px}
+.btn{border:0;border-radius:999px;padding:8px 16px;background:var(--accent);color:var(--accent-ink);font-weight:600;font-size:.9rem;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1px var(--line)}
+.btn:disabled{opacity:.6;cursor:default}
+.btn:focus-visible,.seg button:focus-visible,.chip:focus-visible,input:focus-visible,textarea:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+main{padding-bottom:48px}
+
+.banner{margin-top:12px;padding:14px 16px;border-radius:14px;background:var(--accent-soft);display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.banner.err{background:color-mix(in srgb,var(--danger) 14%,var(--surface));}
+.banner p{flex:1 1 240px;font-size:.95rem}
+.link{background:none;border:0;padding:0;color:var(--accent);font-weight:600;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+
+.hero{padding:28px 0 8px}
+.hero-label{color:var(--muted);font-size:1rem}
+.hero-total{font-family:var(--display);font-weight:700;font-size:clamp(2.6rem,11vw,4.2rem);letter-spacing:-.02em;line-height:1.05;margin:4px 0 8px;font-variant-numeric:tabular-nums}
+.hero-sub{color:var(--muted);font-size:.95rem}
+.hero-sub strong{color:var(--accent);font-weight:600}
+.stack{display:flex;height:10px;border-radius:999px;overflow:hidden;margin:18px 0 10px;background:var(--line);gap:2px}
+.stack span{display:block;height:100%}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:.85rem;color:var(--muted)}
+.legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:1px}
+
+.controls{display:flex;flex-direction:column;gap:10px;margin:24px 0 8px}
+.seg{display:inline-flex;background:var(--surface);border-radius:999px;padding:3px;box-shadow:inset 0 0 0 1px var(--line);align-self:flex-start;max-width:100%;overflow-x:auto}
+.seg button{border:0;background:none;padding:7px 14px;border-radius:999px;font-size:.88rem;cursor:pointer;white-space:nowrap;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg);font-weight:600}
+.chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px}
+.chip{border:0;border-radius:999px;padding:6px 12px;font-size:.85rem;cursor:pointer;background:transparent;box-shadow:inset 0 0 0 1px var(--line);white-space:nowrap;color:var(--muted)}
+.chip[aria-pressed="true"]{box-shadow:inset 0 0 0 2px var(--cc,var(--ink));color:var(--ink);font-weight:600}
+.chip i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;background:var(--cc,var(--ink))}
+
+h2{font-size:1.15rem;font-weight:700;margin:32px 0 12px}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+.card{background:var(--surface);border-radius:16px;padding:16px;border-top:4px solid var(--cc)}
+.card h3{font-size:1.05rem;font-weight:700}
+.card .sub{color:var(--muted);font-size:.85rem;margin-top:2px}
+.bar{height:6px;border-radius:999px;background:var(--line);margin:14px 0 6px;overflow:hidden}
+.bar span{display:block;height:100%;background:var(--cc);border-radius:999px}
+.card .used{font-size:.85rem;color:var(--muted)}
+.card dl{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0 0}
+.card dt{font-size:.75rem;color:var(--muted)}
+.card dd{margin:0;font-weight:600;font-size:.9rem;font-variant-numeric:tabular-nums}
+
+.cats{background:var(--surface);border-radius:16px;padding:8px 16px;list-style:none;margin:0}
+.cats li{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:10px 0;border-bottom:1px solid var(--line)}
+.cats li:last-child{border-bottom:0}
+.cats .amt{font-variant-numeric:tabular-nums;font-weight:500}
+.cats .bar{grid-column:1/-1;margin:4px 0 0;height:4px}
+.cats .bar span{background:var(--ink);opacity:.75}
+
+.day{margin:20px 0 6px;font-size:.85rem;color:var(--muted);font-weight:500}
+.day:first-letter{text-transform:uppercase}
+.txs{list-style:none;margin:0;padding:0 16px;background:var(--surface);border-radius:16px}
+.tx{display:grid;grid-template-columns:10px 1fr auto;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+.tx:last-child{border-bottom:0}
+.tx .dot{width:10px;height:10px;border-radius:50%}
+.tx-desc{font-weight:500;overflow-wrap:anywhere}
+.tx-meta{font-size:.82rem;color:var(--muted)}
+.tx-amt{font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap}
+.tx-amt.in{color:var(--ok)}
+.new{display:inline-block;margin-left:8px;padding:1px 8px;border-radius:999px;background:var(--accent);color:var(--accent-ink);font-size:.72rem;font-weight:600;vertical-align:2px}
+.pending{color:var(--warn)}
+.empty{background:var(--surface);border-radius:16px;padding:24px;color:var(--muted)}
+.status{color:var(--muted);font-size:.82rem;margin-top:10px}
+
+.welcome{padding:48px 0}
+.welcome h2{font-size:clamp(1.8rem,7vw,2.6rem);margin:0 0 12px;max-width:16ch}
+.welcome p{color:var(--muted);max-width:52ch;margin-bottom:24px}
+.welcome .row{display:flex;gap:10px;flex-wrap:wrap}
+
+dialog{border:0;border-radius:20px;padding:0;background:var(--surface);color:var(--ink);width:min(560px,calc(100% - 24px));max-height:calc(100% - 48px)}
+dialog::backdrop{background:rgba(10,14,22,.5)}
+.dlg{padding:22px;display:flex;flex-direction:column;gap:14px}
+.dlg h2{margin:0}
+.dlg .hint{font-size:.85rem;color:var(--muted)}
+label{display:flex;flex-direction:column;gap:4px;font-size:.88rem;font-weight:500}
+input,textarea{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--bg);font-size:16px;width:100%}
+textarea{min-height:76px;resize:vertical}
+details{border-top:1px solid var(--line);padding-top:12px}
+summary{cursor:pointer;font-weight:600;font-size:.92rem}
+details[open] summary{margin-bottom:12px}
+details .fields{display:flex;flex-direction:column;gap:12px}
+.dlg-actions{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;padding-top:6px}
+.dlg-actions .right{display:flex;gap:8px}
+.danger{color:var(--danger)}
+
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:.9rem;opacity:0;pointer-events:none;transition:opacity .2s;max-width:calc(100% - 32px)}
+#toast.show{opacity:1}
+@media (prefers-reduced-motion:reduce){#toast{transition:none}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="top-in">
+    <h1>Meus cartões</h1>
+    <div class="actions">
+      <button id="btnSync" class="btn" type="button">Atualizar</button>
+      <button id="btnCfg" class="btn ghost" type="button">Ajustes</button>
+    </div>
+  </div>
+</header>
+
+<main id="app"></main>
+
+<dialog id="cfg">
+  <div class="dlg">
+    <h2>Conexão com a Pluggy</h2>
+    <p class="hint">Os dados ficam salvos só neste navegador. Nada é enviado para outro lugar além da API da Pluggy (ou do seu intermediário).</p>
+    <label>Client ID<input id="fClientId" autocomplete="off" spellcheck="false"></label>
+    <label>Client Secret<input id="fClientSecret" type="password" autocomplete="off" spellcheck="false"></label>
+    <label>API key (opcional, se o painel fornecer uma pronta)<input id="fApiKey" type="password" autocomplete="off" spellcheck="false"></label>
+    <label>IDs das conexões (um por linha)<textarea id="fItems" spellcheck="false" placeholder="ex.: 6f1b2c3d-..."></textarea></label>
+    <details id="proxyBox">
+      <summary>Usar intermediário (Cloudflare Worker)</summary>
+      <div class="fields">
+        <p class="hint">Use se o navegador bloquear o acesso direto à API. Com o intermediário, Client ID e Secret ficam no Worker e podem ficar em branco aqui.</p>
+        <label>Endereço do Worker<input id="fProxy" type="url" placeholder="https://meus-cartoes.seunome.workers.dev" spellcheck="false"></label>
+        <label>Token de acesso<input id="fProxyToken" type="password" autocomplete="off" spellcheck="false"></label>
+      </div>
+    </details>
+    <div class="dlg-actions">
+      <button class="link danger" id="btnWipe" type="button">Apagar dados deste navegador</button>
+      <div class="right">
+        <button class="btn ghost" id="btnCancel" type="button">Cancelar</button>
+        <button class="btn" id="btnSave" type="button">Salvar e atualizar</button>
+      </div>
+    </div>
+  </div>
+</dialog>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const store = {
+  get(k, d){ try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
+  set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+  del(k){ try { localStorage.removeItem(k); } catch {} }
+};
+const K = { cfg:'cartoes.cfg', seen:'cartoes.seen', cache:'cartoes.cache' };
+const API = 'https://api.pluggy.ai';
+const PALETTE = ['var(--c1)','var(--c2)','var(--c3)','var(--c4)','var(--c5)'];
+const brl = new Intl.NumberFormat('pt-BR', { style:'currency', currency:'BRL' });
+const CAT = {
+  'Groceries':'Mercado','Eating out':'Restaurantes','Food delivery':'Delivery','Transportation':'Transporte',
+  'Ride hailing':'Transporte por app','Gas stations':'Combustível','Shopping':'Compras','Online shopping':'Compras online',
+  'Digital services':'Serviços digitais','Video streaming':'Streaming','Music streaming':'Streaming','Leisure':'Lazer',
+  'Entertainment':'Entretenimento','Health':'Saúde','Pharmacy':'Farmácia','Travel':'Viagem','Bills':'Contas',
+  'Telecommunications':'Telefone e internet','Education':'Educação','Services':'Serviços','Taxes':'Impostos',
+  'Transfers':'Transferências','Credit card payment':'Pagamento de fatura','Insurance':'Seguros','Housing':'Moradia',
+  'Clothing':'Roupas'
+};
+
+class AppError extends Error {}
+let cfg = store.get(K.cfg, null);
+let data = null;
+let newIds = new Set();
+let ui = { period:'month', card:'all' };
+let session = { apiKey:null, at:0 };
+let isDemo = false;
+let lastError = '';
+let busy = false;
+
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad = n => String(n).padStart(2,'0');
+const iso = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const sum = arr => arr.reduce((s,t) => s + t.amount, 0);
+const monthName = i => new Date(2000, ((i % 12) + 12) % 12, 1).toLocaleDateString('pt-BR', { month:'long' });
+
+function toast(msg){
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('show'), 3200);
+}
+
+/* ---------- API ---------- */
+async function getKey(force){
+  if (cfg.apiKey) return cfg.apiKey;
+  if (!force && session.apiKey && Date.now() - session.at < 100 * 60 * 1000) return session.apiKey;
+  const r = await fetch(API + '/auth', {
+    method:'POST', headers:{ 'Content-Type':'application/json' },
+    body: JSON.stringify({ clientId: cfg.clientId, clientSecret: cfg.clientSecret })
+  });
+  if (!r.ok) throw new AppError('A Pluggy recusou o Client ID ou o Client Secret. Confira os dados nos ajustes.');
+  const j = await r.json();
+  session = { apiKey: j.apiKey, at: Date.now() };
+  return j.apiKey;
+}
+
+async function api(path, retry = true){
+  let r;
+  try {
+    if (cfg.proxyUrl) {
+      r = await fetch(cfg.proxyUrl.replace(/\/+$/, '') + path, { headers:{ Authorization:'Bearer ' + (cfg.proxyToken || '') } });
+    } else {
+      const key = await getKey(!retry);
+      r = await fetch(API + path, { headers:{ 'X-API-KEY': key } });
+    }
+  } catch (e) {
+    if (e instanceof AppError) throw e;
+    throw new AppError(cfg.proxyUrl
+      ? 'Não foi possível falar com o intermediário. Confira o endereço do Worker nos ajustes.'
+      : 'O navegador bloqueou o acesso direto à API da Pluggy. Configure o intermediário (Cloudflare Worker) nos ajustes.');
+  }
+  if (r.status === 401 || r.status === 403) {
+    if (retry && !cfg.proxyUrl && !cfg.apiKey) return api(path, false);
+    throw new AppError(cfg.proxyUrl ? 'O intermediário recusou o token de acesso.' : 'A Pluggy recusou as credenciais. Confira os dados nos ajustes.');
+  }
+  if (!r.ok) throw new AppError(`A Pluggy respondeu com erro ${r.status} ao buscar ${path.split('?')[0]}.`);
+  return r.json();
+}
+
+function normTx(x, cardId){
+  const m = x.creditCardMetadata || {};
+  return {
+    id: x.id, cardId,
+    date: String(x.date || '').slice(0, 10),
+    desc: x.description || x.merchant?.name || 'Sem descrição',
+    category: CAT[x.category] || x.category || 'Sem categoria',
+    amount: Math.abs(x.amountInAccountCurrency ?? x.amount ?? 0),
+    kind: x.type === 'CREDIT' ? 'in' : 'out',
+    pending: x.status === 'PENDING',
+    inst: m.totalInstallments > 1 ? `${m.installmentNumber}/${m.totalInstallments}` : ''
+  };
+}
+
+async function sync(){
+  if (isDemo) { toast('Configure sua conta para ver os dados reais.'); return; }
+  if (!cfg) { openCfg(); return; }
+  if (busy) return;
+  busy = true; setBusy();
+  try {
+    const now = new Date();
+    const from = iso(new Date(now.getFullYear(), now.getMonth() - 1, 1));
+    const to = iso(now);
+    const cards = [], tx = [];
+    for (const itemId of cfg.itemIds) {
+      let bank = '';
+      try { const it = await api(`/items/${encodeURIComponent(itemId)}`); bank = it.connector?.name || ''; } catch {}
+      const acc = await api(`/accounts?itemId=${encodeURIComponent(itemId)}`);
+      for (const a of acc.results || []) {
+        if (a.type !== 'CREDIT') continue;
+        const cd = a.creditData || {};
+        const card = {
+          id: a.id, name: a.marketingName || a.name || 'Cartão', bank,
+          number: String(a.number || '').slice(-4),
+          limit: cd.creditLimit ?? null, available: cd.availableCreditLimit ?? null,
+          due: cd.balanceDueDate ? String(cd.balanceDueDate).slice(0, 10) : null,
+          invoice: Math.abs(a.balance ?? 0)
+        };
+        cards.push(card);
+        let page = 1, pages = 1;
+        do {
+          const t = await api(`/transactions?accountId=${encodeURIComponent(a.id)}&from=${from}&to=${to}&pageSize=500&page=${page}`);
+          pages = t.totalPages || 1;
+          for (const x of t.results || []) tx.push(normTx(x, card.id));
+          page++;
+        } while (page <= pages);
+      }
+    }
+    data = { cards, tx, syncedAt: new Date().toISOString() };
+    store.set(K.cache, data);
+    markNew();
+    lastError = '';
+    if (!cards.length) lastError = 'Nenhum cartão de crédito encontrado nessas conexões. Confira os IDs nos ajustes.';
+  } catch (e) {
+    lastError = e.message || String(e);
+  } finally {
+    busy = false; setBusy(); render();
+  }
+}
+
+function markNew(){
+  const seen = store.get(K.seen, null);
+  if (seen) {
+    const s = new Set(seen);
+    for (const t of data.tx) if (!s.has(t.id)) newIds.add(t.id);
+  }
+  store.set(K.seen, data.tx.map(t => t.id));
+}
+
+function setBusy(){
+  const b = $('#btnSync');
+  b.disabled = busy;
+  b.textContent = busy ? 'Atualizando…' : 'Atualizar';
+}
+
+/* ---------- Render ---------- */
+function range(){
+  const t = new Date(), y = t.getFullYear(), m = t.getMonth();
+  if (ui.period === 'prev') return [iso(new Date(y, m - 1, 1)), iso(new Date(y, m, 0)), 'em ' + monthName(m - 1)];
+  if (ui.period === '30') return [iso(new Date(y, m, t.getDate() - 29)), iso(t), 'nos últimos 30 dias'];
+  return [iso(new Date(y, m, 1)), iso(t), 'em ' + monthName(m)];
+}
+
+function dayLabel(d){
+  const today = iso(new Date());
+  const yest = iso(new Date(Date.now() - 864e5));
+  if (d === today) return 'Hoje';
+  if (d === yest) return 'Ontem';
+  const [y, m, dd] = d.split('-').map(Number);
+  return new Date(y, m - 1, dd).toLocaleDateString('pt-BR', { weekday:'long', day:'numeric', month:'long' });
+}
+
+function shortDate(d){
+  if (!d) return '—';
+  const [y, m, dd] = d.split('-').map(Number);
+  return new Date(y, m - 1, dd).toLocaleDateString('pt-BR', { day:'numeric', month:'short' }).replace('.', '');
+}
+
+function welcome(){
+  return `<section class="welcome">
+    <h2>Seus cartões de crédito num lugar só</h2>
+    <p>Conecte a conta do Meu Pluggy para acompanhar as compras de todos os cartões, o limite usado e o que entrou desde a última vez que você abriu.</p>
+    <div class="row">
+      <button class="btn" data-action="cfg" type="button">Conectar conta</button>
+      <button class="btn ghost" data-action="demo" type="button">Ver com dados de exemplo</button>
+    </div>
+  </section>`;
+}
+
+function render(){
+  const app = $('#app');
+  let html = '';
+  if (isDemo) html += `<div class="banner"><p>Você está vendo dados de exemplo.</p><button class="link" data-action="exitdemo" type="button">Sair do exemplo</button></div>`;
+  if (lastError) html += `<div class="banner err"><p>${esc(lastError)}</p><button class="link" data-action="cfg" type="button">Abrir ajustes</button></div>`;
+  if (!data) { app.innerHTML = html + welcome(); return; }
+
+  const [from, to, label] = range();
+  const cards = data.cards.map((c, i) => ({ ...c, color: PALETTE[i % PALETTE.length] }));
+  const byId = Object.fromEntries(cards.map(c => [c.id, c]));
+  if (ui.card !== 'all' && !byId[ui.card]) ui.card = 'all';
+  const inPeriod = data.tx.filter(t => t.date >= from && t.date <= to);
+  const visible = inPeriod.filter(t => ui.card === 'all' || t.cardId === ui.card)
+    .sort((a, b) => b.date.localeCompare(a.date));
+  const spend = visible.filter(t => t.kind === 'out');
+  const total = sum(spend);
+  const nNew = visible.filter(t => newIds.has(t.id)).length;
+
+  // Hero
+  html += `<section class="hero">
+    <p class="hero-label">Gasto ${esc(label)}${ui.card !== 'all' ? ' no ' + esc(byId[ui.card].name) : ''}</p>
+    <p class="hero-total">${brl.format(total)}</p>
+    <p class="hero-sub">${spend.length} ${spend.length === 1 ? 'compra' : 'compras'}${nNew ? `, <strong>${nNew} ${nNew === 1 ? 'nova' : 'novas'} desde a última visita</strong>` : ''}</p>`;
+  if (ui.card === 'all' && cards.length > 1 && total > 0) {
+    const parts = cards.map(c => ({ c, v: sum(inPeriod.filter(t => t.cardId === c.id && t.kind === 'out')) })).filter(p => p.v > 0);
+    html += `<div class="stack" role="img" aria-label="Divisão do gasto por cartão">${parts.map(p => `<span style="flex:${p.v};background:${p.c.color}"></span>`).join('')}</div>
+      <div class="legend">${parts.map(p => `<span><i style="background:${p.c.color}"></i>${esc(p.c.name)} ${brl.format(p.v)}</span>`).join('')}</div>`;
+  }
+  html += `<p class="status">${data.syncedAt ? 'Atualizado ' + new Date(data.syncedAt).toLocaleString('pt-BR', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }).replace('.', '') : ''}</p>
+  </section>`;
+
+  // Controls
+  const periods = [['month','Este mês'],['30','30 dias'],['prev','Mês passado']];
+  html += `<div class="controls">
+    <div class="seg" role="group" aria-label="Período">${periods.map(([k, t]) => `<button type="button" data-period="${k}" aria-pressed="${ui.period === k}">${t}</button>`).join('')}</div>
+    ${cards.length > 1 ? `<div class="chips" role="group" aria-label="Cartão">
+      <button class="chip" type="button" data-card="all" aria-pressed="${ui.card === 'all'}">Todos</button>
+      ${cards.map(c => `<button class="chip" type="button" data-card="${esc(c.id)}" aria-pressed="${ui.card === c.id}" style="--cc:${c.color}"><i></i>${esc(c.name)}</button>`).join('')}
+    </div>` : ''}
+  </div>`;
+
+  // Cards
+  const shown = ui.card === 'all' ? cards : cards.filter(c => c.id === ui.card);
+  if (shown.length) {
+    html += `<h2>Limites</h2><div class="cards">${shown.map(c => {
+      const used = c.limit != null && c.available != null ? Math.max(0, c.limit - c.available) : null;
+      const pct = used != null && c.limit ? Math.min(100, used / c.limit * 100) : 0;
+      const periodSpend = sum(inPeriod.filter(t => t.cardId === c.id && t.kind === 'out'));
+      return `<article class="card" style="--cc:${c.color}">
+        <h3>${esc(c.name)}</h3>
+        <p class="sub">${esc([c.bank, c.number ? 'final ' + c.number : ''].filter(Boolean).join(', '))}</p>
+        ${used != null ? `<div class="bar"><span style="width:${pct}%"></span></div>
+        <p class="used">${brl.format(used)} usados de ${brl.format(c.limit)}</p>` : ''}
+        <dl>
+          <div><dt>Disponível</dt><dd>${c.available != null ? brl.format(c.available) : '—'}</dd></div>
+          <div><dt>Fatura</dt><dd>${brl.format(c.invoice || 0)}</dd></div>
+          <div><dt>Vence</dt><dd>${shortDate(c.due)}</dd></div>
+        </dl>
+      </article>`;
+    }).join('')}</div>`;
+  }
+
+  // Categories
+  const cats = {};
+  for (const t of spend) cats[t.category] = (cats[t.category] || 0) + t.amount;
+  const topCats = Object.entries(cats).sort((a, b) => b[1] - a[1]).slice(0, 6);
+  if (topCats.length) {
+    const max = topCats[0][1];
+    html += `<h2>Por categoria</h2><ul class="cats">${topCats.map(([n, v]) => `<li>
+      <span>${esc(n)}</span><span class="amt">${brl.format(v)}</span>
+      <div class="bar"><span style="width:${v / max * 100}%"></span></div></li>`).join('')}</ul>`;
+  }
+
+  // Transactions
+  html += `<h2>Compras</h2>`;
+  if (!visible.length) {
+    html += `<p class="empty">Nenhuma compra ${esc(label)}. Toque em Atualizar para buscar as mais recentes.</p>`;
+  } else {
+    const groups = {};
+    for (const t of visible) (groups[t.date] ||= []).push(t);
+    for (const [d, list] of Object.entries(groups)) {
+      html += `<p class="day">${esc(dayLabel(d))}</p><ul class="txs">${list.map(t => {
+        const c = byId[t.cardId] || {};
+        const meta = [t.category, cards.length > 1 ? c.name : '', t.inst ? 'parcela ' + t.inst : ''].filter(Boolean).join(', ');
+        return `<li class="tx">
+          <span class="dot" style="background:${c.color || 'var(--muted)'}"></span>
+          <div><p class="tx-desc">${esc(t.desc)}${newIds.has(t.id) ? '<span class="new">Nova</span>' : ''}</p>
+          <p class="tx-meta">${esc(meta)}${t.pending ? ', <span class="pending">pendente</span>' : ''}</p></div>
+          <p class="tx-amt ${t.kind}">${t.kind === 'in' ? '+ ' : ''}${brl.format(t.amount)}</p>
+        </li>`;
+      }).join('')}</ul>`;
+    }
+  }
+  app.innerHTML = html;
+}
+
+/* ---------- Demo ---------- */
+function demoData(){
+  const now = new Date();
+  const d = n => iso(new Date(now.getFullYear(), now.getMonth(), now.getDate() - n));
+  const due = iso(new Date(now.getFullYear(), now.getMonth() + 1, 10));
+  const cards = [
+    { id:'d1', name:'Cartão Roxo', bank:'Banco Exemplo', number:'4417', limit:12000, available:8420, due, invoice:3580 },
+    { id:'d2', name:'Cartão Laranja', bank:'Outro Banco', number:'0932', limit:6000, available:4710, due, invoice:1290 },
+    { id:'d3', name:'Cartão Verde', bank:'Banco Digital', number:'7781', limit:3500, available:3020, due, invoice:480 }
+  ];
+  const items = [
+    ['Supermercado Bom Preço','Mercado',312.4,'d1',0],['Posto Avenida','Combustível',180,'d2',0],
+    ['Delivery Sabor','Delivery',64.9,'d1',1],['Farmácia Central','Farmácia',47.35,'d3',1],
+    ['Streaming Plus','Streaming',39.9,'d1',2],['Transporte por app','Transporte por app',23.5,'d2',3],
+    ['Loja de Móveis','Compras',289.9,'d1',4,'3/10'],['Padaria da Praça','Restaurantes',18.7,'d3',5],
+    ['Estorno Loja Online','Compras online',89.9,'d1',6,'','in'],['Restaurante Maré','Restaurantes',142,'d2',7],
+    ['Livraria','Educação',76.5,'d3',9],['Supermercado Bom Preço','Mercado',254.1,'d1',11],
+    ['Posto Avenida','Combustível',200,'d2',13],['Operadora Celular','Telefone e internet',59.99,'d1',15],
+    ['Loja Online','Compras online',134.9,'d3',18],['Academia','Saúde',99,'d2',21],
+    ['Supermercado Bom Preço','Mercado',198.3,'d1',26],['Cinema','Lazer',56,'d3',30],
+    ['Viagem de ônibus','Viagem',148,'d2',36],['Restaurante Maré','Restaurantes',118,'d1',41]
+  ];
+  const tx = items.map(([desc, category, amount, cardId, ago, inst = '', kind = 'out'], i) => ({
+    id:'t' + i, cardId, date:d(ago), desc, category, amount, kind, pending: ago === 0, inst
+  }));
+  return { cards, tx, syncedAt: now.toISOString() };
+}
+
+/* ---------- Ajustes ---------- */
+function openCfg(){
+  const c = cfg || {};
+  $('#fClientId').value = c.clientId || '';
+  $('#fClientSecret').value = c.clientSecret || '';
+  $('#fApiKey').value = c.apiKey || '';
+  $('#fItems').value = (c.itemIds || []).join('\n');
+  $('#fProxy').value = c.proxyUrl || '';
+  $('#fProxyToken').value = c.proxyToken || '';
+  $('#proxyBox').open = !!c.proxyUrl;
+  $('#cfg').showModal();
+}
+
+$('#btnSave').addEventListener('click', () => {
+  const next = {
+    clientId: $('#fClientId').value.trim(),
+    clientSecret: $('#fClientSecret').value.trim(),
+    apiKey: $('#fApiKey').value.trim(),
+    itemIds: $('#fItems').value.split(/[\s,;]+/).map(s => s.trim()).filter(Boolean),
+    proxyUrl: $('#fProxy').value.trim(),
+    proxyToken: $('#fProxyToken').value.trim()
+  };
+  if (!next.itemIds.length) { toast('Informe pelo menos um ID de conexão.'); return; }
+  if (!next.proxyUrl && !next.apiKey && !(next.clientId && next.clientSecret)) {
+    toast('Preencha Client ID e Client Secret, uma API key ou o intermediário.'); return;
+  }
+  cfg = next; session = { apiKey:null, at:0 };
+  store.set(K.cfg, cfg);
+  $('#cfg').close();
+  isDemo = false;
+  if (!data) data = store.get(K.cache, null);
+  sync();
+});
+$('#btnCancel').addEventListener('click', () => $('#cfg').close());
+$('#btnWipe').addEventListener('click', () => {
+  if (!confirm('Apagar credenciais e dados salvos neste navegador?')) return;
+  Object.values(K).forEach(store.del);
+  cfg = null; data = null; newIds = new Set(); lastError = ''; isDemo = false;
+  $('#cfg').close(); render(); toast('Dados apagados deste navegador.');
+});
+
+/* ---------- Eventos ---------- */
+$('#btnSync').addEventListener('click', sync);
+$('#btnCfg').addEventListener('click', openCfg);
+$('#app').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.period) { ui.period = b.dataset.period; render(); }
+  else if (b.dataset.card) { ui.card = b.dataset.card; render(); }
+  else if (b.dataset.action === 'cfg') openCfg();
+  else if (b.dataset.action === 'demo') { isDemo = true; lastError = ''; data = demoData(); newIds = new Set(['t0','t1','t2']); render(); }
+  else if (b.dataset.action === 'exitdemo') { isDemo = false; newIds = new Set(); data = cfg ? store.get(K.cache, null) : null; render(); }
+});
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible' || !cfg || isDemo || busy) return;
+  if (!data || Date.now() - new Date(data.syncedAt).getTime() > 15 * 60 * 1000) sync();
+});
+
+/* ---------- Início ---------- */
+if (cfg) { data = store.get(K.cache, null); render(); sync(); }
+else render();
+</script>
+</body>
+</html>
