@@ -258,7 +258,14 @@ async function api(path, retry = true){
     if (retry && !cfg.proxyUrl && !cfg.apiKey) return api(path, false);
     throw new AppError(cfg.proxyUrl ? 'O intermediário recusou o token de acesso.' : 'A Pluggy recusou as credenciais. Confira os dados nos ajustes.');
   }
-  if (!r.ok) throw new AppError(`A Pluggy respondeu com erro ${r.status} ao buscar ${path.split('?')[0]}.`);
+  if (!r.ok) {
+    let detail = '';
+    try {
+      const body = await r.text();
+      try { const j = JSON.parse(body); detail = j.message || j.error || body; } catch { detail = body; }
+    } catch {}
+    throw new AppError(`A Pluggy respondeu com erro ${r.status} ao buscar ${path.split('?')[0]}.${detail ? ' Mensagem: ' + String(detail).slice(0, 400) : ''}`);
+  }
   return r.json();
 }
 
