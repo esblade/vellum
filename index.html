@@ -530,6 +530,7 @@ const brl0 = new Intl.NumberFormat('pt-BR', { style:'currency', currency:'BRL', 
 const cmp = new Intl.NumberFormat('pt-BR', { notation:'compact', maximumFractionDigits:1 });
 const PAYMENT = 'Pagamento de fatura';
 const INTERNAL = 'Movimentação entre contas';
+const LOAN_IN = 'Empréstimo recebido';
 const CAT = {
   'Groceries':'Mercado','Food and drinks':'Alimentação','Eating out':'Restaurantes','Food delivery':'Delivery',
   'Transportation':'Transporte','Taxi and ride-hailing':'Transporte por app','Ride hailing':'Transporte por app','Public transportation':'Transporte público',
@@ -1096,6 +1097,9 @@ function markNew(){
 /* ---------- Modelo derivado ---------- */
 // Na conta corrente: pagamento da fatura, aplicações, resgates e transferências entre contas próprias não são gasto nem renda.
 const INTERNAL_RAW = new Set(['Same person transfer','Credit card payment','Investments','Automatic investment','Fixed income','Mutual funds','Variable income','Margin','Pension','Blocked balances']);
+const LOAN_RAW = new Set(['Loans and financing','Financing','Real estate financing','Vehicle financing','Student loan']);
+const looksLoan = t => LOAN_RAW.has(t.catRaw) || /\b(emprestimo|credito pessoal|consignado|financiamento|cdc|antecipacao)\b/.test(t.key);
+const dayDiff = (a, b) => Math.round((Date.parse(a + 'T12:00:00') - Date.parse(b + 'T12:00:00')) / 864e5);
 const looksInternal = t => INTERNAL_RAW.has(t.catRaw) ||
   /\b(fatura|cartao de credito|pagamento cartao|pagto cartao|pag cartao|aplicacao|resgate|poupanca|mesma titularidade|entre contas|transferencia propria)\b/.test(t.key);
 const looksLikeBillPayment = t => t.kind === 'in' && t.cardId !== 'manual' &&
@@ -1103,20 +1107,30 @@ const looksLikeBillPayment = t => t.kind === 'in' && t.cardId !== 'manual' &&
   (/\b(pagamento|pagto|pgto|pag fatura)\b/.test(t.key) || ['Pix', 'Transferências'].includes(t.category));
 function allTx(){
   if (!data) return [];
-  return [...data.tx, ...db.manual].flatMap(t0 => {
+  const raw = [...data.tx, ...db.manual];
+  // Pagamentos que aparecem no cartão (crédito "Pagamento..."). A saída da conta corrente com o mesmo valor,
+  // até 5 dias de diferença, é o mesmo dinheiro: não é gasto (as compras já contam no cartão).
+  const cardPays = raw.filter(t => t.acct !== 'bank' && t.cardId !== 'manual' && t.kind === 'in' &&
+    (t.isPayment || looksLikeBillPayment({ ...t, key: normDesc(t.desc) })));
+  const paidFromBank = t => cardPays.some(p => Math.abs(p.amount - t.amount) < 0.01 && Math.abs(dayDiff(p.date, t.date)) <= 5);
+  return raw.flatMap(t0 => {
     const t = { ...t0 };
     if (t.inst && !t.instT) { const m = String(t.inst).match(/(\d+)\/(\d+)/); if (m) { t.instN = +m[1]; t.instT = +m[2]; } }
     t.key = normDesc(t.desc);
     t.cm = t.instT > 1 && t.billMonth ? t.billMonth : ymOf(t.date);
     // Pagamento da fatura feito por Pix/transferência: a Pluggy às vezes não marca como pagamento de fatura
     // e classifica como "Transferência Pix". No cartão, um crédito assim é pagamento, não estorno.
-    if (t.acct === 'bank') { if (!t.isPayment && looksInternal(t)) t.category = INTERNAL; }
+    if (t.acct === 'bank' && !t.isPayment) {
+      if (t.kind === 'out' && paidFromBank(t)) t.category = PAYMENT;
+      else if (t.kind === 'in' && looksLoan(t)) t.category = LOAN_IN;
+      else if (looksInternal(t)) t.category = INTERNAL;
+    }
     else if (!t.isPayment && looksLikeBillPayment(t)) t.category = PAYMENT;
     if (db.rules[t.key]) t.category = db.rules[t.key];
     const o = db.overrides[t.id];
     if (o) { if (o.category) t.category = o.category; t.note = o.note || ''; t.ignored = !!o.ignored; }
     t.category = renamedCat(t.category);
-    t.isPayment = !!t.isPayment || t.category === PAYMENT || t.category === INTERNAL;
+    t.isPayment = !!t.isPayment || t.category === PAYMENT || t.category === INTERNAL || t.category === LOAN_IN;
     // Compra dividida entre categorias: vira uma linha por parte, com o mesmo id de origem.
     if (o?.split?.length > 1) return o.split.map((p, i) => ({ ...t, id: t.id + '#' + (i + 1), origId: t.id, amount: +p.amount || 0,
       category: renamedCat(p.category), splitInfo: `${i + 1}/${o.split.length}`, isPayment: !!t0.isPayment || [PAYMENT, INTERNAL].includes(renamedCat(p.category)) }));
@@ -1128,9 +1142,10 @@ const isRefund = t => t.kind === 'in' && !t.isPayment && !t.ignored && t.cardId 
 const isBankIncome = t => t.acct === 'bank' && t.kind === 'in' && !t.isPayment && !t.ignored;
 const hasBank = () => !!data?.banks?.length;
 const incomeAuto = () => hasBank() && db.income?.auto !== false;
-let _bankInc = null;
+let _bankInc = null, _bankIncOf = null;
 function bankIncomeByMonth(){
-  if (_bankInc) return _bankInc;
+  if (_bankInc && _bankIncOf === data) return _bankInc;
+  _bankIncOf = data;
   const m = {}; for (const t of allTx()) if (isBankIncome(t)) (m[ymOf(t.date)] ||= []).push(t);
   return (_bankInc = m);
 }
@@ -1138,6 +1153,31 @@ function incomeSources(){
   const inc = db.income || (db.income = { sources:[], months:{} });
   if (!Array.isArray(inc.sources)) inc.sources = inc.base > 0 ? [{ id:'src-' + uid(), name:'Renda principal', amount: +inc.base }] : [];
   return inc.sources;
+}
+// Entradas que se repetem todo mês na conta (ex.: salário do dia 5 e o da última quinta) e que ainda não
+// caíram no mês atual entram como "previstas". Respeita quantas vezes a mesma entrada cai por mês.
+const incKey = t => t.key.replace(/\d+/g, ' ').replace(/\s+/g, ' ').trim();
+function expectedIncome(ym){
+  if (ym !== curYM() || !incomeAuto()) return [];
+  const byM = bankIncomeByMonth(), prevMs = [1, 2, 3].map(i => addM(ym, -i));
+  const seen = {};
+  for (const m of prevMs) {
+    const nth = {};
+    for (const t of [...(byM[m] || [])].sort((a, b) => a.date.localeCompare(b.date))) {
+      const k = incKey(t), v = seen[k] ||= { desc: t.desc, months: new Set(), amts: [], byIdx: [] };
+      const i = nth[k] = (nth[k] ?? -1) + 1;
+      v.months.add(m); v.amts.push(t.amount); (v.byIdx[i] ||= []).push(t.amount);
+    }
+  }
+  const got = {}; for (const t of byM[ym] || []) got[incKey(t)] = (got[incKey(t)] || 0) + 1;
+  const out = [];
+  for (const [k, v] of Object.entries(seen)) {
+    if (v.months.size < 2) continue;
+    const perMonth = Math.round(v.amts.length / v.months.size);
+    // usa o valor da mesma ocorrência nos meses anteriores (ex.: o 2º salário do mês)
+    for (let i = got[k] || 0; i < perMonth; i++) { const a = v.byIdx[i] || v.amts; out.push({ desc: v.desc, amount: a.reduce((x, y) => x + y, 0) / a.length }); }
+  }
+  return out;
 }
 function incomeFor(ym){
   const inc = db.income || {}, m = (inc.months || {})[ym] || {};
@@ -1147,7 +1187,10 @@ function incomeFor(ym){
   const base = auto ? bankIn : m.override != null ? +m.override || 0 : fixed;
   const extras = auto ? 0 : (m.extras || []).reduce((s, x) => s + (+x.amount || 0), 0);
   const manualIn = db.manual.filter(t => t.kind === 'in' && !db.overrides[t.id]?.ignored && ymOf(t.date) === ym).reduce((s, t) => s + t.amount, 0);
-  return { base, auto, bankList, bankIn, sources, extrasList: m.extras || [], extras, manualIn, total: base + extras + manualIn, set: base + extras + manualIn > 0 };
+  const expectedList = auto ? expectedIncome(ym) : [], expected = sum(expectedList);
+  const received = base + extras + manualIn;
+  return { base, auto, bankList, bankIn, sources, extrasList: m.extras || [], extras, manualIn, received, expected, expectedList,
+    total: received + expected, set: received + expected > 0 };
 }
 
 function context(){
@@ -1171,10 +1214,24 @@ function byCat(list){ const o = {}; for (const t of list) o[t.category] = (o[t.c
 function allCategories(){
   const s = new Set([...BASE_CATS, ...Object.values(CAT), ...(db.cats?.custom || []), ...Object.keys(db.budgets), ...Object.values(db.rules)].map(renamedCat));
   for (const t of allTx()) s.add(t.category);
-  s.delete(PAYMENT); s.delete(INTERNAL);
+  s.delete(PAYMENT); s.delete(INTERNAL); s.delete(LOAN_IN);
   return [...s].sort((a, b) => a.localeCompare(b, 'pt-BR'));
 }
 
+// Ritmo "do dia a dia" dos 3 meses anteriores, sem parcelas, sem recorrentes e sem gastos pontuais grandes.
+function bigThreshold(list){
+  const a = list.map(t => t.amount).sort((x, y) => x - y);
+  return Math.max(500, (a[Math.floor(a.length * 0.9)] || 0) * 3);
+}
+function dailyBaseline(c, ym){
+  const months = [1, 2, 3].map(i => addM(ym, -i)).filter(m => c.spend.some(t => t.cm === m));
+  if (!months.length) return null;
+  const list = c.spend.filter(t => months.includes(t.cm) && !(t.instT > 1));
+  const big = bigThreshold(list);
+  const recKeys = new Set(recurring(c).map(r => normDesc(r.desc)));
+  const daily = list.filter(t => t.amount <= big && !recKeys.has(t.key));
+  return { rate: sum(daily) / months.reduce((a, m) => a + dim(m), 0), big };
+}
 function monthPace(c, ym){
   const isCur = ym === curYM();
   const day = isCur ? new Date().getDate() : dim(ym);
@@ -1183,8 +1240,19 @@ function monthPace(c, ym){
   const dayOf = t => t.cm === ymOf(t.date) ? +t.date.slice(8, 10) : 1;
   const prevSame = isCur ? prevAll.filter(t => dayOf(t) <= day) : prevAll;
   const total = sum(cur), prevTotal = sum(prevAll), prevSameTotal = sum(prevSame);
-  const projection = isCur && day > 0 ? total / day * dim(ym) : total;
-  return { isCur, day, prev, cur, total, prevTotal, prevSameTotal, projection, dayOf,
+  let projection = total, oneOff = [], method = 'linear';
+  if (isCur && day > 0) {
+    const base = dailyBaseline(c, ym);
+    if (base) {
+      oneOff = cur.filter(t => t.amount > base.big && !(t.instT > 1));
+      const curDaily = sum(cur.filter(t => t.amount <= base.big && !(t.instT > 1))) / day;
+      const rate = day >= 10 ? (base.rate + curDaily) / 2 : base.rate;
+      const recPending = recurring(c).filter(r => !r.paidThisMonth).reduce((a, r) => a + r.avg, 0);
+      projection = total + (dim(ym) - day) * rate + recPending;
+      method = 'base';
+    } else projection = total / day * dim(ym);
+  }
+  return { isCur, day, prev, cur, total, prevTotal, prevSameTotal, projection, oneOff, oneOffTotal: sum(oneOff), method, dayOf,
     delta: prevSameTotal > 0 ? (total - prevSameTotal) / prevSameTotal * 100 : null };
 }
 
@@ -1366,7 +1434,7 @@ function viewInicio(c){
       : kpi('Maior categoria', '—', 'nenhum gasto neste mês', '', 'wallet', 'k1');
   }
   let h = heroHtml(P, nextTotal) + `<div class="kpis">
-    ${P.isCur ? kpi('Projeção do mês', money(P.projection), P.prevTotal ? `${esc(prevName)} fechou em ${money0(P.prevTotal)}` : 'no ritmo atual de gastos', '', 'chart', 'k0')
+    ${P.isCur ? kpi('Projeção do mês', money(P.projection), P.oneOffTotal ? `inclui ${money0(P.oneOffTotal)} em gastos pontuais que não se repetem` : P.prevTotal ? `${esc(prevName)} fechou em ${money0(P.prevTotal)}` : 'no ritmo atual de gastos', '', 'chart', 'k0')
               : kpi('Média por dia', money(P.total / dim(ym)), `${P.cur.length} compras no mês`, '', 'chart', 'k0')}
     ${sobraTile}
     ${budTotal ? kpi('Orçamento', money(budSpent), `de ${money0(budTotal)} planejados`, progress(budSpent / budTotal * 100, 'thin'), 'target', 'k2')
@@ -1423,7 +1491,7 @@ function heroHtml(P, nextTotal){
     right = `<div class="hero-inc">
       <div class="hero-row"><span>Renda de ${esc(mName(ym))}</span><button class="hero-link" type="button" data-action="income">${ic('edit')}Editar</button></div>
       <b class="hero-inc-val num">${money(I.total)}</b>
-      <span class="hero-sub">${I.auto ? plural(fontes, 'entrada na conta corrente', 'entradas na conta corrente') : plural(fontes, 'fonte de renda', 'fontes de renda')}</span>
+      <span class="hero-sub">${I.auto ? plural(fontes, 'entrada recebida', 'entradas recebidas') + (I.expected ? ` + ${money0(I.expected)} previstos (${esc([...new Set(I.expectedList.map(x => x.desc))].slice(0, 2).join(', '))})` : '') : plural(fontes, 'fonte de renda', 'fontes de renda')}</span>
       <div class="hero-bar" role="img" aria-label="${Math.round(pct)}% da renda gasto"><span style="width:${Math.min(100, pct).toFixed(1)}%"${pct >= 100 ? ' class="over"' : ''}></span></div>
       <div class="hero-row"><span>${Math.round(pct)}% gasto</span><span class="${left < 0 ? 'neg' : ''}">${left < 0 ? 'Faltam' : 'Sobram'} <b class="num">${money(Math.abs(left))}</b></span></div>
     </div>`;
@@ -1436,7 +1504,8 @@ function heroHtml(P, nextTotal){
       <span class="hero-lbl">Gasto em ${esc(mName(ym))}</span>
       <span class="hero-val num">${money(P.total)}</span>
       ${pill}
-      <span class="hero-sub">${plural(P.cur.length, 'compra', 'compras')}${P.isCur ? ` · média de ${money(P.total / Math.max(1, P.day))} por dia` : ''}</span>
+      <span class="hero-sub">${plural(P.cur.length, 'compra', 'compras')}${(() => { const bank = sum(P.cur.filter(t => t.acct === 'bank')), man = sum(P.cur.filter(t => t.cardId === 'manual'));
+        return bank || man ? ` · cartões ${money0(P.total - bank - man)}${bank ? ' · conta ' + money0(bank) : ''}${man ? ' · fora do cartão ' + money0(man) : ''}` : (P.isCur ? ` · média de ${money(P.total / Math.max(1, P.day))} por dia` : ''); })()}</span>
     </div>${right}
   </section>`;
 }
@@ -1456,7 +1525,8 @@ function openIncome(){
     ${hasBank() ? `<label>Como calcular a renda<select name="mode" id="incMode"><option value="auto" ${incomeAuto() ? 'selected' : ''}>Automático: o que entra na conta corrente</option><option value="manual" ${incomeAuto() ? '' : 'selected'}>Informar manualmente</option></select></label>
     <div id="incAuto" ${incomeAuto() ? '' : 'hidden'}><p class="hint">Em ${esc(mName(ym))} entraram <b>${money(incomeFor(ym).bankIn)}</b> na conta corrente (sem contar transferências entre suas contas, resgates e estornos de fatura).</p>
       <ul class="rows inc-list">${(bankIncomeByMonth()[ym] || []).sort((a, b) => b.amount - a.amount).slice(0, 8).map(t => `<li class="crow"><span class="dot" style="background:var(--ok)"></span><span class="nm">${esc(t.desc)}</span><span class="am pos">${money(t.amount)}</span></li>`).join('')}</ul>
-      <p class="hint">Se algo aqui não for renda (ex.: dinheiro que alguém te devolveu), abra a transação e marque “Ignorar nos totais”.</p></div>` : ''}
+      ${incomeFor(ym).expected ? `<p class="hint">Ainda devem cair este mês (pelo que se repetiu nos meses anteriores): ${incomeFor(ym).expectedList.map(x => `<b>${esc(x.desc)}</b> ~${money0(x.amount)}`).join(', ')}.</p>` : ''}
+      <p class="hint">Empréstimos recebidos, resgates e transferências entre suas contas não contam como renda. Se algo aqui não for renda, abra a transação e marque “Ignorar nos totais”.</p></div>` : ''}
     <div id="incManual" ${incomeAuto() ? 'hidden' : ''}>
     <div><p class="fld-title">Rendas fixas <span class="muted">· repetem todo mês</span></p>
       <div id="srcList">${(sources.length ? sources : [{ name:'Salário' }]).map(x => incRowHtml('src', x)).join('')}</div>
