@@ -106,13 +106,27 @@ svg.i{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-widt
 .link{background:none;border:0;padding:0;color:var(--accent);font-weight:700;cursor:pointer;font-size:.86rem;text-decoration:none}
 .link:hover{text-decoration:underline;text-underline-offset:3px}
 .link.danger{color:var(--danger)}
-:is(.btn,.link,.nav-l,.tx,.seg button,.mswitch button,.crow-btn,.plain-link,.hero-link,input,select,textarea,summary,.tabbar a):focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+:is(.btn,.link,.nav-l,.tx,.seg button,.mswitch button,.crow-btn,.plain-link,.hero-link,summary,.tabbar a,input[type=checkbox]):focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .mswitch{display:inline-flex;align-items:center;background:var(--surface);border-radius:12px;box-shadow:inset 0 0 0 1px var(--line),var(--shadow)}
 .mswitch button{border:0;background:none;padding:8px 10px;cursor:pointer;color:var(--ink-2);display:grid;place-items:center;border-radius:12px}
 .mswitch button:disabled{opacity:.3;cursor:default}
 .mswitch span{min-width:136px;text-align:center;font-weight:700;font-size:.88rem;font-family:var(--display)}
-select,input,textarea{border:1px solid var(--line);border-radius:12px;padding:8px 12px;background:var(--surface);font-size:.9rem;min-width:0}
-select{padding-right:30px;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23736F8A' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 11px center;cursor:pointer;font-weight:600}
+select,input,textarea{border:1px solid var(--line);border-radius:12px;padding:8px 12px;background:var(--surface);color:var(--ink);font-size:.9rem;min-width:0;transition:border-color .15s,box-shadow .15s,background-color .15s}
+select,input:not([type=checkbox]):not([type=radio]):not([type=file]){height:42px}
+select:hover,input:not([type=checkbox]):hover,textarea:hover{border-color:color-mix(in srgb,var(--accent) 40%,var(--line))}
+select:focus,input:not([type=checkbox]):focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 16%,transparent)}
+input::placeholder,textarea::placeholder{color:var(--muted);opacity:.8}
+input[type=number]{-moz-appearance:textfield;appearance:textfield}
+input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent);cursor:pointer;flex:none}
+input[type=date],input[type=month]{color-scheme:inherit}
+select option{background:var(--surface);color:var(--ink)}
+.money-in{display:inline-flex;align-items:center;gap:6px;height:42px;padding:0 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface);transition:border-color .15s,box-shadow .15s;cursor:text}
+.money-in:hover{border-color:color-mix(in srgb,var(--accent) 40%,var(--line))}
+.money-in:focus-within{border-color:var(--accent);box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 16%,transparent)}
+.money-in>span:first-child{color:var(--muted);font-size:.8rem;font-weight:700}
+.money-in input{border:0 !important;box-shadow:none !important;background:transparent;padding:0;height:40px !important;width:92px;text-align:right;font-weight:700;font-variant-numeric:tabular-nums;font-size:.95rem}
+select{padding-right:34px;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23736F8A' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 11px center;cursor:pointer;font-weight:600}
 .tb-filters select{box-shadow:var(--shadow)}
 textarea{min-height:72px;resize:vertical;width:100%}
 .seg{display:inline-flex;gap:2px;background:var(--surface-2);border-radius:12px;padding:4px;margin-bottom:10px;max-width:100%;overflow-x:auto}
@@ -415,6 +429,26 @@ button.cardv:hover{transform:translateY(-2px);box-shadow:0 16px 30px rgba(23,20,
 .bnums{display:flex;align-items:center;gap:8px;font-size:.88rem;white-space:nowrap}
 .bnums b{font-variant-numeric:tabular-nums;font-family:var(--display)}
 .money{width:120px;text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+.bdel{width:34px;height:34px;padding:0;justify-content:center;font-size:1.1rem;color:var(--muted)}
+.bdel:hover{color:var(--danger)}
+.danger-txt{color:var(--danger) !important}
+.addbud{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:16px;padding-top:16px;border-top:1px solid var(--line)}
+.addbud .grow{flex:1 1 220px}
+.addbud select{width:100%}
+.nobud{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
+.nobud summary{cursor:pointer;font-weight:700;font-size:.9rem;list-style:none;display:flex;align-items:center;gap:8px}
+.nobud summary::-webkit-details-marker{display:none}
+.nobud summary::before{content:"";width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(-45deg);transition:transform .15s;margin-right:4px}
+.nobud[open] summary::before{transform:rotate(45deg)}
+.nobud summary small{font-weight:500;color:var(--muted)}
+.nb-list{list-style:none;margin:10px 0 0;padding:0}
+.nb-row{display:grid;grid-template-columns:30px minmax(0,1fr) auto auto;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line-2)}
+.nb-row:last-child{border-bottom:0}
+.cat-ico.sm{width:30px;height:30px;border-radius:9px;font-size:.75rem}
+.nb-name{display:flex;flex-direction:column;min-width:0}
+.nb-name small{font-size:.74rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nb-v{font-weight:700;font-size:.88rem}
+@media (max-width:640px){.nb-row{grid-template-columns:30px minmax(0,1fr) auto}.nb-v{display:none}.addbud .btn{flex:1;justify-content:center}}
 .brow .progress{grid-column:1/-1}
 .bfoot{grid-column:1/-1;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:.78rem;color:var(--muted)}
 
@@ -1933,23 +1967,33 @@ function viewOrcamento(c){
       ${ofIncome != null ? chip(ofIncome > 100 ? 'danger' : ofIncome > 90 ? 'warn' : '', `o planejado é ${Math.round(ofIncome)}% da sua renda`) : ''}
     </div>` : `<p class="empty" style="text-align:left;padding:4px 0">Você ainda não tem metas. Toque em <b>Sugerir pela média de 6 meses</b> ou preencha o valor de cada categoria abaixo.</p>`}
   </section>`;
-  const rows = cats.map(k => {
-    const v = now[k] || 0, b = db.budgets[k] || 0, pct = b ? v / b * 100 : 0;
+  const sub = k => `${esc(cap(mName(addM(ym, -1)).slice(0, 3)))} ${money0(prev[k] || 0)} · média ${nAvg || 6} meses ${money0(avg6[k] || 0)}`;
+  const moneyIn = (k, b) => `<label class="money-in"><span>R$</span><span class="sr">Meta para ${esc(k)}</span><input type="number" min="0" step="10" inputmode="decimal" placeholder="0" data-budget="${esc(k)}" value="${b || ''}"></label>`;
+  const rows = bud.map(k => {
+    const v = now[k] || 0, b = db.budgets[k], pct = v / b * 100;
     return `<li class="brow">
       <div class="bname"><span class="cat-ico" style="--k:${catColor(k)}">${esc(initials(k))}</span><div style="min-width:0"><button class="plain-link" type="button" data-gocat="${esc(k)}" title="Ver as compras de ${esc(k)}"><strong>${esc(k)}</strong></button>
-        <div class="muted" style="font-size:.78rem">${esc(cap(mName(addM(ym, -1)).slice(0, 3)))} ${money0(prev[k] || 0)} · média ${nAvg || 6} meses ${money0(avg6[k] || 0)}</div></div></div>
-      <div class="bnums"><b>${money(v)}</b><span class="muted">de</span><label><span class="sr">Meta para ${esc(k)}</span><input class="money" type="number" min="0" step="10" inputmode="decimal" placeholder="sem meta" data-budget="${esc(k)}" value="${b || ''}"></label></div>
-      ${b ? progress(pct) : ''}
-      ${b ? `<div class="bfoot"><span>${v <= b ? `Restam ${money(b - v)}` : `<span class="delta bad">${money(v - b)} acima da meta</span>`}</span><span>${Math.round(pct)}%</span></div>` : ''}
+        <div class="muted" style="font-size:.78rem">${sub(k)}</div></div></div>
+      <div class="bnums"><b>${money(v)}</b><span class="muted">de</span>${moneyIn(k, b)}
+        <button class="btn ghost icon sm bdel" type="button" data-action="delbud" data-cat="${esc(k)}" aria-label="Tirar a meta de ${esc(k)}" title="Tirar a meta">×</button></div>
+      ${progress(pct)}
+      <div class="bfoot"><span>${v <= b ? `Restam ${money(b - v)}` : `<span class="delta bad">${money(v - b)} acima da meta</span>`}</span><span>${Math.round(pct)}%</span></div>
     </li>`;
   }).join('');
-  const options = allCategories().filter(k => !cats.includes(k));
-  h += panel('Metas por categoria', `${cats.length ? `<ul class="rows">${rows}</ul>` : '<p class="empty">Sem gastos ainda para sugerir categorias.</p>'}
-    <div class="toolbar" style="margin-top:14px;border-top:1px solid var(--line);padding-top:14px">
-      <label class="grow"><span class="sr">Nova categoria</span><select id="addCat"><option value="">Adicionar meta para outra categoria…</option>${options.map(k => `<option>${esc(k)}</option>`).join('')}</select></label>
-      <button class="btn ghost" type="button" data-action="addcat">${ic('plus')}Adicionar</button>
-    </div>`,
-    { sub:'A meta vale para todos os meses. Deixe em branco para não acompanhar a categoria.', action:`<div class="toolbar"><button class="btn ghost sm" type="button" data-action="cats">Categorias</button><button class="btn ghost sm" type="button" data-action="suggest">Sugerir pela média de 6 meses</button></div>` });
+  const noBud = cats.filter(k => !(db.budgets[k] > 0) && ((now[k] || 0) > 0 || (avg6[k] || 0) >= 20));
+  const noBudRows = noBud.map(k => `<li class="nb-row"><span class="cat-ico sm" style="--k:${catColor(k)}">${esc(initials(k))}</span>
+      <span class="nb-name"><button class="plain-link" type="button" data-gocat="${esc(k)}"><strong>${esc(k)}</strong></button><small>${sub(k)}</small></span>
+      <span class="nb-v num">${money0(now[k] || 0)}</span>
+      <button class="btn ghost sm" type="button" data-action="setbud" data-cat="${esc(k)}" data-val="${Math.ceil((avg6[k] || now[k] || 100) / 10) * 10}">${ic('plus')}Meta</button></li>`).join('');
+  const options = allCategories().filter(k => !(db.budgets[k] > 0));
+  h += panel('Metas por categoria', `${bud.length ? `<ul class="rows">${rows}</ul>` : '<p class="empty">Nenhuma categoria com meta. Use a sugestão pela média ou adicione abaixo.</p>'}
+    <div class="addbud">
+      <label class="grow"><span class="sr">Categoria</span><select id="addCat"><option value="">Escolha uma categoria…</option>${options.map(k => `<option>${esc(k)}</option>`).join('')}</select></label>
+      <label class="money-in"><span>R$</span><span class="sr">Valor da meta</span><input id="addVal" type="number" min="0" step="10" inputmode="decimal" placeholder="valor"></label>
+      <button class="btn" type="button" data-action="addcat">${ic('plus')}Adicionar meta</button>
+    </div>
+    ${noBud.length ? `<details class="nobud" ${ui.showNoBud ? 'open' : ''}><summary>Categorias sem meta (${noBud.length}) <small>· ${money0(unbudgeted)} gastos em ${esc(mName(ym))}</small></summary><ul class="nb-list">${noBudRows}</ul></details>` : ''}`,
+    { sub:'A meta vale para todos os meses.', action:`<div class="toolbar"><button class="btn ghost sm" type="button" data-action="cats">Categorias</button><button class="btn ghost sm" type="button" data-action="suggest">Sugerir pela média de 6 meses</button>${bud.length ? '<button class="btn ghost sm danger-txt" type="button" data-action="clearbud">Limpar todas</button>' : ''}</div>` });
   return h;
 }
 
@@ -2803,13 +2847,22 @@ document.addEventListener('click', e => {
     l.payments = l.payments.filter(p => p.id !== b.dataset.pay); saveDb('loans'); render();
   }
   else if (a === 'addcat') {
-    const k = $('#addCat')?.value; if (!k) { toast('Escolha uma categoria.'); return; }
-    db.budgets[k] = db.budgets[k] || 100; saveDb('budgets'); render();
-    setTimeout(() => document.querySelector(`[data-budget="${CSS.escape(k)}"]`)?.select(), 30);
+    const k = $('#addCat')?.value; if (!k) { toast('Escolha uma categoria.'); $('#addCat')?.focus(); return; }
+    const v = num($('#addVal')?.value);
+    db.budgets[k] = v > 0 ? v : (db.budgets[k] || 100); saveDb('budgets'); render(); toast(`Meta de ${k} adicionada.`);
+    if (!(v > 0)) setTimeout(() => document.querySelector(`[data-budget="${CSS.escape(k)}"]`)?.select(), 30);
+  }
+  else if (a === 'setbud') { const k = b.dataset.cat; db.budgets[k] = +b.dataset.val || 100; saveDb('budgets'); render(); toast(`Meta de ${k}: ${money0(db.budgets[k])}. Ajuste o valor se quiser.`); setTimeout(() => document.querySelector(`[data-budget="${CSS.escape(k)}"]`)?.select(), 30); }
+  else if (a === 'delbud') { const k = b.dataset.cat; delete db.budgets[k]; saveDb('budgets'); render(); toast(`Meta de ${k} removida.`); }
+  else if (a === 'clearbud') {
+    const n = Object.keys(db.budgets).length;
+    if (!n || !confirm(`Tirar todas as ${n} metas? Os gastos não mudam; você pode criar metas de novo depois.`)) return;
+    db.budgets = {}; saveDb('budgets'); render(); toast('Todas as metas foram removidas.');
   }
   else if (a === 'suggest') openSuggest();
   else if (a === 'sugall' || a === 'sugnone') document.querySelectorAll('#modal [name=cat]').forEach(x => x.checked = a === 'sugall');
 });
+document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'addVal') document.querySelector('[data-action=addcat]')?.click(); });
 document.addEventListener('change', e => {
   const el = e.target;
   if (el.dataset.budget) {
@@ -2823,6 +2876,7 @@ document.addEventListener('change', e => {
   else if (el.dataset.filter === 'card') { ui.card = el.value; render(); }
   else if (el.dataset.filter === 'cat' || el.dataset.filter === 'kind') { ui[el.dataset.filter] = el.value; $('#txList').innerHTML = txListHtml(context()); }
 });
+document.addEventListener('toggle', e => { if (e.target.classList?.contains('nobud')) ui.showNoBud = e.target.open; }, true);
 document.addEventListener('input', e => {
   if (e.target.id === 'cardName') { previewCard(); return; }
   if (e.target.dataset.filter === 'q') { ui.q = e.target.value; $('#txList').innerHTML = txListHtml(context()); }
