@@ -215,3 +215,15 @@ test('cartões: visual e bandeira pelo banco/nome, e o Croma vira NUBANK CROMA P
   const custom = deco({ id: 'n', name: 'CROMA PLATINUM', bank: 'Nubank' });
   assert.deepEqual([custom.name, custom.theme], ['Meu Nubank', 'violeta']);
 });
+
+test('média para sugerir metas: últimos 6 meses com dados', () => {
+  const tx = [];
+  // 4 meses com dados entre os 6 anteriores: 100, 200, 300, 400 em Mercado
+  [1, 2, 3, 4].forEach(m => tx.push({ id: 'g' + m, cardId: 'c1', date: app.run(`addM(curYM(), -${m})`) + '-10', desc: 'Mercado', category: 'Mercado', amount: m * 100, kind: 'out' }));
+  // um mês fora da janela de 6 não entra
+  tx.push({ id: 'old', cardId: 'c1', date: app.run('addM(curYM(), -8)') + '-10', desc: 'Mercado', category: 'Mercado', amount: 9999, kind: 'out' });
+  setData(tx);
+  const r = plain(app.run('catAverage(context(), curYM(), 6)'));
+  assert.equal(r.months, 4);
+  assert.equal(r.avg.Mercado, 250);
+});
