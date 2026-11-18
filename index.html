@@ -269,6 +269,32 @@ async function api(path, retry = true){
   return r.json();
 }
 
+async function fetchTransactions(accountId, from, to){
+  const out = [];
+  const used = new Set();
+  let cursor = null;
+  for (let i = 0; i < 50; i++) {
+    let path;
+    if (cursor && (cursor.startsWith('/') || /^https?:\/\//.test(cursor))) {
+      const u = new URL(cursor, API);
+      path = u.pathname + u.search;
+    } else {
+      const q = new URLSearchParams({ accountId, from, to, pageSize: '500' });
+      if (cursor) q.set('cursor', cursor);
+      path = '/v2/transactions?' + q;
+    }
+    const t = await api(path);
+    const list = t.results || t.data || t.transactions || [];
+    out.push(...list);
+    const next = t.next ?? t.nextCursor ?? t.next_cursor ?? t.cursor?.next ??
+      t.pagination?.next ?? t.pagination?.nextCursor ?? t.links?.next ?? null;
+    if (!next || typeof next !== 'string' || !list.length || used.has(next)) break;
+    used.add(next);
+    cursor = next;
+  }
+  return out;
+}
+
 function normTx(x, cardId){
   const m = x.creditCardMetadata || {};
   return {
@@ -315,13 +341,7 @@ async function sync(){
           invoice: Math.abs(a.balance ?? 0)
         };
         cards.push(card);
-        let page = 1, pages = 1;
-        do {
-          const t = await api(`/transactions?accountId=${encodeURIComponent(a.id)}&from=${from}&to=${to}&pageSize=500&page=${page}`);
-          pages = t.totalPages || 1;
-          for (const x of t.results || []) tx.push(normTx(x, card.id));
-          page++;
-        } while (page <= pages);
+        for (const x of await fetchTransactions(a.id, from, to)) tx.push(normTx(x, card.id));
       }
     }
     data = { cards, tx, syncedAt: new Date().toISOString() };

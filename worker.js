@@ -13,7 +13,7 @@
 //   Cron Trigger em Settings → Triggers, ex.: */30 * * * *
 
 const API = 'https://api.pluggy.ai';
-const ALLOWED_PATHS = [/^\/items\/[\w-]+$/, /^\/accounts$/, /^\/transactions$/];
+const ALLOWED_PATHS = [/^\/items\/[\w-]+$/, /^\/accounts$/, /^\/v2\/transactions$/];
 let cached = { key: null, at: 0 };
 
 async function pluggyKey(env) {
@@ -80,8 +80,8 @@ export default {
       const acc = await get(`/accounts?itemId=${encodeURIComponent(itemId)}`);
       for (const a of acc.results || []) {
         if (a.type !== 'CREDIT') continue;
-        const t = await get(`/transactions?accountId=${encodeURIComponent(a.id)}&from=${from}&pageSize=500`);
-        for (const x of t.results || []) {
+        const t = await get(`/v2/transactions?accountId=${encodeURIComponent(a.id)}&from=${from}&pageSize=500`);
+        for (const x of t.results || t.data || t.transactions || []) {
           current.push(x.id);
           if (firstRun || seen.has(x.id) || x.type !== 'DEBIT') continue;
           const valor = Math.abs(x.amountInAccountCurrency ?? x.amount).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
