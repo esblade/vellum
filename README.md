@@ -4,12 +4,19 @@ Página única de gestão de gastos pessoais. Lê os cartões de crédito conect
 
 ## Telas
 
-- **Visão geral**: gasto do mês com comparação ao mesmo período do mês anterior, projeção para o fim do mês, ritmo de gastos dia a dia, principais categorias, limites e faturas dos cartões, alertas (meta estourada, limite alto, fatura vencendo, parcela de empréstimo atrasada).
-- **Transações**: busca, filtros por categoria e tipo, troca de categoria (só nesta compra ou em todas do mesmo estabelecimento), notas, ignorar nos totais, lançamentos manuais (Pix, dinheiro, boleto) e exportação em CSV.
-- **Orçamento**: meta mensal por categoria, com gasto do mês, mês anterior, média de 3 meses e sugestão automática de metas.
-- **Parcelas e assinaturas**: compras parceladas em andamento, quanto falta pagar, gastos recorrentes identificados automaticamente e gráfico do que já está comprometido nos próximos 12 meses.
-- **Empréstimos**: empréstimos e financiamentos que você deve e valores que emprestou, com parcelas, juros, saldo, próximo vencimento e histórico de pagamentos.
-- **Relatórios**: evolução de 6 meses, comparativo por categoria e por cartão com o mês anterior, onde você mais gastou, maiores compras, gasto por dia da semana e histórico de faturas.
+- **Visão geral**: gasto do mês comparado ao mesmo período do mês anterior, renda e sobra, projeção, ritmo de gastos, categorias (clicáveis), conta corrente, objetivos, cartões e alertas.
+- **Transações**: busca, filtros por categoria, tipo, cartão ou conta, troca de categoria (só nesta compra ou em todas do mesmo estabelecimento), notas, ignorar nos totais, lançamentos manuais e CSV.
+- **Faturas**: fatura aberta de cada cartão (fecha em, vence em, limite), lançamentos da fatura, parcelas que ainda vão entrar, próximas 6 faturas previstas e faturas anteriores.
+- **Orçamento**: meta mensal por categoria, com mês anterior, média de 3 meses e sugestão automática.
+- **Parcelas e assinaturas**: compras parceladas em andamento, gastos recorrentes e compromissos dos próximos 12 meses.
+- **Objetivos**: caixinhas com meta e prazo (ex.: reserva de emergência), quanto guardar por mês e se cabe na sobra do mês.
+- **Empréstimos**: o que você deve e o que te devem, com parcelas, juros e histórico.
+- **Relatórios**: evolução, comparativo com o mês anterior, onde o dinheiro foi, dias da semana e faturas; dá para baixar em PDF.
+- **Visão anual**: gasto, renda e sobra de cada mês do ano, categorias e estabelecimentos do ano, com PDF.
+
+### Conta corrente
+
+Se a conexão do Meu Pluggy também trouxer a conta corrente, o app mostra o saldo, conta Pix, débito e boletos como gasto e, por padrão, usa o que entra na conta como **renda automática**. Pagamento da fatura, aplicações, resgates e transferências entre suas contas não contam nem como gasto nem como renda. Em "Editar renda" dá para trocar para renda informada manualmente.
 
 Em Ajustes dá para escolher tema claro/escuro, ligar o Face ID e exportar ou importar um backup (JSON).
 
