@@ -149,7 +149,7 @@ test('empréstimo recebido não é renda; quitar o cartão pela conta não é ga
   assert.equal(app.run('sum(allTx().filter(isSpend))'), 300);
 });
 
-test('salário que cai duas vezes no mês: o que ainda não caiu entra como previsto', () => {
+test('salário que cai duas vezes no mês: o que ainda não caiu entra como previsto', { skip: new Date().getDate() > 30 && 'o 2º salário (dia 27) já teria passado' }, () => {
   const tx = [];
   for (let m = 1; m <= 3; m++) {
     const mm = app.run(`addM(curYM(), -${m})`);
@@ -178,4 +178,22 @@ test('projeção não multiplica um gasto pontual grande pelos dias do mês', ()
   assert.equal(P.oneOffTotal, 15000);
   assert.ok(P.projection < linear, `projeção ${P.projection} deveria ser menor que a regra de três ${linear}`);
   assert.ok(P.projection < 15000 + 31 * 60, 'gasto pontual entra uma vez só');
+});
+
+test('renda prevista ignora apostas, transferências de valor variável e o que você marcou para não esperar', () => {
+  const tx = [], dayNext = Math.min(28, new Date().getDate() + 1);   // dia que ainda não passou
+  const d2 = String(dayNext).padStart(2, '0');
+  for (let m = 1; m <= 3; m++) {
+    const mm = app.run(`addM(curYM(), -${m})`);
+    tx.push({ id: `bet${m}`, cardId: 'b', acct: 'bank', catRaw: 'Transfer - PIX', date: `${mm}-${d2}`, desc: 'Transferência Recebida|KAIZEN GAMING BRASIL LTDA', category: 'Pix', amount: 5000, kind: 'in' });
+    tx.push({ id: `pes${m}`, cardId: 'b', acct: 'bank', catRaw: 'Transfer - PIX', date: `${mm}-${d2}`, desc: 'Transferência Recebida|Fulana de Tal', category: 'Pix', amount: [300, 2500, 900][m - 1], kind: 'in' });
+    tx.push({ id: `alu${m}`, cardId: 'b', acct: 'bank', catRaw: 'Transfer - PIX', date: `${mm}-${d2}`, desc: 'Transferência Recebida|Inquilino Aluguel', category: 'Pix', amount: 1500, kind: 'in' });
+  }
+  setData(tx, { banks: [{ id: 'b', type: 'bank', name: 'Conta', balance: 0 }] });
+  let exp = plain(app.run('expectedIncome(curYM())'));
+  assert.deepEqual(exp.map(x => x.desc), ['Inquilino Aluguel']);   // só o aluguel, que é fixo
+  assert.equal(exp[0].amount, 1500);
+  app.run(`db.income.noExpect = [${JSON.stringify(exp[0].key)}]`);
+  exp = plain(app.run('expectedIncome(curYM())'));
+  assert.equal(exp.length, 0);
 });

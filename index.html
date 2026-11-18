@@ -258,6 +258,22 @@ body.gated .page{max-width:none;min-height:100vh;padding:24px 16px;justify-conte
 .dlg select.swatch{width:44px;height:38px;padding:0;border-radius:12px;background:var(--k);color:transparent;border:0;background-image:none;cursor:pointer}
 .dlg select.swatch option{color:var(--ink);background:var(--surface)}
 
+/* Dica dos gráficos */
+svg.hov{touch-action:pan-y;cursor:crosshair}
+.hv-line{stroke:var(--muted);stroke-width:1;stroke-dasharray:3 3;opacity:0}
+.hv-dot{opacity:0;stroke:var(--surface);stroke-width:2.5}
+.hv-bar{fill:var(--ink);opacity:0}
+svg.hov.on .hv-line,svg.hov.on .hv-dot{opacity:1}
+svg.hov.on .hv-bar{opacity:.05}
+#chartTip{position:fixed;z-index:60;pointer-events:none;min-width:170px;max-width:260px;background:var(--side);color:#fff;border-radius:14px;padding:10px 12px;font-size:.8rem;box-shadow:0 12px 30px rgba(10,8,25,.3)}
+#chartTip .tip-h{font-family:var(--display);font-weight:700;margin-bottom:6px}
+#chartTip .tip-row{display:grid;grid-template-columns:10px 1fr auto;gap:8px;align-items:center;padding:2px 0}
+#chartTip .tip-row i{width:10px;height:10px;border-radius:3px}
+#chartTip .tip-row b{font-variant-numeric:tabular-nums}
+#chartTip .tip-row.tot{grid-template-columns:1fr auto;border-top:1px solid rgba(255,255,255,.15);margin-top:4px;padding-top:6px}
+#chartTip .tip-sub{color:rgba(255,255,255,.65);font-size:.75rem;margin:-1px 0 3px 18px}
+@media print{#chartTip{display:none !important}}
+
 /* Banner */
 .banner{padding:12px 18px;border-radius:16px;background:var(--accent-soft);display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;font-size:.9rem}
 .banner.err{background:var(--danger-soft)}
@@ -1157,25 +1173,40 @@ function incomeSources(){
 // Entradas que se repetem todo mês na conta (ex.: salário do dia 5 e o da última quinta) e que ainda não
 // caíram no mês atual entram como "previstas". Respeita quantas vezes a mesma entrada cai por mês.
 const incKey = t => t.key.replace(/\d+/g, ' ').replace(/\s+/g, ' ').trim();
+// Só prevê entradas regulares: apareceram em pelo menos 2 dos 3 meses anteriores, com valor parecido
+// (variação de até 25%), e cujo dia costumeiro ainda não passou. Apostas e entradas marcadas como
+// "não esperar" ficam de fora.
+const GAMBLING_RAW = new Set(['Gambling', 'Lottery', 'Online bet']);
+const looksGambling = t => GAMBLING_RAW.has(t.catRaw) || /\b(bet|bets|aposta|apostas|cassino|casino|gaming|loteria|blaze|betano|pixbet|sportingbet|esporte da sorte|estrela bet)\b/.test(t.key);
+const cleanDesc = d => { const p = String(d || '').split('|').map(x => x.trim()).filter(Boolean); return p[p.length - 1] || String(d || ''); };
 function expectedIncome(ym){
   if (ym !== curYM() || !incomeAuto()) return [];
+  const skip = new Set(db.income?.noExpect || []);
   const byM = bankIncomeByMonth(), prevMs = [1, 2, 3].map(i => addM(ym, -i));
   const seen = {};
   for (const m of prevMs) {
     const nth = {};
     for (const t of [...(byM[m] || [])].sort((a, b) => a.date.localeCompare(b.date))) {
-      const k = incKey(t), v = seen[k] ||= { desc: t.desc, months: new Set(), amts: [], byIdx: [] };
+      if (looksGambling(t)) continue;
+      const k = incKey(t); if (skip.has(k)) continue;
+      const v = seen[k] ||= { desc: t.desc, months: new Set(), byIdx: [] };
       const i = nth[k] = (nth[k] ?? -1) + 1;
-      v.months.add(m); v.amts.push(t.amount); (v.byIdx[i] ||= []).push(t.amount);
+      v.months.add(m); (v.byIdx[i] ||= []).push({ amount: t.amount, day: +t.date.slice(8, 10) });
     }
   }
   const got = {}; for (const t of byM[ym] || []) got[incKey(t)] = (got[incKey(t)] || 0) + 1;
-  const out = [];
+  const today = new Date().getDate(), out = [];
   for (const [k, v] of Object.entries(seen)) {
     if (v.months.size < 2) continue;
-    const perMonth = Math.round(v.amts.length / v.months.size);
-    // usa o valor da mesma ocorrência nos meses anteriores (ex.: o 2º salário do mês)
-    for (let i = got[k] || 0; i < perMonth; i++) { const a = v.byIdx[i] || v.amts; out.push({ desc: v.desc, amount: a.reduce((x, y) => x + y, 0) / a.length }); }
+    for (let i = got[k] || 0; i < v.byIdx.length; i++) {
+      const occ = v.byIdx[i];
+      if (!occ || occ.length < 2) continue;                                  // não se repetiu
+      const amts = occ.map(o => o.amount), mn = Math.min(...amts), mx = Math.max(...amts);
+      if (mx <= 0 || mn / mx < 0.75) continue;                               // valor muda muito: não é fixo
+      const day = Math.round(occ.reduce((a, o) => a + o.day, 0) / occ.length);
+      if (today > day + 3) continue;                                         // já devia ter caído
+      out.push({ key: k, desc: cleanDesc(v.desc), amount: amts.reduce((a, b) => a + b, 0) / amts.length, day });
+    }
   }
   return out;
 }
@@ -1320,7 +1351,9 @@ function commitments(c){
 function niceMax(v){ if (v <= 0) return 1; const p = 10 ** Math.floor(Math.log10(v)); const f = v / p; return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * p; }
 function chartWidth(){ const w = ($('#page')?.clientWidth || 800) - (innerWidth <= 860 ? 32 : 56) - 42; return Math.max(280, Math.min(1080, w)); }
 
-function lineChart(series, n, { H = 230, label = '' } = {}){
+// Dados de cada gráfico desenhado, para a dica ao passar o mouse (ou o dedo).
+let chartData = {}, chartSeq = 0;
+function lineChart(series, n, { H = 230, label = '', xLabel = i => 'Dia ' + (i + 1) } = {}){
   const W = chartWidth(), pl = 52, pr = 14, pt = 10, pb = 26;
   const max = niceMax(Math.max(1, ...series.flatMap(s => s.values.filter(v => v != null))));
   const x = i => pl + (n <= 1 ? 0 : i / (n - 1)) * (W - pl - pr);
@@ -1338,7 +1371,10 @@ function lineChart(series, n, { H = 230, label = '' } = {}){
     p += `<polyline points="${line}" style="fill:none;stroke:${s.color};stroke-width:${s.dash ? 1.8 : 2.4};stroke-linejoin:round;stroke-linecap:round${s.dash ? ';stroke-dasharray:5 5' : ''}"/>`;
     if (!s.dash) { const lp = pts[pts.length - 1]; p += `<circle cx="${lp[0].toFixed(1)}" cy="${lp[1].toFixed(1)}" r="4" style="fill:${s.color};stroke:var(--surface);stroke-width:2"/>`; }
   });
-  return `<svg class="chart" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(label)}">${g}${p}</svg>`;
+  const id = 'ch' + (++chartSeq);
+  chartData[id] = { type:'line', W, H, n, x, y, xLabel, series: series.map(s => ({ name: s.name || '', color: s.color, values: s.values })) };
+  p += `<line class="hv-line" x1="0" x2="0" y1="${pt}" y2="${H - pb}"/>` + series.map((s, i) => `<circle class="hv-dot" data-s="${i}" r="5" style="fill:${s.color}"/>`).join('');
+  return `<svg class="chart hov" data-chart="${id}" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(label)}">${g}${p}</svg>`;
 }
 
 function barChart(items, keys, { H = 230, label = '', avg = null } = {}){
@@ -1363,7 +1399,11 @@ function barChart(items, keys, { H = 230, label = '', avg = null } = {}){
     g += `<text class="ax" x="${cx.toFixed(1)}" y="${H - 6}" text-anchor="middle"${it.bold ? ' style="font-weight:700;fill:var(--ink)"' : ''}>${esc(it.label)}</text>`;
   });
   if (avg) g += `<line x1="${pl}" x2="${W - pr}" y1="${y(avg).toFixed(1)}" y2="${y(avg).toFixed(1)}" style="stroke:var(--muted);stroke-dasharray:4 4"/>`;
-  return `<svg class="chart" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(label)}">${g}</svg>`;
+  const id = 'ch' + (++chartSeq);
+  chartData[id] = { type:'bar', W, pl, bw, items, keys, avg };
+  g = g.replace(/<title>.*?<\/title>/g, '');
+  g += `<rect class="hv-bar" x="0" y="${pt}" width="${bw.toFixed(1)}" height="${H - pt - pb}" rx="8"/>`;
+  return `<svg class="chart hov" data-chart="${id}" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(label)}">${g}</svg>`;
 }
 
 /* ---------- Componentes ---------- */
@@ -1447,7 +1487,7 @@ function viewInicio(c){
   const n = Math.max(dim(ym), dim(P.prev));
   const cumul = (list, upto, nd) => { const arr = Array(n).fill(null); const per = Array(nd).fill(0); for (const t of list) per[Math.min(nd, P.dayOf(t)) - 1] += t.amount; let s = 0; for (let i = 0; i < nd; i++) { s += per[i]; if (i < upto) arr[i] = s; } return arr; };
   const curSeries = cumul(P.cur, P.day, dim(ym)), prevSeries = cumul(spendIn(c, P.prev), dim(P.prev), dim(P.prev));
-  const chart = lineChart([{ values: curSeries, color:'var(--accent)' }, { values: prevSeries, color:'var(--muted)', dash:true }], n, { label:'Gasto acumulado por dia' });
+  const chart = lineChart([{ name: cap(mName(ym)), values: curSeries, color:'var(--accent)' }, { name: cap(prevName), values: prevSeries, color:'var(--muted)', dash:true }], n, { label:'Gasto acumulado por dia' });
   h += panel('Ritmo de gastos', `${chart}<div class="legend" style="margin-top:8px"><span><i class="line" style="background:var(--accent)"></i>${esc(cap(mName(ym)))}</span><span><i class="line" style="background:var(--muted)"></i>${esc(cap(prevName))}</span></div>`,
     { sub:'Gasto acumulado dia a dia, comparado com o mês anterior' });
 
@@ -1491,7 +1531,7 @@ function heroHtml(P, nextTotal){
     right = `<div class="hero-inc">
       <div class="hero-row"><span>Renda de ${esc(mName(ym))}</span><button class="hero-link" type="button" data-action="income">${ic('edit')}Editar</button></div>
       <b class="hero-inc-val num">${money(I.total)}</b>
-      <span class="hero-sub">${I.auto ? plural(fontes, 'entrada recebida', 'entradas recebidas') + (I.expected ? ` + ${money0(I.expected)} previstos (${esc([...new Set(I.expectedList.map(x => x.desc))].slice(0, 2).join(', '))})` : '') : plural(fontes, 'fonte de renda', 'fontes de renda')}</span>
+      <span class="hero-sub">${I.auto ? plural(fontes, 'entrada recebida', 'entradas recebidas') + (I.expected ? ` + ${money0(I.expected)} previstos` : '') : plural(fontes, 'fonte de renda', 'fontes de renda')}</span>
       <div class="hero-bar" role="img" aria-label="${Math.round(pct)}% da renda gasto"><span style="width:${Math.min(100, pct).toFixed(1)}%"${pct >= 100 ? ' class="over"' : ''}></span></div>
       <div class="hero-row"><span>${Math.round(pct)}% gasto</span><span class="${left < 0 ? 'neg' : ''}">${left < 0 ? 'Faltam' : 'Sobram'} <b class="num">${money(Math.abs(left))}</b></span></div>
     </div>`;
@@ -1525,7 +1565,10 @@ function openIncome(){
     ${hasBank() ? `<label>Como calcular a renda<select name="mode" id="incMode"><option value="auto" ${incomeAuto() ? 'selected' : ''}>Automático: o que entra na conta corrente</option><option value="manual" ${incomeAuto() ? '' : 'selected'}>Informar manualmente</option></select></label>
     <div id="incAuto" ${incomeAuto() ? '' : 'hidden'}><p class="hint">Em ${esc(mName(ym))} entraram <b>${money(incomeFor(ym).bankIn)}</b> na conta corrente (sem contar transferências entre suas contas, resgates e estornos de fatura).</p>
       <ul class="rows inc-list">${(bankIncomeByMonth()[ym] || []).sort((a, b) => b.amount - a.amount).slice(0, 8).map(t => `<li class="crow"><span class="dot" style="background:var(--ok)"></span><span class="nm">${esc(t.desc)}</span><span class="am pos">${money(t.amount)}</span></li>`).join('')}</ul>
-      ${incomeFor(ym).expected ? `<p class="hint">Ainda devem cair este mês (pelo que se repetiu nos meses anteriores): ${incomeFor(ym).expectedList.map(x => `<b>${esc(x.desc)}</b> ~${money0(x.amount)}`).join(', ')}.</p>` : ''}
+      ${incomeFor(ym).expected ? `<p class="fld-title" style="margin-top:6px">Previstas para ${esc(mName(ym))}</p>
+        <p class="hint">Entradas que caíram com valor parecido nos meses anteriores e ainda não caíram este mês.</p>
+        <ul class="rows inc-list">${incomeFor(ym).expectedList.map(x => `<li class="crow"><span class="dot" style="background:var(--warn)"></span><span class="nm">${esc(x.desc)} <span class="muted" style="font-weight:400">· por volta do dia ${x.day}</span></span>
+          <span class="am">~${money0(x.amount)} <button class="link" type="button" data-action="noexpect" data-key="${esc(x.key)}">Não esperar</button></span></li>`).join('')}</ul>` : ''}
       <p class="hint">Empréstimos recebidos, resgates e transferências entre suas contas não contam como renda. Se algo aqui não for renda, abra a transação e marque “Ignorar nos totais”.</p></div>` : ''}
     <div id="incManual" ${incomeAuto() ? 'hidden' : ''}>
     <div><p class="fld-title">Rendas fixas <span class="muted">· repetem todo mês</span></p>
@@ -2087,7 +2130,7 @@ function welcome(){
 
 /* ---------- Render ---------- */
 function render(){
-  _bankInc = null;
+  _bankInc = null; chartData = {}; hideTip();
   const v = VIEWS.find(x => x.id === ui.view) || VIEWS[0];
   const navHtml = (cls, short) => VIEWS.filter(x => !x.hidden).map(x => `<a class="${cls}" href="#/${x.id}" ${x.id === v.id ? 'aria-current="page"' : ''}>${ic(x.icon)}<span>${short ? x.short : x.title}</span></a>`).join('');
   $('#nav').innerHTML = navHtml('nav-l', false);
@@ -2397,6 +2440,49 @@ $('#btnWipe').addEventListener('click', () => {
   $('#cfg').close(); render(); toast('Dados apagados deste navegador.');
 });
 
+/* ---------- Dica dos gráficos ---------- */
+function hideTip(){
+  const t = $('#chartTip'); if (t) t.hidden = true;
+  document.querySelectorAll('svg.hov.on').forEach(s => s.classList.remove('on'));
+}
+function showTip(svg, ev){
+  const d = chartData[svg.dataset.chart]; if (!d) return;
+  const r = svg.getBoundingClientRect(); if (!r.width) return;
+  const sx = (ev.clientX - r.left) * d.W / r.width;
+  let html = '', ax = 0;
+  if (d.type === 'line') {
+    const i = Math.max(0, Math.min(d.n - 1, Math.round((sx - d.x(0)) / ((d.x(d.n - 1) - d.x(0)) || 1) * (d.n - 1))));
+    ax = d.x(i);
+    svg.querySelector('.hv-line').setAttribute('x1', ax); svg.querySelector('.hv-line').setAttribute('x2', ax);
+    const rows = d.series.map((s, si) => {
+      const v = s.values[i], dot = svg.querySelector(`.hv-dot[data-s="${si}"]`);
+      if (v == null) { dot.style.display = 'none'; return ''; }
+      dot.style.display = ''; dot.setAttribute('cx', ax); dot.setAttribute('cy', d.y(v));
+      const prev = i > 0 && s.values[i - 1] != null ? s.values[i - 1] : 0, dayV = v - prev;
+      return `<div class="tip-row"><i style="background:${s.color}"></i><span>${esc(s.name)}</span><b>${money(v)}</b></div>${dayV > 0.004 ? `<div class="tip-sub">${money(dayV)} no dia</div>` : ''}`;
+    }).join('');
+    html = `<div class="tip-h">${esc(d.xLabel(i))}</div>${rows}`;
+  } else {
+    const i = Math.max(0, Math.min(d.items.length - 1, Math.floor((sx - d.pl) / d.bw)));
+    const it = d.items[i]; ax = d.pl + d.bw * i + d.bw / 2;
+    const bar = svg.querySelector('.hv-bar'); bar.setAttribute('x', (d.pl + d.bw * i).toFixed(1));
+    const rows = d.keys.filter(k => (it.v[k.k] || 0) > 0).map(k => `<div class="tip-row"><i style="background:${k.color}"></i><span>${esc(k.label)}</span><b>${money(it.v[k.k])}</b></div>`).join('');
+    const total = d.keys.reduce((a, k) => a + (it.v[k.k] || 0), 0);
+    html = `<div class="tip-h">${esc(it.title || it.label)}</div>${rows || '<div class="tip-sub">Sem valores</div>'}${d.keys.length > 1 && total ? `<div class="tip-row tot"><span>Total</span><b>${money(total)}</b></div>` : ''}${it.mark ? `<div class="tip-row"><i style="background:var(--ok)"></i><span>Renda</span><b>${money(it.mark)}</b></div>` : ''}${d.avg ? `<div class="tip-sub">Média: ${money(d.avg)}</div>` : ''}`;
+  }
+  svg.classList.add('on');
+  let tip = $('#chartTip');
+  if (!tip) { tip = document.createElement('div'); tip.id = 'chartTip'; tip.setAttribute('role', 'status'); document.body.appendChild(tip); }
+  tip.innerHTML = html; tip.hidden = false;
+  const px = r.left + ax * r.width / d.W, tw = tip.offsetWidth, th = tip.offsetHeight;
+  let left = px + 14; if (left + tw > innerWidth - 8) left = px - tw - 14;
+  tip.style.left = Math.max(8, left) + 'px';
+  tip.style.top = Math.max(8, Math.min(innerHeight - th - 8, ev.clientY - th / 2)) + 'px';
+}
+document.addEventListener('pointermove', e => { const svg = e.target.closest?.('svg.hov'); if (svg) showTip(svg, e); else if ($('#chartTip') && !$('#chartTip').hidden) hideTip(); });
+document.addEventListener('pointerdown', e => { const svg = e.target.closest?.('svg.hov'); if (svg) showTip(svg, e); else hideTip(); });
+addEventListener('scroll', () => { if (matchMedia('(hover: hover)').matches) hideTip(); }, { passive:true });
+
 /* ---------- Eventos ---------- */
 document.addEventListener('click', e => {
   const go = e.target.closest('[data-gocat],[data-goq]');
@@ -2435,6 +2521,11 @@ document.addEventListener('click', e => {
   else if (a === 'cats') openCats();
   else if (a === 'delcat') b.closest('.catrow').remove();
   else if (a === 'addsplit') { const l = $('#splitList'); l.insertAdjacentHTML('beforeend', splitRowHtml()); l.lastElementChild.querySelector('input').focus(); }
+  else if (a === 'noexpect') {
+    const inc = db.income ||= { sources:[], months:{} };
+    inc.noExpect = [...new Set([...(inc.noExpect || []), b.dataset.key])];
+    saveDb('income'); b.closest('li')?.remove(); render(); toast('Essa entrada não será mais prevista.');
+  }
   else if (a === 'rank') { ui.rank = b.dataset.rank; render(); }
   else if (a === 'clearf') { ui.cat = 'all'; ui.q = ''; render(); }
   else if (a === 'sync') sync();
