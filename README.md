@@ -1,6 +1,17 @@
 # Meus cartões
 
-Página única que lê os cartões de crédito conectados no Meu Pluggy e mostra gastos do período, limites, categorias e compras novas desde a última visita.
+Página única de gestão de gastos pessoais. Lê os cartões de crédito conectados no Meu Pluggy e guarda o resto (metas, empréstimos, lançamentos manuais) só no navegador.
+
+## Telas
+
+- **Visão geral**: gasto do mês com comparação ao mesmo período do mês anterior, projeção para o fim do mês, ritmo de gastos dia a dia, principais categorias, limites e faturas dos cartões, alertas (meta estourada, limite alto, fatura vencendo, parcela de empréstimo atrasada).
+- **Transações**: busca, filtros por categoria e tipo, troca de categoria (só nesta compra ou em todas do mesmo estabelecimento), notas, ignorar nos totais, lançamentos manuais (Pix, dinheiro, boleto) e exportação em CSV.
+- **Orçamento**: meta mensal por categoria, com gasto do mês, mês anterior, média de 3 meses e sugestão automática de metas.
+- **Parcelas e assinaturas**: compras parceladas em andamento, quanto falta pagar, gastos recorrentes identificados automaticamente e gráfico do que já está comprometido nos próximos 12 meses.
+- **Empréstimos**: empréstimos e financiamentos que você deve e valores que emprestou, com parcelas, juros, saldo, próximo vencimento e histórico de pagamentos.
+- **Relatórios**: evolução de 6 meses, comparativo por categoria e por cartão com o mês anterior, onde você mais gastou, maiores compras, gasto por dia da semana e histórico de faturas.
+
+Em Ajustes dá para escolher tema claro/escuro e exportar ou importar um backup (JSON) das metas, empréstimos e categorias ajustadas, para levar a outro aparelho.
 
 ## Publicar no GitHub Pages (grátis em repositório público)
 
@@ -26,6 +37,8 @@ O Worker resolve bloqueio de CORS, guarda o Client Secret fora do celular e, se 
 1. Em dash.cloudflare.com → Workers & Pages → Create → Worker, cole o conteúdo de `worker.js` e publique.
 2. Em Settings → Variables and Secrets, crie `PLUGGY_CLIENT_ID`, `PLUGGY_CLIENT_SECRET`, `ACCESS_TOKEN` e `ALLOWED_ORIGIN` (`https://SEU_USUARIO.github.io`).
 3. Na página, em Ajustes → Usar intermediário, informe o endereço do Worker e o mesmo `ACCESS_TOKEN`.
+
+O Worker libera `/items`, `/accounts`, `/v2/transactions` e `/bills`. Se você publicou uma versão antiga, publique de novo para o histórico de faturas aparecer em Relatórios (sem isso, o resto funciona normalmente).
 
 Para os alertas no iPhone:
 

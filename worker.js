@@ -13,7 +13,7 @@
 //   Cron Trigger em Settings → Triggers, ex.: */30 * * * *
 
 const API = 'https://api.pluggy.ai';
-const ALLOWED_PATHS = [/^\/items\/[\w-]+$/, /^\/accounts$/, /^\/v2\/transactions$/];
+const ALLOWED_PATHS = [/^\/items\/[\w-]+$/, /^\/accounts$/, /^\/v2\/transactions$/, /^\/bills$/];
 let cached = { key: null, at: 0 };
 
 async function pluggyKey(env) {
