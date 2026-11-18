@@ -274,6 +274,27 @@ svg.hov.on .hv-bar{opacity:.05}
 #chartTip .tip-sub{color:rgba(255,255,255,.65);font-size:.75rem;margin:-1px 0 3px 18px}
 @media print{#chartTip{display:none !important}}
 
+.notify-box{display:flex;flex-direction:column;gap:10px}
+.notify-box label:not(.chk){max-width:220px}
+
+/* Resumo do orçamento */
+.bud-sum{display:flex;flex-direction:column;gap:12px}
+.bud-head{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.bud-head>div{display:flex;flex-direction:column;gap:2px}
+.bud-right{text-align:right;align-items:flex-end}
+.bud-lbl{font-size:.82rem;color:var(--muted);font-weight:600}
+.bud-val{font-family:var(--display);font-size:1.9rem;font-weight:700;letter-spacing:-.02em;line-height:1.1}
+.bud-sub{font-size:.8rem;color:var(--muted)}
+.bud-legend{font-size:.86rem;color:var(--ink-2)}
+.bud-chips{display:flex;gap:8px;flex-wrap:wrap}
+.bud-chips .badge{font-size:.78rem;padding:4px 10px}
+.sug-list{display:flex;flex-direction:column;gap:4px;max-height:50vh;overflow:auto}
+.dlg label.sug-row{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:8px 4px;border-bottom:1px solid var(--line-2)}
+.sug-name{display:flex;align-items:center;gap:8px;font-weight:600}
+.sug-val{display:flex;flex-direction:column;align-items:flex-end}
+.sug-val small{color:var(--muted);font-size:.74rem}
+@media (max-width:640px){.bud-right{text-align:left;align-items:flex-start}.bud-val{font-size:1.5rem}}
+
 /* Banner */
 .banner{padding:12px 18px;border-radius:16px;background:var(--accent-soft);display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;font-size:.9rem}
 .banner.err{background:var(--danger-soft)}
@@ -536,6 +557,7 @@ dialog::backdrop{background:rgba(13,12,19,.6);backdrop-filter:blur(3px)}
     <label>API key (opcional, se o painel fornecer uma pronta)<input id="fApiKey" type="password" autocomplete="off" spellcheck="false"></label>
     <label>IDs das conexões (um por linha)<textarea id="fItems" spellcheck="false" placeholder="ex.: 6f1b2c3d-..."></textarea></label>
     <div><p class="fld-title">Conta</p><div id="acctBox"></div></div>
+    <div><p class="fld-title">Notificações</p><div id="notifyBox" class="notify-box"></div></div>
     <details id="proxyBox">
       <summary>Usar intermediário (Cloudflare Worker)</summary>
       <div class="fields">
@@ -580,9 +602,9 @@ const store = {
 };
 const K = {
   cfg:'cartoes.cfg', seen:'cartoes.seen', cache:'cartoes.cache', prefs:'cartoes.prefs',
-  budgets:'cartoes.budgets', overrides:'cartoes.overrides', rules:'cartoes.rules', manual:'cartoes.manual', loans:'cartoes.loans', income:'cartoes.income', goals:'cartoes.goals', cats:'cartoes.cats', cardPrefs:'cartoes.cardPrefs', meta:'cartoes.meta'
+  budgets:'cartoes.budgets', overrides:'cartoes.overrides', rules:'cartoes.rules', manual:'cartoes.manual', loans:'cartoes.loans', income:'cartoes.income', goals:'cartoes.goals', cats:'cartoes.cats', cardPrefs:'cartoes.cardPrefs', notify:'cartoes.notify', meta:'cartoes.meta'
 };
-const DB_KEYS = ['budgets','overrides','rules','manual','loans','income','goals','cats','cardPrefs'];
+const DB_KEYS = ['budgets','overrides','rules','manual','loans','income','goals','cats','cardPrefs','notify'];
 const API = 'https://api.pluggy.ai';
 const HISTORY_MONTHS = 6;
 const INITIAL_MONTHS = 12;   // primeira busca de transações
@@ -721,7 +743,7 @@ function viewFromHash(){ const h = location.hash.replace(/^#\/?/, ''); return VI
 /* ---------- Dados locais ---------- */
 function loadDb(){
   return { budgets: store.get(K.budgets, {}), overrides: store.get(K.overrides, {}), rules: store.get(K.rules, {}),
-    manual: store.get(K.manual, []), loans: store.get(K.loans, []), income: store.get(K.income, { base:0, months:{} }), goals: store.get(K.goals, []), cats: store.get(K.cats, { custom:[], renamed:{}, colors:{} }), cardPrefs: store.get(K.cardPrefs, {}) };
+    manual: store.get(K.manual, []), loans: store.get(K.loans, []), income: store.get(K.income, { base:0, months:{} }), goals: store.get(K.goals, []), cats: store.get(K.cats, { custom:[], renamed:{}, colors:{} }), cardPrefs: store.get(K.cardPrefs, {}), notify: store.get(K.notify, {}) };
 }
 function saveDb(part){
   store.set(K[part], db[part]);
@@ -754,7 +776,7 @@ function setPart(k, v){
   if (k === 'cfg') { cfg = v || null; v ? store.set(K.cfg, v) : store.del(K.cfg); session = { apiKey:null, at:0 }; }
   else { db[k] = v ?? loadDbDefaults()[k]; store.set(K[k], db[k]); }
 }
-const loadDbDefaults = () => ({ budgets:{}, overrides:{}, rules:{}, manual:[], loans:[], income:{ sources:[], months:{} }, goals:[], cats:{ custom:[], renamed:{}, colors:{} }, cardPrefs:{} });
+const loadDbDefaults = () => ({ budgets:{}, overrides:{}, rules:{}, manual:[], loans:[], income:{ sources:[], months:{} }, goals:[], cats:{ custom:[], renamed:{}, colors:{} }, cardPrefs:{}, notify:{} });
 function hasContent(k){
   const v = getPart(k);
   if (!v) return false;
@@ -935,6 +957,60 @@ function loginScreen(){
       <button class="btn gbtn" type="button" data-action="login"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.8 1.1 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3 0 5.8 1.1 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>Entrar com Google</button>
     </div>
   </section>`;
+}
+
+/* ---------- Notificações (push) ---------- */
+// Chave pública das notificações (a privada fica só nos segredos da função "alertas" no Supabase).
+const VAPID_PUBLIC = 'BPFdvN3xFcgDQpWq7UmlFW6iLH7pHcMCUmSVlDjhhlT05snK6t1YHePsOeGwQ5kghZ3rHI4d-ihLxh5Lvhm9xjg';
+const notifyPrefs = () => ({ income: true, budgets: true, threshold: 80, ...(db.notify || {}) });
+const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent);
+const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+async function currentSub(){
+  if (!pushSupported()) return null;
+  const reg = await navigator.serviceWorker.getRegistration();
+  return reg ? reg.pushManager.getSubscription() : null;
+}
+const b64ToBytes = b => { const s = (b + '='.repeat((4 - b.length % 4) % 4)).replace(/-/g, '+').replace(/_/g, '/'); return Uint8Array.from(atob(s), c => c.charCodeAt(0)); };
+async function enablePush(){
+  if (!canSync()) { toast('Entre com sua conta para ativar os avisos.'); return; }
+  try {
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') { toast('Permissão negada. Libere as notificações do Vellum nos ajustes do aparelho.'); renderNotify(); return; }
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription() || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(VAPID_PUBLIC) });
+    const j = sub.toJSON();
+    const { error } = await sb.from('push_subscriptions').upsert({ endpoint: j.endpoint, user_id: user.id, p256dh: j.keys.p256dh, auth: j.keys.auth, device: navigator.userAgent.slice(0, 160) }, { onConflict: 'endpoint' });
+    if (error) throw error;
+    if (db.notify?.enabled === false) { db.notify.enabled = true; saveDb('notify'); }
+    toast('Avisos ativados neste aparelho.');
+  } catch (e) { toast('Não foi possível ativar: ' + (e.message || e)); }
+  renderNotify();
+}
+async function disablePush(){
+  const sub = await currentSub();
+  if (sub) { await sb.from('push_subscriptions').delete().eq('endpoint', sub.endpoint); await sub.unsubscribe(); }
+  toast('Avisos desativados neste aparelho.'); renderNotify();
+}
+async function testPush(){
+  const { data: res, error } = await sb.functions.invoke('alertas', { body: { test: true } });
+  if (error) toast('O teste falhou. Confira se a função "alertas" foi publicada no Supabase.');
+  else toast(res?.report?.length ? 'Teste enviado. Deve chegar em alguns segundos.' : 'Nenhum aparelho com avisos ativos.');
+}
+async function renderNotify(){
+  const box = $('#notifyBox'); if (!box) return;
+  if (!canSync()) { box.innerHTML = '<p class="hint">Entre com sua conta para receber avisos.</p>'; return; }
+  const n = notifyPrefs(), sub = await currentSub().catch(() => null);
+  const needsHome = isIOS() && !isStandalone();
+  const status = !pushSupported() || needsHome
+    ? (isIOS() ? 'No iPhone, os avisos só funcionam com o Vellum na Tela de Início: no Safari, Compartilhar → Adicionar à Tela de Início, e abra por lá.' : 'Este navegador não recebe notificações.')
+    : sub ? 'Este aparelho recebe os avisos.' : Notification.permission === 'denied' ? 'As notificações estão bloqueadas para o Vellum neste aparelho. Libere nos ajustes do navegador ou do sistema.' : 'Este aparelho ainda não recebe os avisos.';
+  box.innerHTML = `<p class="hint">${esc(status)}</p>
+    ${pushSupported() && !needsHome ? `<div class="toolbar">${sub ? '<button class="btn ghost sm" type="button" data-action="pushtest">Enviar teste</button><button class="btn ghost sm" type="button" data-action="pushoff">Desativar neste aparelho</button>' : '<button class="btn sm" type="button" data-action="pushon">Ativar neste aparelho</button>'}</div>` : ''}
+    <label class="chk"><input type="checkbox" data-notify="income" ${n.income ? 'checked' : ''}>Avisar quando o gasto do mês chegar perto da renda</label>
+    <label class="chk"><input type="checkbox" data-notify="budgets" ${n.budgets ? 'checked' : ''}>Avisar quando uma categoria chegar perto da meta</label>
+    <label>Avisar a partir de<select data-notify="threshold">${[70, 80, 90].map(v => `<option value="${v}" ${+n.threshold === v ? 'selected' : ''}>${v}%</option>`).join('')}</select></label>
+    <p class="hint">A conta é checada a cada 30 minutos, mesmo com o app fechado. Cada aviso chega uma vez por mês: ao chegar no percentual escolhido e ao passar de 100%.</p>`;
 }
 
 /* ---------- Bloqueio com Face ID / digital (por aparelho) ---------- */
@@ -1734,13 +1810,14 @@ function alerts(c, P, catNow){
   const I = incomeFor(ui.month);
   if (ui.card === 'all' && I.set) {
     if (P.total > I.total) out.push({ level:'danger', html:`Os gastos de ${esc(mName(ui.month))} já passaram a renda em <b>${money(P.total - I.total)}</b>.` });
+    else if (P.total / I.total * 100 >= notifyPrefs().threshold) out.push({ level:'warn', html:`Você já gastou <b>${Math.floor(P.total / I.total * 100)}% da renda</b> de ${esc(mName(ui.month))}: restam ${money(I.total - P.total)}.` });
     else if (P.isCur && P.day >= 5 && P.projection > I.total) out.push({ level:'warn', html:`No ritmo atual, os gastos do mês passam a renda em <b>${money0(P.projection - I.total)}</b>.` });
   }
   if (P.isCur) {
     for (const [k, b] of Object.entries(db.budgets)) {
       if (!(b > 0)) continue; const v = catNow[k] || 0, p = v / b * 100;
       if (p >= 100) out.push({ level:'danger', html:`<b>${esc(k)}</b> passou da meta: ${money(v)} de ${money0(b)}.` });
-      else if (p >= 80) out.push({ level:'warn', html:`<b>${esc(k)}</b> já usou ${Math.round(p)}% da meta (${money(v)} de ${money0(b)}).` });
+      else if (p >= notifyPrefs().threshold) out.push({ level:'warn', html:`<b>${esc(k)}</b> já usou ${Math.round(p)}% da meta (${money(v)} de ${money0(b)}).` });
     }
     if (P.prevTotal > 0 && P.day >= 5 && P.projection > P.prevTotal * 1.15)
       out.push({ level:'warn', html:`No ritmo atual, o mês fecha em <b>${money0(P.projection)}</b>, ${Math.round((P.projection / P.prevTotal - 1) * 100)}% acima de ${esc(mName(P.prev))}.` });
@@ -1798,29 +1875,69 @@ function viewTransacoes(c){
   </section>`;
 }
 
+// Média por categoria dos últimos n meses com dados (meses sem nenhum gasto registrado não entram na conta).
+function catAverage(c, ym, n = 6){
+  const months = Array.from({ length: n }, (_, i) => addM(ym, -(i + 1))).filter(m => c.spend.some(t => t.cm === m));
+  const avg = {};
+  for (const m of months) for (const [k, v] of Object.entries(byCat(spendIn(c, m)))) avg[k] = (avg[k] || 0) + v / months.length;
+  return { avg, months: months.length };
+}
+function openSuggest(){
+  const c = context(), { avg, months } = catAverage(c, ui.month, 6);
+  const list = Object.entries(avg).filter(([, v]) => v >= 20).sort((a, b) => b[1] - a[1]);
+  if (!list.length) { toast('Ainda não há gastos suficientes para sugerir metas.'); return; }
+  const round = v => Math.ceil(v / 10) * 10;
+  modal(`<h2>Sugerir metas</h2>
+    <p class="hint">Média por mês dos últimos ${plural(months, 'mês', 'meses')} com dados. Marque as categorias que devem receber a meta sugerida.</p>
+    <div class="sug-list">${list.map(([k, v]) => { const cur = db.budgets[k] || 0; return `<label class="chk sug-row"><input type="checkbox" name="cat" value="${esc(k)}" ${cur ? '' : 'checked'}>
+      <span class="sug-name"><span class="dot" style="background:${catColor(k)}"></span>${esc(k)}</span>
+      <span class="sug-val"><b>${money0(round(v))}</b>${cur ? `<small>meta atual ${money0(cur)}</small>` : '<small>sem meta</small>'}</span></label>`; }).join('')}</div>
+    <div class="toolbar"><button class="link" type="button" data-action="sugall">Marcar todas</button><button class="link" type="button" data-action="sugnone">Desmarcar todas</button></div>
+    <div class="dlg-actions"><span></span><div class="right"><button class="btn ghost" type="submit" value="cancel">Cancelar</button><button class="btn" type="submit" value="save">Aplicar metas</button></div></div>`,
+  f => {
+    const chosen = f.getAll('cat');
+    for (const k of chosen) db.budgets[k] = round(avg[k]);
+    saveDb('budgets'); render();
+    toast(chosen.length ? `${plural(chosen.length, 'meta aplicada', 'metas aplicadas')} pela média de ${plural(months, 'mês', 'meses')}.` : 'Nenhuma meta alterada.');
+  });
+}
 function viewOrcamento(c){
   const ym = ui.month;
   const now = byCat(spendIn(c, ym)), prev = byCat(spendIn(c, addM(ym, -1)));
-  const avg3 = {};
-  for (let i = 1; i <= 3; i++) for (const [k, v] of Object.entries(byCat(spendIn(c, addM(ym, -i))))) avg3[k] = (avg3[k] || 0) + v / 3;
-  const cats = [...new Set([...Object.keys(db.budgets), ...Object.keys(now), ...Object.keys(avg3)])]
+  const { avg: avg6, months: nAvg } = catAverage(c, ym, 6);
+  const cats = [...new Set([...Object.keys(db.budgets), ...Object.keys(now), ...Object.keys(avg6)])]
     .sort((a, b) => ((db.budgets[b] ? 1e9 : 0) + (now[b] || 0)) - ((db.budgets[a] ? 1e9 : 0) + (now[a] || 0)));
   const bud = cats.filter(k => db.budgets[k] > 0);
   const total = bud.reduce((s, k) => s + db.budgets[k], 0), spent = bud.reduce((s, k) => s + (now[k] || 0), 0);
   const over = bud.filter(k => (now[k] || 0) > db.budgets[k]).length;
   const unbudgeted = Object.entries(now).filter(([k]) => !(db.budgets[k] > 0)).reduce((s, [, v]) => s + v, 0);
   const P = monthPace(c, ym);
-  let h = `<div class="kpis">
-    ${kpi('Metas do mês', money0(total), `${bud.length} ${bud.length === 1 ? 'categoria com meta' : 'categorias com meta'}`)}
-    ${kpi('Gasto nas metas', money(spent), total ? `${Math.round(spent / total * 100)}% do planejado` : 'defina metas abaixo', total ? progress(spent / total * 100, 'thin') : '')}
-    ${kpi(total - spent >= 0 ? 'Ainda disponível' : 'Acima do planejado', money(Math.abs(total - spent)), P.isCur && total > spent ? `${money(Math.max(0, total - spent) / Math.max(1, dim(ym) - P.day + 1))} por dia até o fim do mês` : (over ? `${over} ${over === 1 ? 'categoria estourou' : 'categorias estouraram'}` : 'nenhuma categoria estourada'))}
-    ${kpi('Fora das metas', money(unbudgeted), 'gasto em categorias sem meta')}
-  </div>`;
+  const th = notifyPrefs().threshold, left = total - spent, daysLeft = Math.max(1, dim(ym) - P.day + 1);
+  const near = bud.filter(k => { const p = (now[k] || 0) / db.budgets[k] * 100; return p >= th && p < 100; }).length;
+  const I = ui.card === 'all' ? incomeFor(ym) : { set: false };
+  const ofIncome = I.set ? total / I.total * 100 : null;
+  const chip = (cls, txt) => `<span class="badge ${cls}">${txt}</span>`;
+  let h = `<section class="panel bud-sum">${total ? `
+    <div class="bud-head">
+      <div><span class="bud-lbl">Você planejou gastar em ${esc(mName(ym))}</span><b class="bud-val">${money0(total)}</b><span class="bud-sub">em ${plural(bud.length, 'categoria', 'categorias')}</span></div>
+      <div class="bud-right"><span class="bud-lbl">${left >= 0 ? 'Ainda pode gastar' : 'Passou do planejado em'}</span><b class="bud-val ${left < 0 ? 'neg' : 'pos'}">${money0(Math.abs(left))}</b>
+        <span class="bud-sub">${P.isCur && left > 0 ? `cerca de ${money0(left / daysLeft)} por dia até o dia ${dim(ym)}` : P.isCur ? 'reveja as categorias em vermelho' : ''}</span></div>
+    </div>
+    ${progress(spent / total * 100, 'big')}
+    <p class="bud-legend">Já foram <b>${money(spent)}</b> nas categorias com meta, <b>${Math.round(spent / total * 100)}%</b> do planejado.</p>
+    <div class="bud-chips">
+      ${over ? chip('danger', `${plural(over, 'categoria estourou', 'categorias estouraram')}`) : ''}
+      ${near ? chip('warn', `${near} perto do limite (${th}%+)`) : ''}
+      ${chip('ok', `${bud.length - over - near} dentro da meta`)}
+      ${unbudgeted ? chip('', `${money0(unbudgeted)} gastos em categorias sem meta`) : ''}
+      ${ofIncome != null ? chip(ofIncome > 100 ? 'danger' : ofIncome > 90 ? 'warn' : '', `o planejado é ${Math.round(ofIncome)}% da sua renda`) : ''}
+    </div>` : `<p class="empty" style="text-align:left;padding:4px 0">Você ainda não tem metas. Toque em <b>Sugerir pela média de 6 meses</b> ou preencha o valor de cada categoria abaixo.</p>`}
+  </section>`;
   const rows = cats.map(k => {
     const v = now[k] || 0, b = db.budgets[k] || 0, pct = b ? v / b * 100 : 0;
     return `<li class="brow">
       <div class="bname"><span class="cat-ico" style="--k:${catColor(k)}">${esc(initials(k))}</span><div style="min-width:0"><button class="plain-link" type="button" data-gocat="${esc(k)}" title="Ver as compras de ${esc(k)}"><strong>${esc(k)}</strong></button>
-        <div class="muted" style="font-size:.78rem">${esc(cap(mName(addM(ym, -1)).slice(0, 3)))} ${money0(prev[k] || 0)} · média 3 meses ${money0(avg3[k] || 0)}</div></div></div>
+        <div class="muted" style="font-size:.78rem">${esc(cap(mName(addM(ym, -1)).slice(0, 3)))} ${money0(prev[k] || 0)} · média ${nAvg || 6} meses ${money0(avg6[k] || 0)}</div></div></div>
       <div class="bnums"><b>${money(v)}</b><span class="muted">de</span><label><span class="sr">Meta para ${esc(k)}</span><input class="money" type="number" min="0" step="10" inputmode="decimal" placeholder="sem meta" data-budget="${esc(k)}" value="${b || ''}"></label></div>
       ${b ? progress(pct) : ''}
       ${b ? `<div class="bfoot"><span>${v <= b ? `Restam ${money(b - v)}` : `<span class="delta bad">${money(v - b)} acima da meta</span>`}</span><span>${Math.round(pct)}%</span></div>` : ''}
@@ -1832,7 +1949,7 @@ function viewOrcamento(c){
       <label class="grow"><span class="sr">Nova categoria</span><select id="addCat"><option value="">Adicionar meta para outra categoria…</option>${options.map(k => `<option>${esc(k)}</option>`).join('')}</select></label>
       <button class="btn ghost" type="button" data-action="addcat">${ic('plus')}Adicionar</button>
     </div>`,
-    { sub:'A meta vale para todos os meses. Deixe em branco para não acompanhar a categoria.', action:`<div class="toolbar"><button class="btn ghost sm" type="button" data-action="cats">Categorias</button><button class="btn ghost sm" type="button" data-action="suggest">Sugerir pela média de 3 meses</button></div>` });
+    { sub:'A meta vale para todos os meses. Deixe em branco para não acompanhar a categoria.', action:`<div class="toolbar"><button class="btn ghost sm" type="button" data-action="cats">Categorias</button><button class="btn ghost sm" type="button" data-action="suggest">Sugerir pela média de 6 meses</button></div>` });
   return h;
 }
 
@@ -2545,6 +2662,7 @@ function openCfg(){
   $('#fTheme').value = themePref();
   $('#cfgHint').textContent = canSync() ? 'Tudo o que você preencher aqui, e as transações dos cartões, fica salvo na sua conta e vale em qualquer aparelho em que você entrar.' : 'Credenciais e dados ficam salvos só neste navegador. Nada é enviado para outro lugar além da API da Pluggy (ou do seu intermediário).';
   renderSync();
+  renderNotify();
   $('#cfg').showModal();
 }
 $('#btnSave').addEventListener('click', () => {
@@ -2667,6 +2785,9 @@ document.addEventListener('click', e => {
     saveDb('income'); b.closest('li')?.remove(); render(); toast('Essa entrada não será mais prevista.');
   }
   else if (a === 'editcard') openCard(id);
+  else if (a === 'pushon') enablePush();
+  else if (a === 'pushoff') disablePush();
+  else if (a === 'pushtest') testPush();
   else if (a === 'rank') { ui.rank = b.dataset.rank; render(); }
   else if (a === 'clearf') { ui.cat = 'all'; ui.q = ''; render(); }
   else if (a === 'sync') sync();
@@ -2686,12 +2807,8 @@ document.addEventListener('click', e => {
     db.budgets[k] = db.budgets[k] || 100; saveDb('budgets'); render();
     setTimeout(() => document.querySelector(`[data-budget="${CSS.escape(k)}"]`)?.select(), 30);
   }
-  else if (a === 'suggest') {
-    const c = context(), avg = {}; let added = 0;
-    for (let i = 1; i <= 3; i++) for (const [k, v] of Object.entries(byCat(spendIn(c, addM(ui.month, -i))))) avg[k] = (avg[k] || 0) + v / 3;
-    for (const [k, v] of Object.entries(avg)) if (!(db.budgets[k] > 0) && v >= 20) { db.budgets[k] = Math.ceil(v / 10) * 10; added++; }
-    saveDb('budgets'); render(); toast(added ? `${added} ${added === 1 ? 'meta sugerida' : 'metas sugeridas'} com base na média.` : 'Todas as categorias com gasto já têm meta.');
-  }
+  else if (a === 'suggest') openSuggest();
+  else if (a === 'sugall' || a === 'sugnone') document.querySelectorAll('#modal [name=cat]').forEach(x => x.checked = a === 'sugall');
 });
 document.addEventListener('change', e => {
   const el = e.target;
@@ -2700,6 +2817,7 @@ document.addEventListener('change', e => {
     if (v > 0) db.budgets[el.dataset.budget] = v; else delete db.budgets[el.dataset.budget];
     saveDb('budgets'); render();
   } else if (el.classList.contains('swatch')) { el.style.setProperty('--k', `var(--k${el.value})`); }
+  else if (el.dataset.notify) { const n = db.notify ||= {}; n[el.dataset.notify] = el.type === 'checkbox' ? el.checked : +el.value; saveDb('notify'); render(); }
   else if (el.id === 'cardTheme' || el.id === 'cardNet') previewCard();
   else if (el.id === 'incMode') { $('#incAuto').hidden = el.value !== 'auto'; $('#incManual').hidden = el.value === 'auto'; }
   else if (el.dataset.filter === 'card') { ui.card = el.value; render(); }

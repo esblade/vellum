@@ -92,6 +92,20 @@ No celular (e em computadores com Windows Hello ou Touch ID), entre em Ajustes �
 
 No iPhone, adicione o site à Tela de Início pelo Safari (Compartilhar → Adicionar à Tela de Início) e faça o login uma vez dentro do app da Tela de Início, que guarda a sessão separada do Safari.
 
+## Notificações (gasto perto da renda e da meta)
+
+Uma função do Supabase roda a cada 30 minutos, mesmo com o app fechado: busca as compras novas na Pluggy (com as credenciais salvas na conta), calcula o gasto do mês do mesmo jeito que o app e avisa quando o gasto chega a um percentual da renda (80% por padrão) ou passa dela, e quando uma categoria chega perto da meta ou passa dela. Cada aviso chega uma vez por mês.
+
+Configuração (uma vez):
+
+1. **Segredos**: o arquivo `.segredos/notificacoes.txt` (fora do git) tem as chaves das notificações e o `CRON_SECRET`. Se ele não existir, gere novas chaves e troque a `VAPID_PUBLIC` no `index.html`.
+2. **Função**: no Supabase, Edge Functions → Deploy a new function → Via Editor, nome `alertas`, cole o conteúdo de `supabase/functions/alertas/index.ts` e publique. Nas configurações da função, **desligue "Verify JWT"** (a função confere o `CRON_SECRET` e o login sozinha).
+3. **Segredos da função**: em Edge Functions → Secrets, adicione `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` e `CRON_SECRET` com os valores do arquivo do passo 1.
+4. **Agenda**: abra `supabase-notificacoes.sql`, troque `TROQUE_PELO_CRON_SECRET` pelo `CRON_SECRET` e rode no SQL Editor. Isso cria a tabela dos aparelhos e agenda a função a cada 30 minutos.
+5. **No celular**: com o Vellum na Tela de Início, abra Ajustes → Notificações → **Ativar neste aparelho** e depois **Enviar teste**.
+
+Em Ajustes dá para escolher o percentual (70%, 80% ou 90%) e desligar cada tipo de aviso. Se mudar a tabela de categorias no `index.html`, rode `node tools/gerar-funcao-alertas.js` e publique a função de novo (um teste avisa se as duas ficarem diferentes).
+
 ## Intermediário e alertas (Cloudflare Workers, plano grátis)
 
 O Worker resolve bloqueio de CORS, guarda o Client Secret fora do celular e, se você quiser, manda uma notificação push a cada compra nova.
