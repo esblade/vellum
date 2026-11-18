@@ -44,6 +44,31 @@ const LOAN_RAW = new Set(['Loans and financing','Financing','Real estate financi
 const looksLoan = t => LOAN_RAW.has(t.catRaw) || /\b(emprestimo|credito pessoal|consignado|financiamento|cdc|antecipacao)\b/.test(t.key);
 const looksInternal = t => INTERNAL_RAW.has(t.catRaw) ||
   /\b(fatura|cartao de credito|pagamento cartao|pagto cartao|pag cartao|aplicacao|resgate|poupanca|mesma titularidade|entre contas|transferencia propria)\b/.test(t.key);
+/* @regras-alimentacao-inicio — este bloco é copiado para a função de alertas (tools/gerar-funcao-alertas.js) */
+// Confere Mercado x Restaurantes x Delivery pelo código de atividade do estabelecimento (MCC, quando o cartão
+// informa) e pelo nome. Só mexe em compras que vieram como Alimentação, Mercado, Restaurantes, Delivery,
+// Compras ou Outros; categorias definidas por você (regras e ajustes) continuam valendo por cima disso.
+const FOOD_CATS = new Set(['Alimentação', 'Mercado', 'Restaurantes', 'Delivery', 'Compras', 'Outros']);
+const MCC_FOOD = { 5411: 'Mercado', 5422: 'Mercado', 5451: 'Mercado', 5499: 'Mercado', 5300: 'Mercado',
+  5811: 'Restaurantes', 5812: 'Restaurantes', 5813: 'Restaurantes', 5814: 'Restaurantes' };
+const RE_MARKETPLACE = /\b(mercado ?livre|mercadolivre|mercado ?pago|mercadopago|mercpago|meli)\b/;
+const RE_DELIVERY = /\b(ifood|i food|rappi|uber ?eats|aiqfome|99 ?food|james delivery|ze delivery|ze entregas)\b/;
+const RE_MARKET_STRONG = /\b(supermercados?|supermerc|superm|hipermercados?|hiper|atacadao|atacado|atacarejo|assai|carrefour|pao de acucar|gbarbosa|bompreco|sams club|sams|makro|hortifruti|hortifrutti|sacolao|acougue|frigorifico|mateus|guanabara|nordestao|bretas|savegnago|condor|zaffari)\b/;
+const RE_FOOD_OUT = /\b(restaurantes?|rest|lanchonete|lanches?|burger|hamburgueria|mc ?donalds|mcdonald s|burger king|bk|subway|pizzaria|pizza|sushi|temaki|churrascaria|espetinho|boteco|bar|choperia|cervejaria|cafeteria|cafe|starbucks|outback|habibs|giraffas|spoleto|coco bambu|madero|kfc|popeyes|acai|sorveteria|pastelaria|pastel|tapiocaria|creperia|cantina|trattoria|bistro|grill|food truck)\b/;
+const RE_MARKET_WEAK = /\b(mercado|mercadinho|minimercado|mini mercado|mercearia|emporio|quitanda|feira|hortifruti|verdurao)\b/;
+function refineFood(t){
+  if (t.kind !== 'out' || !FOOD_CATS.has(t.category)) return null;
+  const k = t.key || '';
+  if (RE_MARKETPLACE.test(k)) return 'Compras online';
+  if (RE_DELIVERY.test(k)) return 'Delivery';
+  if (MCC_FOOD[t.mcc]) return MCC_FOOD[t.mcc];
+  if (RE_MARKET_STRONG.test(k)) return 'Mercado';
+  if (RE_FOOD_OUT.test(k)) return 'Restaurantes';
+  if (RE_MARKET_WEAK.test(k)) return 'Mercado';
+  return null;
+}
+/* @regras-alimentacao-fim */
+export { refineFood };
 const looksLikeBillPayment = t => t.kind === 'in' && t.cardId !== 'manual' &&
   !/\b(estorno|cashback|reembolso|devolucao|cancelamento)\b/.test(t.key) &&
   (/\b(pagamento|pagto|pgto|pag fatura)\b/.test(t.key) || ['Pix', 'Transferências'].includes(t.category));
@@ -64,6 +89,7 @@ export function normTx(x, cardId, acct = 'card'){
     instN: inst ? m.installmentNumber || 0 : 0,
     instT: inst ? m.totalInstallments : 0,
     billMonth: m.billForecastDate ? String(m.billForecastDate).slice(0, 7) : (m.billPostDate ? String(m.billPostDate).slice(0, 7) : ''),
+    mcc: m.payeeMCC || null,
     isPayment: x.operationType === 'PAGAMENTO_FATURA' || x.category === 'Credit card payment'
   };
 }
@@ -85,6 +111,7 @@ export function classify(raw, s){
       else if (t.kind === 'in' && looksLoan(t)) t.category = LOAN_IN;
       else if (looksInternal(t)) t.category = INTERNAL;
     } else if (t.acct !== 'bank' && !t.isPayment && looksLikeBillPayment(t)) t.category = PAYMENT;
+    if (!t.isPayment) { const fc = refineFood(t); if (fc) t.category = fc; }
     if (rules[t.key]) t.category = rules[t.key];
     const o = overrides[t.id];
     if (o) { if (o.category) t.category = o.category; t.ignored = !!o.ignored; }

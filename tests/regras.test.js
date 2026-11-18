@@ -227,3 +227,34 @@ test('média para sugerir metas: últimos 6 meses com dados', () => {
   assert.equal(r.months, 4);
   assert.equal(r.avg.Mercado, 250);
 });
+
+test('alimentação: mercado, restaurante e delivery pelo MCC e pelo nome', () => {
+  const T = (id, desc, category, extra = {}) => ({ id, cardId: 'c1', date: day(1), desc, category, amount: 50, kind: 'out', ...extra });
+  setData([
+    T('a', 'ASSAI ATACADISTA LJ 22', 'Alimentação'),
+    T('b', 'CARREFOUR HIPER', 'Compras'),
+    T('c', 'RESTAURANTE MARE', 'Mercado'),
+    T('d', 'IFD*IFOOD.COM AGENCIA', 'Alimentação'),
+    T('e', 'MERCADOLIVRE*LOJA', 'Mercado'),
+    T('f', 'LOJA XYZ', 'Alimentação', { mcc: 5812 }),
+    T('g', 'POSTO SHELL', 'Combustível'),          // fora das categorias de comida: não mexe
+    T('h', 'PADARIA BOM PAO', 'Alimentação'),       // sem pista: continua Alimentação
+    T('i', 'MERCADINHO DA ESQUINA', 'Outros'),
+    T('j', 'MC DONALDS', 'Alimentação')
+  ]);
+  const cat = id => cls(id)[0].category;
+  assert.equal(cat('a'), 'Mercado');
+  assert.equal(cat('b'), 'Mercado');
+  assert.equal(cat('c'), 'Restaurantes');
+  assert.equal(cat('d'), 'Delivery');
+  assert.equal(cat('e'), 'Compras online');
+  assert.equal(cat('f'), 'Restaurantes');
+  assert.equal(cat('g'), 'Combustível');
+  assert.equal(cat('h'), 'Alimentação');
+  assert.equal(cat('i'), 'Mercado');
+  assert.equal(cat('j'), 'Restaurantes');
+  assert.equal(cls('a')[0].autoFrom, 'Alimentação');
+  // regra sua vence a correção automática
+  app.run(`db.rules[normDesc('ASSAI ATACADISTA LJ 22')] = 'Casa'`);
+  assert.equal(cat('a'), 'Casa');
+});

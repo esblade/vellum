@@ -52,3 +52,14 @@ test('avisos: perto da renda e da meta, uma vez por mês, conforme as preferênc
   list = fn.alertsFor(sum, { ...s, notify: { income: false, budgets: false } }, '2026-11', new Set());
   assert.equal(list.length, 0);
 });
+
+test('a função corrige mercado/restaurante igual ao app', async () => {
+  const fn = await load();
+  const raw = [
+    { id: 'a', cardId: 'c', date: '2026-11-10', desc: 'ASSAI ATACADISTA', category: 'Alimentação', amount: 300, kind: 'out' },
+    { id: 'b', cardId: 'c', date: '2026-11-10', desc: 'RESTAURANTE MARE', category: 'Mercado', amount: 80, kind: 'out' },
+    { id: 'c', cardId: 'c', date: '2026-11-10', desc: 'MERCADOLIVRE', category: 'Mercado', amount: 120, kind: 'out' }
+  ];
+  const sum = fn.monthSummary(fn.classify(raw, {}), {}, '2026-11', false);
+  assert.deepEqual({ ...sum.byCat }, { Mercado: 300, Restaurantes: 80, 'Compras online': 120 });
+});
