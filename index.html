@@ -590,9 +590,9 @@ function saveDb(part){
 }
 
 /* ---------- Conta e nuvem (Supabase) ---------- */
-// Preencha com os dados do seu projeto (Project Settings → API). A chave "anon" é pública:
+// Dados do projeto (Project Settings → API Keys). Esta é a chave publicável (pública):
 // quem protege os dados é a regra de acesso da tabela (veja supabase.sql).
-const SUPABASE = { url: '', anonKey: '' };
+const SUPABASE = { url: 'https://zemvlkrymvbbqikzcsqz.supabase.co', anonKey: 'sb_publishable_eQqa_K8f93tQplsoK7g-fw_MGKhlL9M' };
 let sb = null, user = null, authReady = false;
 let syncState = { status:'off', msg:'' };
 let pushTimer = null;
