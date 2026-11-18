@@ -11,7 +11,7 @@ Página única de gestão de gastos pessoais. Lê os cartões de crédito conect
 - **Empréstimos**: empréstimos e financiamentos que você deve e valores que emprestou, com parcelas, juros, saldo, próximo vencimento e histórico de pagamentos.
 - **Relatórios**: evolução de 6 meses, comparativo por categoria e por cartão com o mês anterior, onde você mais gastou, maiores compras, gasto por dia da semana e histórico de faturas.
 
-Em Ajustes dá para escolher tema claro/escuro e exportar ou importar um backup (JSON) das metas, empréstimos e categorias ajustadas, para levar a outro aparelho.
+Em Ajustes dá para escolher tema claro/escuro, ligar o Face ID e exportar ou importar um backup (JSON).
 
 ## Publicar no GitHub Pages (grátis em repositório público)
 
@@ -30,6 +30,34 @@ No iPhone, abra o endereço no Safari e use Compartilhar → Adicionar à Tela d
 2. Em Ajustes, preencha Client ID, Client Secret e os IDs das conexões.
 3. Se aparecer o aviso de que o navegador bloqueou o acesso direto à API, use o Worker abaixo.
 
+## Conta com login Google (dados em qualquer aparelho)
+
+Com a conta ligada, o app pede "Entrar com Google". Cartões (credenciais da Pluggy), renda, metas, empréstimos, lançamentos manuais e categorias ajustadas ficam salvos no Supabase e aparecem em qualquer aparelho em que você entrar. Sem a conta, tudo continua funcionando só no navegador.
+
+### 1. Supabase (banco de dados)
+
+1. Crie um projeto grátis em supabase.com.
+2. Em SQL Editor → New query, cole o conteúdo de `supabase.sql` e clique em Run. Isso cria a tabela `user_data` e a regra que só deixa cada pessoa ler e gravar os próprios dados.
+3. Em Project Settings → API, copie a **Project URL** e a chave **anon public**. Cole as duas no começo do `<script>` do `index.html`, em `const SUPABASE = { url: '...', anonKey: '...' }`. A chave anon é pública por natureza; o que protege os dados é a regra da tabela.
+4. Em Authentication → URL Configuration, coloque em **Site URL** o endereço do site (ex.: `https://SEU_USUARIO.github.io/vellum/`) e adicione o mesmo endereço em **Redirect URLs**.
+
+### 2. Google (login)
+
+1. Em console.cloud.google.com, crie um projeto e vá em APIs e serviços → Tela de consentimento OAuth: tipo Externo, preencha nome do app e seu e-mail, e adicione seu Gmail como usuário de teste.
+2. Em Credenciais → Criar credenciais → ID do cliente OAuth → Aplicativo da Web:
+   - Origens JavaScript autorizadas: `https://SEU_USUARIO.github.io`
+   - URIs de redirecionamento autorizados: `https://SEU_PROJETO.supabase.co/auth/v1/callback` (o Supabase mostra esse endereço exato na tela do provedor Google).
+3. No Supabase, em Authentication → Sign In / Providers → Google, ative e cole o Client ID e o Client Secret gerados pelo Google.
+4. Depois de entrar pela primeira vez, você pode desligar novos cadastros em Authentication → Sign In / Providers → "Allow new users to sign up", para que ninguém mais crie conta no seu app.
+
+Como as credenciais da Pluggy ficam na sua conta, quem acessar sua conta Google vê seus dados financeiros: deixe a verificação em duas etapas do Google ligada.
+
+### Face ID / digital
+
+No celular (e em computadores com Windows Hello ou Touch ID), entre em Ajustes → Conta → "Pedir Face ID ao abrir". O app passa a pedir a biometria ao abrir e quando você volta depois de 2 minutos fora. É uma trava deste aparelho: cada aparelho ativa a sua, e a segurança da conta continua sendo o login do Google.
+
+No iPhone, adicione o site à Tela de Início pelo Safari (Compartilhar → Adicionar à Tela de Início) e faça o login uma vez dentro do app da Tela de Início, que guarda a sessão separada do Safari.
+
 ## Intermediário e alertas (Cloudflare Workers, plano grátis)
 
 O Worker resolve bloqueio de CORS, guarda o Client Secret fora do celular e, se você quiser, manda uma notificação push a cada compra nova.
@@ -38,18 +66,7 @@ O Worker resolve bloqueio de CORS, guarda o Client Secret fora do celular e, se 
 2. Em Settings → Variables and Secrets, crie `PLUGGY_CLIENT_ID`, `PLUGGY_CLIENT_SECRET`, `ACCESS_TOKEN` e `ALLOWED_ORIGIN` (`https://SEU_USUARIO.github.io`).
 3. Na página, em Ajustes → Usar intermediário, informe o endereço do Worker e o mesmo `ACCESS_TOKEN`.
 
-### Sincronizar renda, metas e empréstimos entre aparelhos
-
-Sem isso, renda, metas, empréstimos e lançamentos manuais ficam só no navegador onde foram digitados. Com o Worker:
-
-1. Em Workers & Pages → KV, crie um namespace (ex.: `vellum-dados`).
-2. No Worker, em Settings → Bindings → Add → KV namespace, ligue esse namespace com o nome `DATA`.
-3. Publique a versão atual de `worker.js`.
-4. Em cada aparelho (computador e celular), abra Ajustes → Usar intermediário e informe o endereço do Worker e o `ACCESS_TOKEN`.
-
-O app envia as alterações sozinho e busca as novas ao abrir; o topo mostra "sincronizado". Vale a versão mais recente.
-
-O Worker libera `/items`, `/accounts`, `/v2/transactions`, `/bills` e `/sync`. Se você publicou uma versão antiga, publique de novo para o histórico de faturas aparecer em Relatórios (sem isso, o resto funciona normalmente).
+O Worker libera `/items`, `/accounts`, `/v2/transactions` e `/bills`. Se você publicou uma versão antiga, publique de novo para o histórico de faturas aparecer em Relatórios (sem isso, o resto funciona normalmente).
 
 Para os alertas no iPhone:
 
