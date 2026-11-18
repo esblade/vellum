@@ -22,6 +22,8 @@ const LOAN_RAW = new Set(['Loans and financing','Financing','Real estate financi
 const looksLoan = t => LOAN_RAW.has(t.catRaw) || /\b(emprestimo|credito pessoal|consignado|financiamento|cdc|antecipacao)\b/.test(t.key);
 const looksInternal = t => INTERNAL_RAW.has(t.catRaw) ||
   /\b(fatura|cartao de credito|pagamento cartao|pagto cartao|pag cartao|aplicacao|resgate|poupanca|mesma titularidade|entre contas|transferencia propria)\b/.test(t.key);
+/*__FOOD__*/
+export { refineFood };
 const looksLikeBillPayment = t => t.kind === 'in' && t.cardId !== 'manual' &&
   !/\b(estorno|cashback|reembolso|devolucao|cancelamento)\b/.test(t.key) &&
   (/\b(pagamento|pagto|pgto|pag fatura)\b/.test(t.key) || ['Pix', 'Transferências'].includes(t.category));
@@ -42,6 +44,7 @@ export function normTx(x, cardId, acct = 'card'){
     instN: inst ? m.installmentNumber || 0 : 0,
     instT: inst ? m.totalInstallments : 0,
     billMonth: m.billForecastDate ? String(m.billForecastDate).slice(0, 7) : (m.billPostDate ? String(m.billPostDate).slice(0, 7) : ''),
+    mcc: m.payeeMCC || null,
     isPayment: x.operationType === 'PAGAMENTO_FATURA' || x.category === 'Credit card payment'
   };
 }
@@ -63,6 +66,7 @@ export function classify(raw, s){
       else if (t.kind === 'in' && looksLoan(t)) t.category = LOAN_IN;
       else if (looksInternal(t)) t.category = INTERNAL;
     } else if (t.acct !== 'bank' && !t.isPayment && looksLikeBillPayment(t)) t.category = PAYMENT;
+    if (!t.isPayment) { const fc = refineFood(t); if (fc) t.category = fc; }
     if (rules[t.key]) t.category = rules[t.key];
     const o = overrides[t.id];
     if (o) { if (o.category) t.category = o.category; t.ignored = !!o.ignored; }
