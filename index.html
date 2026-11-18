@@ -329,7 +329,54 @@ svg.hov.on .hv-bar{opacity:.05}
 .pending{color:var(--warn)}
 
 /* Credit cards */
-.ccards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+.ccards{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:18px}
+.cc2{display:flex;flex-direction:column;gap:12px}
+.cc2-info{display:flex;flex-direction:column;gap:6px;padding:0 4px}
+.cc2-info .sub{font-size:.78rem;color:var(--muted)}
+.cc2-lim{display:flex;justify-content:space-between;font-size:.8rem;color:var(--muted)}
+.cc2-lim b{color:var(--ink)}
+.cc2-info dl{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:6px 0 2px}
+.cc2-info dt{font-size:.72rem;color:var(--muted)}
+.cc2-info dd{margin:0;font-weight:700;font-size:.92rem;font-variant-numeric:tabular-nums;font-family:var(--display)}
+/* Cartão desenhado */
+.cardv{position:relative;overflow:hidden;width:100%;aspect-ratio:1.586;border:0;border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;justify-content:space-between;text-align:left;cursor:pointer;
+  background:var(--bg);color:var(--ink);font:inherit;box-shadow:0 10px 24px rgba(23,20,43,.18),inset 0 1px 0 rgba(255,255,255,.25);transition:transform .15s,box-shadow .15s;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+div.cardv{cursor:default}
+button.cardv:hover{transform:translateY(-2px);box-shadow:0 16px 30px rgba(23,20,43,.24),inset 0 1px 0 rgba(255,255,255,.25)}
+.cardv::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,rgba(255,255,255,.22) 0%,rgba(255,255,255,0) 38%);pointer-events:none}
+.cardv.edged{box-shadow:0 10px 24px rgba(23,20,43,.18),inset 0 0 0 1.5px var(--edge)}
+.cv-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.cv-mid{display:flex;align-items:center;gap:10px}
+.cv-chip{width:36px;height:27px;border-radius:6px;background:linear-gradient(135deg,#F3E2A6 0%,#D9B65C 45%,#F1DB98 100%);box-shadow:inset 0 0 0 1px rgba(120,90,20,.35);position:relative}
+.cv-chip::before{content:"";position:absolute;inset:6px 9px;border:1px solid rgba(120,90,20,.45);border-radius:3px}
+.cv-nfc{width:18px;height:18px;fill:none;stroke:var(--sub);stroke-width:2;stroke-linecap:round}
+.cv-tier{margin-left:auto;font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:lowercase;color:var(--sub)}
+.cv-bottom{display:flex;flex-direction:column;gap:2px;position:relative;z-index:1}
+.cv-name{font-family:var(--display);font-weight:700;font-size:.92rem;letter-spacing:.02em;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cv-num{font-size:.8rem;letter-spacing:.14em;color:var(--sub);font-variant-numeric:tabular-nums}
+.iss{font-family:var(--display);font-weight:700;line-height:1}
+.iss-itau{background:#0B2F7A;color:#FFD100;border-radius:7px;padding:5px 7px 6px;font-size:.95rem;letter-spacing:-.02em}
+.iss-nu{font-size:1.9rem;letter-spacing:-.06em;color:#7A15C9}
+.iss-bb{font-size:.8rem;letter-spacing:.02em;text-transform:lowercase;color:#2A3B8F;display:inline-flex;align-items:center;gap:6px}
+.iss-bb::before{content:"";width:18px;height:18px;background:#2A3B8F;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);opacity:.85}
+.iss-sams{display:inline-flex;align-items:center;gap:6px;font-size:.82rem;font-weight:600;letter-spacing:.01em;color:#fff}
+.iss-sams i{width:14px;height:14px;border:2px solid #fff;transform:rotate(45deg);border-radius:2px}
+.iss-txt{font-size:.85rem;color:var(--ink);opacity:.9}
+.net{display:inline-flex;align-items:center}
+.net-master i{width:22px;height:22px;border-radius:50%;background:#EB001B;display:block}
+.net-master i+i{background:#F79E1B;margin-left:-9px;mix-blend-mode:normal;opacity:.92}
+.net-visa{font-family:var(--display);font-style:italic;font-weight:700;font-size:1.05rem;letter-spacing:.02em;color:var(--ink)}
+.net-elo,.net-amex{font-family:var(--display);font-weight:700;font-size:.9rem;color:var(--ink)}
+.card-prev{max-width:340px;margin:0 auto;width:100%}
+.bill-row{display:flex;gap:22px;align-items:center;width:100%;flex-wrap:wrap}
+.bill-mini{width:190px;flex:none}
+.bill-mini .cardv{border-radius:12px;padding:11px 13px;box-shadow:0 8px 20px rgba(0,0,0,.35)}
+.bill-mini .iss-nu{font-size:1.4rem}
+.bill-mini .cv-name{font-size:.72rem}
+.bill-mini .cv-num{font-size:.68rem}
+.bill-mini .cv-chip{width:28px;height:21px}
+.bill-main{display:flex;flex-direction:column;align-items:flex-start;gap:8px;flex:1;min-width:220px}
+@media (max-width:860px){.bill-mini{width:150px}}
 .cc{position:relative;overflow:hidden;border-radius:18px;padding:18px;background:linear-gradient(140deg,color-mix(in srgb,var(--cc) 92%,#000) 0%,color-mix(in srgb,var(--cc) 62%,#000) 100%);color:#fff}
 .cc::after{content:"";position:absolute;right:-40px;top:-40px;width:140px;height:140px;border-radius:50%;background:rgba(255,255,255,.08)}
 .cc h3{font-size:1rem;font-weight:700}
@@ -533,9 +580,9 @@ const store = {
 };
 const K = {
   cfg:'cartoes.cfg', seen:'cartoes.seen', cache:'cartoes.cache', prefs:'cartoes.prefs',
-  budgets:'cartoes.budgets', overrides:'cartoes.overrides', rules:'cartoes.rules', manual:'cartoes.manual', loans:'cartoes.loans', income:'cartoes.income', goals:'cartoes.goals', cats:'cartoes.cats', meta:'cartoes.meta'
+  budgets:'cartoes.budgets', overrides:'cartoes.overrides', rules:'cartoes.rules', manual:'cartoes.manual', loans:'cartoes.loans', income:'cartoes.income', goals:'cartoes.goals', cats:'cartoes.cats', cardPrefs:'cartoes.cardPrefs', meta:'cartoes.meta'
 };
-const DB_KEYS = ['budgets','overrides','rules','manual','loans','income','goals','cats'];
+const DB_KEYS = ['budgets','overrides','rules','manual','loans','income','goals','cats','cardPrefs'];
 const API = 'https://api.pluggy.ai';
 const HISTORY_MONTHS = 6;
 const INITIAL_MONTHS = 12;   // primeira busca de transações
@@ -674,7 +721,7 @@ function viewFromHash(){ const h = location.hash.replace(/^#\/?/, ''); return VI
 /* ---------- Dados locais ---------- */
 function loadDb(){
   return { budgets: store.get(K.budgets, {}), overrides: store.get(K.overrides, {}), rules: store.get(K.rules, {}),
-    manual: store.get(K.manual, []), loans: store.get(K.loans, []), income: store.get(K.income, { base:0, months:{} }), goals: store.get(K.goals, []), cats: store.get(K.cats, { custom:[], renamed:{}, colors:{} }) };
+    manual: store.get(K.manual, []), loans: store.get(K.loans, []), income: store.get(K.income, { base:0, months:{} }), goals: store.get(K.goals, []), cats: store.get(K.cats, { custom:[], renamed:{}, colors:{} }), cardPrefs: store.get(K.cardPrefs, {}) };
 }
 function saveDb(part){
   store.set(K[part], db[part]);
@@ -707,7 +754,7 @@ function setPart(k, v){
   if (k === 'cfg') { cfg = v || null; v ? store.set(K.cfg, v) : store.del(K.cfg); session = { apiKey:null, at:0 }; }
   else { db[k] = v ?? loadDbDefaults()[k]; store.set(K[k], db[k]); }
 }
-const loadDbDefaults = () => ({ budgets:{}, overrides:{}, rules:{}, manual:[], loans:[], income:{ sources:[], months:{} }, goals:[], cats:{ custom:[], renamed:{}, colors:{} } });
+const loadDbDefaults = () => ({ budgets:{}, overrides:{}, rules:{}, manual:[], loans:[], income:{ sources:[], months:{} }, goals:[], cats:{ custom:[], renamed:{}, colors:{} }, cardPrefs:{} });
 function hasContent(k){
   const v = getPart(k);
   if (!v) return false;
@@ -1225,7 +1272,7 @@ function incomeFor(ym){
 }
 
 function context(){
-  const cards = (data?.cards || []).map((c, i) => ({ ...c, color: PALETTE[i % PALETTE.length] }));
+  const cards = (data?.cards || []).map(decorateCard);
   const banks = (data?.banks || []).map((b, i) => ({ ...b, color: PALETTE[(cards.length + i) % PALETTE.length] }));
   const accounts = [...cards, ...banks];
   const cardById = Object.fromEntries(accounts.map(c => [c.id, c]));
@@ -1434,20 +1481,111 @@ function dayLabel(d){
   return new Date(y, m - 1, dd).toLocaleDateString('pt-BR', { weekday:'short', day:'numeric', month:'short' }).replace(/\./g, '');
 }
 
+/* ---------- Visual dos cartões ---------- */
+// Cores de cada emissor, para o cartão na tela parecer o de verdade. "dot" é a cor usada em gráficos e listas.
+const CARD_THEMES = {
+  itau:    { label:'Itaú (laranja)', bg:'linear-gradient(140deg,#FF7A1A 0%,#FF6200 55%,#F25500 100%)', ink:'#FFFFFF', sub:'rgba(255,255,255,.82)', dot:'#FF6200', issuer:'<span class="iss iss-itau">itaú</span>' },
+  nubank:  { label:'Nubank (champanhe)', bg:'linear-gradient(135deg,#F3F0EA 0%,#DED7CB 42%,#C9C0B0 100%)', ink:'#5B1BA6', sub:'#6E6458', dot:'#820AD1', edge:'#820AD1', issuer:'<span class="iss iss-nu">nu</span>' },
+  bb:      { label:'Banco do Brasil (amarelo)', bg:'linear-gradient(140deg,#FFF26B 0%,#FAE100 50%,#EFD200 100%)', ink:'#2A3B8F', sub:'rgba(42,59,143,.75)', dot:'#E2C200', issuer:'<span class="iss iss-bb">ourocard</span>' },
+  sams:    { label:"Sam's Club (azul-marinho)", bg:'linear-gradient(140deg,#2A3A63 0%,#1C2847 60%,#141D36 100%)', ink:'#FFFFFF', sub:'rgba(255,255,255,.72)', dot:'#3E5DA8', issuer:'<span class="iss iss-sams"><i></i>sam’s club</span>' },
+  grafite: { label:'Grafite', bg:'linear-gradient(140deg,#34304F 0%,#1B1830 100%)', ink:'#FFFFFF', sub:'rgba(255,255,255,.7)', dot:'#7B6CF0' },
+  violeta: { label:'Violeta', bg:'linear-gradient(140deg,#8A6DFF 0%,#5B3DF5 55%,#4325D0 100%)', ink:'#FFFFFF', sub:'rgba(255,255,255,.78)', dot:'#5B3DF5' },
+  verde:   { label:'Verde', bg:'linear-gradient(140deg,#2BC48A 0%,#0E9F6E 100%)', ink:'#FFFFFF', sub:'rgba(255,255,255,.78)', dot:'#0E9F6E' },
+  rosa:    { label:'Rosa', bg:'linear-gradient(140deg,#FF6FA8 0%,#E5487D 100%)', ink:'#FFFFFF', sub:'rgba(255,255,255,.8)', dot:'#E5487D' }
+};
+const NETWORKS = { master:'Mastercard', visa:'Visa', elo:'Elo', amex:'American Express', none:'Nenhuma' };
+function detectTheme(card){
+  const s = normDesc(`${card.bank || ''} ${card.rawName || card.name || ''}`);
+  if (/\b(itau|iti|personnalite)\b/.test(s)) return 'itau';
+  if (/\b(nubank|nu pagamentos|nu|croma|ultravioleta)\b/.test(s)) return 'nubank';
+  if (/\b(banco do brasil|ourocard|bb)\b/.test(s)) return 'bb';
+  if (/\bsam ?s\b|\bsams club\b/.test(s)) return 'sams';
+  return null;
+}
+function detectNetwork(card, theme){
+  const s = normDesc(card.rawName || card.name || '');
+  if (/\bvisa\b/.test(s)) return 'visa';
+  if (/\b(master|mastercard)\b/.test(s)) return 'master';
+  if (/\belo\b/.test(s)) return 'elo';
+  if (/\b(amex|american express)\b/.test(s)) return 'amex';
+  return { nubank:'master', sams:'master', itau:'master', bb:'visa' }[theme] || '';
+}
+function detectTier(card){
+  const s = normDesc(card.rawName || card.name || '');
+  return /\bultravioleta\b/.test(s) ? 'ultravioleta' : /\binfinite\b/.test(s) ? 'infinite' : /\bblack\b/.test(s) ? 'black'
+    : /\bplatinum\b/.test(s) ? 'platinum' : /\bgold\b/.test(s) ? 'gold' : /\binternacional\b/.test(s) ? 'internacional' : '';
+}
+// Nome automático: o cartão "Croma" do Nubank aparece com o nome completo.
+const autoCardName = name => /croma/i.test(name || '') && !/nubank/i.test(name || '') ? 'NUBANK CROMA PLATINUM' : (name || 'Cartão');
+function decorateCard(c, i){
+  const p = db.cardPrefs?.[c.id] || {};
+  const theme = p.theme || detectTheme(c) || '';
+  const T = CARD_THEMES[theme];
+  const raw = { ...c, rawName: c.rawName || c.name };
+  return { ...raw, name: p.name || autoCardName(raw.rawName), theme, network: p.network || detectNetwork(raw, theme), tier: detectTier(raw),
+    color: T ? T.dot : PALETTE[i % PALETTE.length] };
+}
+const networkMark = n => ({
+  master: '<span class="net net-master" aria-label="Mastercard"><i></i><i></i></span>',
+  visa: '<span class="net net-visa">VISA</span>',
+  elo: '<span class="net net-elo">elo</span>',
+  amex: '<span class="net net-amex">AMEX</span>'
+}[n] || '');
+function cardVisual(card, { action = true } = {}){
+  const T = CARD_THEMES[card.theme] || { bg:`linear-gradient(140deg,color-mix(in srgb,${card.color} 92%,#000),color-mix(in srgb,${card.color} 60%,#000))`, ink:'#fff', sub:'rgba(255,255,255,.75)' };
+  const issuer = T.issuer || `<span class="iss iss-txt">${esc(card.bank || 'Cartão')}</span>`;
+  const tag = action ? 'button' : 'div';
+  return `<${tag} ${action ? `type="button" data-action="editcard" data-id="${esc(card.id)}" title="Personalizar ${esc(card.name)}"` : ''} class="cardv${T.edge ? ' edged' : ''}" style="--bg:${T.bg};--ink:${T.ink};--sub:${T.sub};--edge:${T.edge || 'transparent'}">
+    <span class="cv-top">${issuer}${networkMark(card.network)}</span>
+    <span class="cv-mid"><span class="cv-chip"></span><svg class="cv-nfc" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 7.5a6 6 0 0 1 0 9M12 5a9.5 9.5 0 0 1 0 14M15.5 2.5a13 13 0 0 1 0 19"/></svg>${card.tier ? `<span class="cv-tier">${esc(card.tier)}</span>` : ''}</span>
+    <span class="cv-bottom"><span class="cv-name">${esc(card.name)}</span><span class="cv-num">•••• ${esc(card.number || '····')}</span></span>
+  </${tag}>`;
+}
+function openCard(id){
+  const card = context().cards.find(x => x.id === id); if (!card) return;
+  const p = (db.cardPrefs ||= {})[id] || {};
+  openCard.current = card;
+  modal(`<h2>Personalizar cartão</h2>
+    <div class="card-prev" id="cardPrev">${cardVisual(card, { action:false })}</div>
+    <label>Nome<input name="name" id="cardName" value="${esc(card.name)}" placeholder="${esc(autoCardName(card.rawName))}"></label>
+    <div class="cols"><label>Visual<select name="theme" id="cardTheme"><option value="">Automático${detectTheme(card) ? ' (' + esc(CARD_THEMES[detectTheme(card)].label) + ')' : ''}</option>${Object.entries(CARD_THEMES).map(([k, t]) => `<option value="${k}" ${p.theme === k ? 'selected' : ''}>${esc(t.label)}</option>`).join('')}</select></label>
+    <label>Bandeira<select name="network" id="cardNet"><option value="">Automática</option>${Object.entries(NETWORKS).map(([k, v]) => `<option value="${k}" ${p.network === k ? 'selected' : ''}>${v}</option>`).join('')}</select></label></div>
+    <p class="hint">Nome no banco: ${esc(card.rawName)}${card.bank ? ' · ' + esc(card.bank) : ''}. O nome e o visual ficam salvos na sua conta.</p>
+    <div class="dlg-actions"><button class="link" type="submit" value="reset">Voltar ao automático</button>
+      <div class="right"><button class="btn ghost" type="submit" value="cancel">Cancelar</button><button class="btn" type="submit" value="save">Salvar</button></div></div>`,
+  (f, act) => {
+    if (act === 'reset') delete db.cardPrefs[id];
+    else {
+      const name = String(f.get('name') || '').trim();
+      const next = { name: name && name !== autoCardName(card.rawName) ? name : '', theme: f.get('theme') || '', network: f.get('network') || '' };
+      if (next.name || next.theme || next.network) db.cardPrefs[id] = next; else delete db.cardPrefs[id];
+    }
+    saveDb('cardPrefs'); render(); toast('Cartão atualizado.');
+  });
+}
+function previewCard(){
+  const b = openCard.current, prev = $('#cardPrev'); if (!b || !prev) return;
+  const theme = $('#cardTheme').value || detectTheme(b) || '', net = $('#cardNet').value;
+  prev.innerHTML = cardVisual({ ...b, name: $('#cardName').value.trim() || autoCardName(b.rawName), theme,
+    network: net === 'none' ? '' : net || detectNetwork(b, theme), color: CARD_THEMES[theme]?.dot || b.color }, { action:false });
+}
+
 function cardTile(card, c){
   const used = card.limit != null && card.available != null ? Math.max(0, card.limit - card.available) : null;
   const pct = used != null && card.limit ? used / card.limit * 100 : 0;
   const monthSpend = sum(c.spend.filter(t => t.cardId === card.id && t.cm === ui.month));
-  return `<article class="cc" style="--cc:${card.color}">
-    <h3>${esc(card.name)}</h3>
-    <p class="sub">${esc([card.bank, card.number ? 'final ' + card.number : ''].filter(Boolean).join(' · '))}</p>
-    ${used != null ? `${progress(pct, 'thin')}<p class="sub num">${money(used)} usados de ${money(card.limit)} (${Math.round(pct)}%)</p>` : ''}
-    <dl>
-      <div><dt>Disponível</dt><dd>${card.available != null ? money0(card.available) : '—'}</dd></div>
-      <div><dt>Fatura</dt><dd>${money0(card.invoice)}</dd></div>
-      <div><dt>Vence</dt><dd>${shortDate(card.due)}</dd></div>
-    </dl>
-    <p class="sub" style="margin-top:8px">Gasto em ${esc(mName(ui.month))}: <b class="num">${money(monthSpend)}</b></p>
+  return `<article class="cc2">
+    ${cardVisual(card)}
+    <div class="cc2-info">
+      ${used != null ? `<div class="cc2-lim"><span>Limite usado</span><b class="num">${Math.round(pct)}%</b></div>${progress(pct, 'thin')}
+        <p class="sub num">${money(used)} de ${money(card.limit)}</p>` : ''}
+      <dl>
+        <div><dt>Disponível</dt><dd>${card.available != null ? money0(card.available) : '—'}</dd></div>
+        <div><dt>Fatura</dt><dd>${money0(card.invoice)}</dd></div>
+        <div><dt>Vence</dt><dd>${shortDate(card.due)}</dd></div>
+      </dl>
+      <p class="sub">Gasto em ${esc(mName(ui.month))}: <b class="num">${money(monthSpend)}</b></p>
+    </div>
   </article>`;
 }
 
@@ -1510,7 +1648,7 @@ function viewInicio(c){
   if (ui.card === 'all') h += goalsMini();
 
   // Cartões
-  if (c.shownCards.length) h += panel('Cartões', `<div class="ccards">${c.shownCards.map(card => cardTile(card, c)).join('')}</div>`, { sub:'Limites, fatura atual e vencimento' });
+  if (c.shownCards.length) h += panel('Cartões', `<div class="ccards">${c.shownCards.map(card => cardTile(card, c)).join('')}</div>`, { sub:'Toque no cartão para mudar o nome ou o visual' });
 
   // Recentes
   const recent = c.T.filter(t => t.cm === ym).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 8);
@@ -1922,11 +2060,13 @@ function viewFaturas(c){
       <div class="mswitch dark" role="group" aria-label="Fatura"><button type="button" data-action="prevbill" ${key <= minKey ? 'disabled' : ''} aria-label="Fatura anterior">${ic('left')}</button><span>${esc(cap(mName(key)))} ${key.slice(0, 4)}</span><button type="button" data-action="nextbill" ${key >= maxKey ? 'disabled' : ''} aria-label="Próxima fatura">${ic('right')}</button></div>
       <span class="pill">${status[0]}</span>
     </div>
+    <div class="bill-row"><div class="bill-mini">${cardVisual(card)}</div><div class="bill-main">
     <span class="hero-lbl">${esc(card.name)}${card.number ? ' · final ' + esc(card.number) : ''}</span>
     <span class="hero-val num">${money(total)}</span>
     <span class="hero-sub">${key > open ? 'Previsto até agora · ' : ''}Fecha em ${fullDate(close)} · vence em ${fullDate(due)}${official ? ` · valor do banco: ${money(official.total)}` : ''}</span>
     ${prevTotal > 0 ? `<span class="pill ${total > prevTotal ? 'up' : 'down'}">${total > prevTotal ? '▲' : '▼'} ${Math.abs(Math.round((total - prevTotal) / prevTotal * 100))}% vs fatura de ${esc(mName(addM(key, -1)))}</span>` : ''}
     ${key === open && used != null ? `<div class="hero-bar"><span style="width:${Math.min(100, used / card.limit * 100).toFixed(1)}%"></span></div><span class="hero-sub">Limite: ${money(used)} usados de ${money(card.limit)} · disponível ${money(card.available)}</span>` : ''}
+    </div></div>
   </section>`;
   h += `<div class="kpis">
     ${kpi('À vista', money(aVista), plural(list.filter(t => t.kind === 'out' && !(t.instT > 1)).length, 'compra', 'compras'), '', 'card', 'k0')}
@@ -2248,7 +2388,7 @@ function openTx(id){
   const total = ([...data.tx, ...db.manual].find(x => x.id === id) || t).amount;
   const split = db.overrides[id]?.split || [];
   const manual = t.cardId === 'manual';
-  const card = data?.cards.find(x => x.id === t.cardId);
+  const card = context().cardById[t.cardId];
   const same = allTx().filter(x => x.key === t.key && x.id !== t.id).length;
   const info = `<dl class="txinfo"><dt>Data</dt><dd>${fullDate(t.date)}</dd><dt>Valor</dt><dd class="num">${t.kind === 'in' ? '+ ' : ''}${money(total)}</dd>
     <dt>Origem</dt><dd>${esc(manual ? (t.method || 'Lançamento manual') : (card?.name || '—'))}</dd>${t.instT > 1 ? `<dt>Parcela</dt><dd>${t.instN} de ${t.instT}</dd>` : ''}${t.pending ? '<dt>Status</dt><dd class="pending">Pendente</dd>' : ''}</dl>`;
@@ -2526,6 +2666,7 @@ document.addEventListener('click', e => {
     inc.noExpect = [...new Set([...(inc.noExpect || []), b.dataset.key])];
     saveDb('income'); b.closest('li')?.remove(); render(); toast('Essa entrada não será mais prevista.');
   }
+  else if (a === 'editcard') openCard(id);
   else if (a === 'rank') { ui.rank = b.dataset.rank; render(); }
   else if (a === 'clearf') { ui.cat = 'all'; ui.q = ''; render(); }
   else if (a === 'sync') sync();
@@ -2559,11 +2700,13 @@ document.addEventListener('change', e => {
     if (v > 0) db.budgets[el.dataset.budget] = v; else delete db.budgets[el.dataset.budget];
     saveDb('budgets'); render();
   } else if (el.classList.contains('swatch')) { el.style.setProperty('--k', `var(--k${el.value})`); }
+  else if (el.id === 'cardTheme' || el.id === 'cardNet') previewCard();
   else if (el.id === 'incMode') { $('#incAuto').hidden = el.value !== 'auto'; $('#incManual').hidden = el.value === 'auto'; }
   else if (el.dataset.filter === 'card') { ui.card = el.value; render(); }
   else if (el.dataset.filter === 'cat' || el.dataset.filter === 'kind') { ui[el.dataset.filter] = el.value; $('#txList').innerHTML = txListHtml(context()); }
 });
 document.addEventListener('input', e => {
+  if (e.target.id === 'cardName') { previewCard(); return; }
   if (e.target.dataset.filter === 'q') { ui.q = e.target.value; $('#txList').innerHTML = txListHtml(context()); }
 });
 addEventListener('hashchange', () => { ui.view = viewFromHash(); render(); scrollTo(0, 0); });
