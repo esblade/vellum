@@ -129,3 +129,53 @@ test('objetivo: quanto guardar por mês até o prazo', () => {
   assert.equal(i.months, 6);
   assert.equal(i.monthly, 100);
 });
+
+test('empréstimo recebido não é renda; quitar o cartão pela conta não é gasto em dobro', () => {
+  setData([
+    { id: 'emp', cardId: 'b', acct: 'bank', catRaw: 'Loans and financing', date: day(6), desc: 'CREDITO EMPRESTIMO PESSOAL', category: 'Empréstimos e financiamentos', amount: 20000, kind: 'in' },
+    { id: 'sal', cardId: 'b', acct: 'bank', catRaw: 'Salary', date: day(6), desc: 'SALARIO', category: 'Salário', amount: 7000, kind: 'in' },
+    // saiu da conta com um nome qualquer...
+    { id: 'pix', cardId: 'b', acct: 'bank', catRaw: 'Transfer - PIX', date: day(5), desc: 'PIX ENVIADO NU PAGAMENTOS', category: 'Pix', amount: 8123.45, kind: 'out' },
+    // ...e chegou no cartão como pagamento
+    { id: 'pg', cardId: 'c1', date: day(4), desc: 'Pagamento recebido', category: 'Pix', amount: 8123.45, kind: 'in' },
+    { id: 'compra', cardId: 'c1', date: day(4), desc: 'Loja', category: 'Compras', amount: 300, kind: 'out' }
+  ], { banks: [{ id: 'b', type: 'bank', name: 'Conta', balance: 0 }] });
+  const isSpend = app.run('isSpend'), isBankIncome = app.run('isBankIncome');
+  assert.equal(cls('emp')[0].category, 'Empréstimo recebido');
+  assert.equal(isBankIncome(cls('emp')[0]), false);
+  assert.equal(isBankIncome(cls('sal')[0]), true);
+  assert.equal(cls('pix')[0].category, 'Pagamento de fatura');
+  assert.equal(isSpend(cls('pix')[0]), false);
+  assert.equal(app.run('sum(allTx().filter(isSpend))'), 300);
+});
+
+test('salário que cai duas vezes no mês: o que ainda não caiu entra como previsto', () => {
+  const tx = [];
+  for (let m = 1; m <= 3; m++) {
+    const mm = app.run(`addM(curYM(), -${m})`);
+    tx.push({ id: `a${m}`, cardId: 'b', acct: 'bank', catRaw: 'Salary', date: `${mm}-05`, desc: 'SALARIO EMPRESA 05', category: 'Salário', amount: 4000, kind: 'in' });
+    tx.push({ id: `b${m}`, cardId: 'b', acct: 'bank', catRaw: 'Salary', date: `${mm}-27`, desc: 'SALARIO EMPRESA 27', category: 'Salário', amount: 3000, kind: 'in' });
+  }
+  tx.push({ id: 'agora', cardId: 'b', acct: 'bank', catRaw: 'Salary', date: `${ym}-01`, desc: 'SALARIO EMPRESA 05', category: 'Salário', amount: 4000, kind: 'in' });
+  setData(tx, { banks: [{ id: 'b', type: 'bank', name: 'Conta', balance: 0 }] });
+  const inc = app.run('incomeFor(curYM())');
+  assert.equal(inc.received, 4000);
+  assert.equal(inc.expected, 3000);   // falta o 2º salário do mês (o do dia 27)
+  assert.equal(inc.total, 7000);
+});
+
+test('projeção não multiplica um gasto pontual grande pelos dias do mês', () => {
+  const tx = [];
+  for (let m = 1; m <= 3; m++) {
+    const mm = app.run(`addM(curYM(), -${m})`);
+    for (let d = 1; d <= 28; d++) tx.push({ id: `d${m}-${d}`, cardId: 'c1', date: `${mm}-${String(d).padStart(2, '0')}`, desc: 'Padaria ' + (d % 7), category: 'Restaurantes', amount: 50, kind: 'out' });
+  }
+  tx.push({ id: 'quita', cardId: 'b', acct: 'bank', catRaw: '', date: `${ym}-01`, desc: 'BOLETO QUITACAO', category: 'Outros', amount: 15000, kind: 'out' });
+  setData(tx, { banks: [{ id: 'b', type: 'bank', name: 'Conta', balance: 0 }] });
+  const P = app.run('monthPace(context(), curYM())');
+  const linear = P.total / P.day * app.run('dim(curYM())');
+  assert.equal(P.method, 'base');
+  assert.equal(P.oneOffTotal, 15000);
+  assert.ok(P.projection < linear, `projeção ${P.projection} deveria ser menor que a regra de três ${linear}`);
+  assert.ok(P.projection < 15000 + 31 * 60, 'gasto pontual entra uma vez só');
+});
