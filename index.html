@@ -458,6 +458,8 @@ const K = {
 const DB_KEYS = ['budgets','overrides','rules','manual','loans','income'];
 const API = 'https://api.pluggy.ai';
 const HISTORY_MONTHS = 6;
+const INITIAL_MONTHS = 12;   // primeira busca de transações
+const REFETCH_DAYS = 40;     // depois, rebusca só os últimos dias (pendentes ainda mudam)
 const PALETTE = ['var(--c1)','var(--c2)','var(--c3)','var(--c4)','var(--c5)'];
 const brl = new Intl.NumberFormat('pt-BR', { style:'currency', currency:'BRL' });
 const brl0 = new Intl.NumberFormat('pt-BR', { style:'currency', currency:'BRL', maximumFractionDigits:0 });
@@ -585,31 +587,49 @@ function loadDb(){
 function saveDb(part){
   if (isDemo) return;
   store.set(K[part], db[part]);
-  store.set(K.meta, { updatedAt: Date.now() });
-  schedulePush();
+  markDirty(part);
 }
 
 /* ---------- Conta e nuvem (Supabase) ---------- */
 // Dados do projeto (Project Settings → API Keys). Esta é a chave publicável (pública):
-// quem protege os dados é a regra de acesso da tabela (veja supabase.sql).
+// quem protege os dados são as regras de acesso das tabelas (veja supabase.sql).
 const SUPABASE = { url: 'https://zemvlkrymvbbqikzcsqz.supabase.co', anonKey: 'sb_publishable_eQqa_K8f93tQplsoK7g-fw_MGKhlL9M' };
-let sb = null, user = null, authReady = false;
+const PARTS = [...DB_KEYS, 'cfg'];
+let sb = null, user = null, authReady = false, access = 'unknown', cloudEmpty = false;
 let syncState = { status:'off', msg:'' };
 let pushTimer = null;
 const cloudOn = () => !!(SUPABASE.url && SUPABASE.anonKey && window.supabase);
-const canSync = () => !isDemo && !!sb && !!user;
-const localStamp = () => store.get(K.meta, {}).updatedAt || 0;
-const touch = () => store.set(K.meta, { updatedAt: Date.now() });
-function hasLocalData(){
-  const i = db.income || {};
-  return !!(cfg || Object.keys(db.budgets).length || Object.keys(db.overrides).length || Object.keys(db.rules).length ||
-    db.manual.length || db.loans.length || (i.sources || []).length || i.base > 0 || Object.keys(i.months || {}).length);
+const canSync = () => !isDemo && !!sb && !!user && access === 'ok';
+
+// Cada item (renda, metas, empréstimos...) guarda quando foi alterado; na nuvem vale o mais novo de cada um.
+function partTimes(){
+  const m = store.get(K.meta, {});
+  if (m.parts) return m.parts;
+  const p = {}; if (m.updatedAt) for (const k of PARTS) p[k] = m.updatedAt;   // formato antigo
+  return p;
 }
-function packDb(){ const o = { cfg: cfg || null }; for (const k of DB_KEYS) o[k] = db[k]; return o; }
-function applyRemote(d){
-  for (const k of DB_KEYS) if (k in d) { db[k] = d[k]; store.set(K[k], d[k]); }
-  if (d.cfg) { cfg = d.cfg; store.set(K.cfg, cfg); session = { apiKey:null, at:0 }; }
+const setPartTimes = p => store.set(K.meta, { parts: p });
+const dirty = new Set(store.get(K.meta + '.dirty', []));
+const saveDirty = () => store.set(K.meta + '.dirty', [...dirty]);
+const getPart = k => k === 'cfg' ? (cfg || null) : db[k];
+function setPart(k, v){
+  if (k === 'cfg') { cfg = v || null; v ? store.set(K.cfg, v) : store.del(K.cfg); session = { apiKey:null, at:0 }; }
+  else { db[k] = v ?? loadDbDefaults()[k]; store.set(K[k], db[k]); }
 }
+const loadDbDefaults = () => ({ budgets:{}, overrides:{}, rules:{}, manual:[], loans:[], income:{ sources:[], months:{} } });
+function hasContent(k){
+  const v = getPart(k);
+  if (!v) return false;
+  if (Array.isArray(v)) return v.length > 0;
+  if (k === 'income') return (v.sources || []).length > 0 || v.base > 0 || Object.keys(v.months || {}).length > 0;
+  return Object.keys(v).length > 0;
+}
+function markDirty(k){
+  if (isDemo) return;
+  const p = partTimes(); p[k] = Date.now(); setPartTimes(p);
+  dirty.add(k); saveDirty(); schedulePush();
+}
+const touch = () => markDirty('cfg');
 function schedulePush(){
   if (!canSync()) return;
   clearTimeout(pushTimer);
@@ -618,30 +638,90 @@ function schedulePush(){
 }
 async function pushNow(){
   clearTimeout(pushTimer);
-  if (!canSync()) return;
-  const { error } = await sb.from('user_data').upsert({ user_id: user.id, data: packDb(), updated_at: localStamp() || Date.now() });
-  syncState = error ? { status:'error', msg: error.message } : { status:'ok', msg:'' };
+  if (!canSync() || !dirty.size) { if (canSync()) { syncState = { status:'ok', msg:'' }; renderSync(); } return; }
+  const p = partTimes(), keys = [...dirty];
+  const rows = keys.map(k => ({ user_id: user.id, key: k, value: getPart(k), updated_at: p[k] || Date.now() }));
+  const { error } = await sb.from('user_settings').upsert(rows, { onConflict:'user_id,key' });
+  if (error) syncState = { status:'error', msg: error.message };
+  else { for (const k of keys) if ((partTimes()[k] || 0) === rows.find(r => r.key === k).updated_at) dirty.delete(k); saveDirty(); syncState = { status:'ok', msg:'' }; }
   renderSync();
+  if (!error && dirty.size) schedulePush();
 }
 async function pullSync(){
   if (!canSync()) { syncState = { status:'off', msg:'' }; renderSync(); return; }
-  const { data: row, error } = await sb.from('user_data').select('data, updated_at').eq('user_id', user.id).maybeSingle();
+  const { data: rows, error } = await sb.from('user_settings').select('key, value, updated_at');
   if (error) { syncState = { status:'error', msg: error.message }; renderSync(); return; }
-  const local = localStamp(), remote = row?.updated_at || 0;
-  if (row?.data && remote > local) {
-    if (!local && hasLocalData() && !confirm('Este navegador tem dados que ainda não estão na sua conta, e a conta já tem dados salvos. Usar os dados da conta? (Cancelar envia os dados deste navegador e substitui os da conta.)')) {
-      touch(); await pushNow(); return;
+  const remote = {};
+  for (const r of rows || []) remote[r.key] = r;
+  if (!rows?.length) {   // primeira vez nesta versão: traz o que estava na tabela antiga
+    const { data: old } = await sb.from('user_data').select('data, updated_at').maybeSingle();
+    if (old?.data) for (const k of PARTS) if (k in old.data && old.data[k] != null) remote[k] = { key:k, value: old.data[k], updated_at: old.updated_at || 1, legacy:true };
+  }
+  const p = partTimes(), conflicts = [];
+  let changed = false;
+  for (const k of PARTS) {
+    const r = remote[k], local = p[k] || 0;
+    if (r && r.updated_at > local && !dirty.has(k)) {
+      if (!local && hasContent(k)) { conflicts.push(k); continue; }
+      setPart(k, r.value); p[k] = r.updated_at; changed = true;
+      if (r.legacy) dirty.add(k);   // grava na tabela nova
+    } else if ((local > (r?.updated_at || 0) || (!r && hasContent(k))) && hasContent(k)) {
+      if (!local) p[k] = Date.now();
+      dirty.add(k);
     }
-    applyRemote(row.data);
-    store.set(K.meta, { updatedAt: remote });
+  }
+  if (conflicts.length) {
+    const useCloud = confirm('Este aparelho tem dados que ainda não estão na sua conta, e a conta já tem dados salvos. Usar os dados da conta? (Cancelar envia os dados deste aparelho e substitui os da conta.)');
+    for (const k of conflicts) {
+      if (useCloud) { setPart(k, remote[k].value); p[k] = remote[k].updated_at; changed = true; if (remote[k].legacy) dirty.add(k); }
+      else { p[k] = Date.now(); dirty.add(k); }
+    }
+  }
+  setPartTimes(p); saveDirty();
+  if (changed && !document.querySelector('dialog[open]')) render();
+  if (dirty.size) await pushNow(); else { syncState = { status:'ok', msg:'' }; renderSync(); }
+}
+
+/* Transações, cartões e faturas na conta */
+async function loadCloudData(){
+  if (!canSync()) return null;
+  const { data: snap, error } = await sb.from('snapshots').select('data, synced_at').maybeSingle();
+  if (error || !snap) return null;
+  const tx = [];
+  for (let from = 0; ; from += 1000) {
+    const { data: rows, error: e2 } = await sb.from('transactions').select('data').order('date', { ascending:false }).order('id').range(from, from + 999);
+    if (e2) return null;
+    tx.push(...rows.map(r => r.data));
+    if (rows.length < 1000) break;
+  }
+  return { cards: snap.data.cards || [], bills: snap.data.bills || {}, tx, syncedAt: new Date(snap.synced_at).toISOString() };
+}
+async function saveCloudData(changed, staleIds){
+  if (!canSync()) return;
+  try {
+    for (let i = 0; i < changed.length; i += 500) {
+      const rows = changed.slice(i, i + 500).map(t => ({ user_id: user.id, id: t.id, card_id: t.cardId, date: t.date || today(), data: t }));
+      const { error } = await sb.from('transactions').upsert(rows, { onConflict:'user_id,id' });
+      if (error) throw error;
+    }
+    for (let i = 0; i < staleIds.length; i += 200) {
+      const { error } = await sb.from('transactions').delete().in('id', staleIds.slice(i, i + 200));
+      if (error) throw error;
+    }
+    const { error } = await sb.from('snapshots').upsert({ user_id: user.id, data:{ cards: data.cards, bills: data.bills }, synced_at: new Date(data.syncedAt).getTime() }, { onConflict:'user_id' });
+    if (error) throw error;
     syncState = { status:'ok', msg:'' };
-    if (!document.querySelector('dialog[open]')) render();
-  } else if (local > remote || (!row && hasLocalData())) {
-    if (!local) touch();
-    await pushNow(); return;
-  } else syncState = { status:'ok', msg:'' };
+  } catch (e) { syncState = { status:'error', msg: e.message || String(e) }; }
   renderSync();
 }
+
+async function checkAccess(){
+  if (!sb || !user) { access = 'unknown'; return false; }
+  const { data: ok, error } = await sb.rpc('is_allowed');
+  access = error ? 'schema' : ok ? 'ok' : 'denied';
+  return access === 'ok';
+}
+
 function syncShort(){
   return { off:'', ok:'salvo na sua conta', saving:'salvando…', error:'falha ao salvar na conta' }[syncState.status] || '';
 }
@@ -669,7 +749,7 @@ async function initCloud(){
   sb.auth.onAuthStateChange((event, s2) => {
     const before = user?.id; user = s2?.user || null;
     if (event === 'SIGNED_IN' && user && user.id !== before) afterLogin();
-    if (event === 'SIGNED_OUT') { user = null; render(); }
+    if (event === 'SIGNED_OUT') { user = null; access = 'unknown'; render(); }
   });
 }
 async function login(){
@@ -677,20 +757,37 @@ async function login(){
   const { error } = await sb.auth.signInWithOAuth({ provider:'google', options:{ redirectTo: location.origin + location.pathname, queryParams:{ prompt:'select_account' } } });
   if (error) toast('Não foi possível abrir o login do Google: ' + error.message);
 }
-async function logout(){
-  if (!confirm('Sair da conta neste aparelho? Os dados continuam salvos na sua conta.')) return;
+async function logout(skipConfirm){
+  if (!skipConfirm && !confirm('Sair da conta neste aparelho? Os dados continuam salvos na sua conta.')) return;
   clearTimeout(pushTimer);
-  if (canSync() && syncState.status === 'saving') await pushNow();
+  if (canSync() && dirty.size) await pushNow();
   await sb.auth.signOut();
   for (const k of Object.keys(K)) if (k !== 'prefs') store.del(K[k]);
-  store.del(LOCK_KEY);
-  user = null; cfg = null; data = null; db = loadDb(); newIds = new Set(); lastError = ''; isDemo = false; locked = false;
+  store.del(K.meta + '.dirty'); dirty.clear(); store.del(LOCK_KEY);
+  user = null; access = 'unknown'; cfg = null; data = null; db = loadDb(); newIds = new Set(); lastError = ''; isDemo = false; locked = false;
   $('#cfg').open && $('#cfg').close(); render(); toast('Você saiu da conta.');
 }
 async function afterLogin(){
+  if (!await checkAccess()) { render(); return; }
   await pullSync();
-  if (cfg) { data = data || store.get(K.cache, null); render(); sync(); }
-  else render();
+  const local = store.get(K.cache, null), cloud = await loadCloudData();
+  cloudEmpty = !cloud;
+  const t = d => d?.syncedAt ? new Date(d.syncedAt).getTime() : 0;
+  data = cloud && t(cloud) >= t(local) ? cloud : (local || cloud || data);
+  if (data && data === cloud) store.set(K.cache, data);
+  render();
+  if (cfg && (!data || cloudEmpty || Date.now() - t(data) > 15 * 60 * 1000)) sync();
+}
+function deniedScreen(){
+  const schema = access === 'schema';
+  return `<section class="gate"><div class="gate-card">
+    <span class="brand-mark big"><svg viewBox="0 0 24 24"><path d="M6 7l6 11 6-11"/></svg></span>
+    <h2>${schema ? 'Falta atualizar o banco' : 'Acesso ainda não liberado'}</h2>
+    <p>${schema ? 'Rode o arquivo supabase.sql atualizado no SQL Editor do Supabase e entre de novo.'
+      : `O e-mail <b>${esc(user?.email || '')}</b> ainda não tem acesso. Peça para quem administra o app liberar este e-mail.`}</p>
+    <button class="btn" type="button" data-action="recheck">Tentar de novo</button>
+    <button class="link" type="button" data-action="logoutnow">Entrar com outra conta</button>
+  </div></section>`;
 }
 function loginScreen(){
   return `<section class="gate">
@@ -856,9 +953,10 @@ async function sync(){
   busy = true; render();
   try {
     const now = new Date();
-    const from = iso(new Date(now.getFullYear(), now.getMonth() - (HISTORY_MONTHS - 1), 1));
     const to = iso(now);
-    const cards = [], tx = [], found = [], bills = {};
+    const firstFrom = iso(new Date(now.getFullYear(), now.getMonth() - (INITIAL_MONTHS - 1), 1));
+    const prev = data?.tx || [];
+    const cards = [], tx = [], found = [], bills = {}, changed = [], stale = [];
     for (const itemId of cfg.itemIds) {
       let bank = '', status = '';
       try {
@@ -882,13 +980,26 @@ async function sync(){
           invoice: Math.abs(a.balance ?? 0)
         };
         cards.push(card);
-        for (const x of await fetchTransactions(a.id, from, to)) tx.push(normTx(x, card.id));
+        // Busca só o período recente quando já há histórico salvo (pendentes mudam por algumas semanas);
+        // na primeira vez, busca os últimos INITIAL_MONTHS meses.
+        const mine = prev.filter(t => t.cardId === a.id);
+        const last = mine.reduce((m, t) => t.date > m ? t.date : m, '');
+        const from = last && !cloudEmpty ? iso(new Date(new Date(last + 'T12:00:00').getTime() - REFETCH_DAYS * 864e5)) : firstFrom;
+        const fetched = (await fetchTransactions(a.id, from, to)).map(x => normTx(x, card.id));
+        const ids = new Set(fetched.map(t => t.id));
+        const keep = mine.filter(t => (t.date < from || t.date > to) && !ids.has(t.id));
+        stale.push(...mine.filter(t => t.date >= from && t.date <= to && !ids.has(t.id)).map(t => t.id));
+        tx.push(...keep, ...fetched);
+        changed.push(...(cloudEmpty ? [...keep, ...fetched] : fetched));
         bills[a.id] = await fetchBills(a.id);
       }
     }
+    const cardIds = new Set(cards.map(c => c.id));
+    stale.push(...prev.filter(t => !cardIds.has(t.cardId)).map(t => t.id));
     data = { cards, tx, bills, syncedAt: new Date().toISOString() };
     store.set(K.cache, data);
     markNew();
+    if (canSync()) { await saveCloudData(changed, [...new Set(stale)]); if (syncState.status === 'ok') cloudEmpty = false; }
     lastError = '';
     if (!cards.length) lastError = 'Nenhum cartão de crédito encontrado. O que veio de cada conexão: ' + found.join('; ') + '.';
   } catch (e) {
@@ -1550,9 +1661,9 @@ function render(){
   $('#sideTheme').innerHTML = ic(isDark() ? 'sun' : 'moon') + `<span>${isDark() ? 'Modo claro' : 'Modo escuro'}</span>`;
   document.title = v.title + ' · Vellum';
 
-  const gated = cloudOn() && !isDemo && (!user || locked);
+  const gated = cloudOn() && !isDemo && (!user || locked || access === 'denied' || access === 'schema');
   document.body.classList.toggle('gated', gated);
-  if (gated) { $('#page').innerHTML = user && locked ? lockScreen() : authReady ? loginScreen() : ''; return; }
+  if (gated) { $('#page').innerHTML = user && locked ? lockScreen() : user && (access === 'denied' || access === 'schema') ? deniedScreen() : authReady ? loginScreen() : ''; return; }
   const c = data ? context() : null;
   const showMonth = data && v.month;
   const synced = data?.syncedAt ? 'Atualizado ' + new Date(data.syncedAt).toLocaleString('pt-BR', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }).replace('.', '') : '';
@@ -1810,7 +1921,7 @@ function openCfg(){
   $('#fProxyToken').value = c.proxyToken || '';
   $('#proxyBox').open = !!c.proxyUrl;
   $('#fTheme').value = themePref();
-  $('#cfgHint').textContent = canSync() ? 'Tudo o que você preencher aqui fica salvo na sua conta e vale em qualquer aparelho em que você entrar.' : 'Credenciais e dados ficam salvos só neste navegador. Nada é enviado para outro lugar além da API da Pluggy (ou do seu intermediário).';
+  $('#cfgHint').textContent = canSync() ? 'Tudo o que você preencher aqui, e as transações dos cartões, fica salvo na sua conta e vale em qualquer aparelho em que você entrar.' : 'Credenciais e dados ficam salvos só neste navegador. Nada é enviado para outro lugar além da API da Pluggy (ou do seu intermediário).';
   renderSync();
   $('#cfg').showModal();
 }
@@ -1843,7 +1954,7 @@ $('#btnRestore').addEventListener('click', () => $('#fRestore').click());
 $('#fRestore').addEventListener('change', e => { const f = e.target.files[0]; if (f) importBackup(f); e.target.value = ''; });
 $('#btnWipe').addEventListener('click', () => {
   if (!confirm('Apagar credenciais, metas, empréstimos e todos os dados salvos neste navegador? Isso não pode ser desfeito aqui. O que está salvo na sua conta continua lá.')) return;
-  Object.values(K).forEach(store.del); store.del(LOCK_KEY);
+  Object.values(K).forEach(store.del); store.del(LOCK_KEY); store.del(K.meta + '.dirty'); dirty.clear();
   cfg = null; data = null; db = loadDb(); prefs = {}; applyTheme(); newIds = new Set(); lastError = ''; isDemo = false;
   $('#cfg').close(); render(); toast('Dados apagados deste navegador.');
 });
@@ -1858,6 +1969,8 @@ document.addEventListener('click', e => {
   const a = b.dataset.action, id = b.dataset.id;
   if (a === 'cfg') openCfg();
   else if (a === 'login') login();
+  else if (a === 'recheck') afterLogin();
+  else if (a === 'logoutnow') logout(true);
   else if (a === 'logout') logout();
   else if (a === 'syncnow') pullSync().then(() => toast(syncState.status === 'ok' ? 'Tudo salvo na sua conta.' : syncLabel()));
   else if (a === 'lockon') enableLock();

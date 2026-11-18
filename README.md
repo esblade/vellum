@@ -37,9 +37,23 @@ Com a conta ligada, o app pede "Entrar com Google". Cartões (credenciais da Plu
 ### 1. Supabase (banco de dados)
 
 1. Crie um projeto grátis em supabase.com.
-2. Em SQL Editor → New query, cole o conteúdo de `supabase.sql` e clique em Run. Isso cria a tabela `user_data` e a regra que só deixa cada pessoa ler e gravar os próprios dados.
+2. Abra `supabase.sql`, troque `SEU_EMAIL@gmail.com` pelo Gmail que você usa para entrar e, em SQL Editor → New query, cole tudo e clique em Run. Isso cria as tabelas (ajustes, transações, cartões), a lista de e-mails liberados e as regras que só deixam cada pessoa liberada ler e gravar os próprios dados. Pode rodar de novo sem perder nada.
 3. Em Project Settings → API, copie a **Project URL** e a chave **anon public**. Cole as duas no começo do `<script>` do `index.html`, em `const SUPABASE = { url: '...', anonKey: '...' }`. A chave anon é pública por natureza; o que protege os dados é a regra da tabela.
 4. Em Authentication → URL Configuration, coloque em **Site URL** o endereço do site (ex.: `https://SEU_USUARIO.github.io/vellum/`) e adicione o mesmo endereço em **Redirect URLs**.
+
+### Liberar acesso para outra pessoa
+
+Só e-mails da tabela `allowed_users` conseguem usar o app. Para liberar um parente, rode no SQL Editor:
+
+```sql
+insert into public.allowed_users (email, name) values ('email.do.parente@gmail.com', 'Nome') on conflict (email) do nothing;
+```
+
+Cada pessoa tem os próprios dados e configura a própria conexão com a Pluggy em Ajustes. Quem entrar com um e-mail fora da lista vê a tela "Acesso ainda não liberado". Para tirar o acesso: `delete from public.allowed_users where email = '...';`
+
+### O que fica salvo na conta
+
+Credenciais da Pluggy, renda, metas, empréstimos, lançamentos manuais, categorias ajustadas, cartões e as transações. Um aparelho novo abre direto com os dados da conta. Na primeira atualização o app busca 12 meses na Pluggy; depois, só os últimos 40 dias (o histórico antigo continua salvo, então ele cresce além de 12 meses com o tempo). Cada item é salvo separadamente: mudar metas num aparelho e empréstimos em outro não perde nada.
 
 ### 2. Google (login)
 
@@ -48,7 +62,6 @@ Com a conta ligada, o app pede "Entrar com Google". Cartões (credenciais da Plu
    - Origens JavaScript autorizadas: `https://SEU_USUARIO.github.io`
    - URIs de redirecionamento autorizados: `https://SEU_PROJETO.supabase.co/auth/v1/callback` (o Supabase mostra esse endereço exato na tela do provedor Google).
 3. No Supabase, em Authentication → Sign In / Providers → Google, ative e cole o Client ID e o Client Secret gerados pelo Google.
-4. Depois de entrar pela primeira vez, você pode desligar novos cadastros em Authentication → Sign In / Providers → "Allow new users to sign up", para que ninguém mais crie conta no seu app.
 
 Como as credenciais da Pluggy ficam na sua conta, quem acessar sua conta Google vê seus dados financeiros: deixe a verificação em duas etapas do Google ligada.
 
