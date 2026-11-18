@@ -25,24 +25,24 @@
   color-scheme:light;
 }
 @media (prefers-color-scheme:dark){
-  :root:not([data-theme="light"]){
-    --bg:#0E131C;--surface:#161D29;--surface-2:#1B2331;--ink:#E7ECF3;--ink-2:#C3CCD9;--muted:#8D99AB;--line:#263042;--line-2:#1F2837;
-    --accent:#7D9BFF;--accent-ink:#0B1222;--accent-soft:#1E2A47;
-    --ok:#4CC79A;--ok-soft:#173329;--warn:#F0A060;--warn-soft:#3A2A19;--danger:#FF7A8A;--danger-soft:#3D1D24;
-    --c1:#7D9BFF;--c2:#3CC3B4;--c3:#E9A84A;--c4:#C783E0;--c5:#98A2B3;
-    --k0:#7D9BFF;--k1:#3CC3B4;--k2:#E9A84A;--k3:#C783E0;--k4:#FF7A8A;--k5:#5DB8EE;--k6:#A6C94A;--k7:#E98AB8;--k8:#98A2B3;--k9:#A891FF;
-    --shadow:none;
+  :root[data-theme="auto"]{
+    --bg:#0F1012;--surface:#17181B;--surface-2:#1E2024;--ink:#EDEEF0;--ink-2:#C9CCD1;--muted:#8E939B;--line:#2A2D32;--line-2:#222428;
+    --accent:#8197FF;--accent-ink:#0F1012;--accent-soft:#252A40;
+    --ok:#52C99B;--ok-soft:#172A21;--warn:#F2A65A;--warn-soft:#30241A;--danger:#FF8090;--danger-soft:#351C21;
+    --c1:#8197FF;--c2:#45C4B5;--c3:#E8AA50;--c4:#C98BE2;--c5:#9AA0A9;
+    --k0:#8197FF;--k1:#45C4B5;--k2:#E8AA50;--k3:#C98BE2;--k4:#FF8090;--k5:#62B9EC;--k6:#A9CB55;--k7:#EA8FBB;--k8:#9AA0A9;--k9:#A996FF;
+    --shadow:0 1px 0 rgba(255,255,255,.03) inset;
     color-scheme:dark;
   }
 }
 :root[data-theme="dark"]{
-  --bg:#0E131C;--surface:#161D29;--surface-2:#1B2331;--ink:#E7ECF3;--ink-2:#C3CCD9;--muted:#8D99AB;--line:#263042;--line-2:#1F2837;
-  --accent:#7D9BFF;--accent-ink:#0B1222;--accent-soft:#1E2A47;
-  --ok:#4CC79A;--ok-soft:#173329;--warn:#F0A060;--warn-soft:#3A2A19;--danger:#FF7A8A;--danger-soft:#3D1D24;
-  --c1:#7D9BFF;--c2:#3CC3B4;--c3:#E9A84A;--c4:#C783E0;--c5:#98A2B3;
-  --k0:#7D9BFF;--k1:#3CC3B4;--k2:#E9A84A;--k3:#C783E0;--k4:#FF7A8A;--k5:#5DB8EE;--k6:#A6C94A;--k7:#E98AB8;--k8:#98A2B3;--k9:#A891FF;
-  --shadow:none;
-  color-scheme:dark;
+    --bg:#0F1012;--surface:#17181B;--surface-2:#1E2024;--ink:#EDEEF0;--ink-2:#C9CCD1;--muted:#8E939B;--line:#2A2D32;--line-2:#222428;
+    --accent:#8197FF;--accent-ink:#0F1012;--accent-soft:#252A40;
+    --ok:#52C99B;--ok-soft:#172A21;--warn:#F2A65A;--warn-soft:#30241A;--danger:#FF8090;--danger-soft:#351C21;
+    --c1:#8197FF;--c2:#45C4B5;--c3:#E8AA50;--c4:#C98BE2;--c5:#9AA0A9;
+    --k0:#8197FF;--k1:#45C4B5;--k2:#E8AA50;--k3:#C98BE2;--k4:#FF8090;--k5:#62B9EC;--k6:#A9CB55;--k7:#EA8FBB;--k8:#9AA0A9;--k9:#A996FF;
+    --shadow:0 1px 0 rgba(255,255,255,.03) inset;
+    color-scheme:dark;
 }
 *,*::before,*::after{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
@@ -144,7 +144,33 @@ textarea{min-height:72px;resize:vertical;width:100%}
 .crow .nm{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .crow .am{font-weight:600;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
 .crow .ft{grid-column:2/-1;display:flex;justify-content:space-between;gap:8px;font-size:.78rem;color:var(--muted)}
-.crow .progress{grid-column:2/-1}
+.crow .progress{grid-column:2/-1;display:block}
+.crow-btn{width:calc(100% + 16px);margin:0 -8px;padding:10px 8px;border:0;background:none;text-align:left;cursor:pointer;border-radius:10px;color:inherit;font:inherit}
+.crow-btn:hover{background:var(--surface-2)}
+.crow-btn .progress>span{display:block}
+.chev{width:14px;height:14px;color:var(--muted);vertical-align:-2px;margin-left:2px}
+.plain-link{border:0;background:none;padding:0;color:inherit;font:inherit;cursor:pointer;text-align:left}
+.plain-link:hover{color:var(--accent);text-decoration:underline;text-underline-offset:3px}
+.income-empty{display:flex;gap:16px;align-items:flex-start}
+.income-empty>svg{width:32px;height:32px;color:var(--accent);flex:none;margin-top:2px}
+.inc{display:flex;flex-direction:column;gap:16px}
+.progress.big{height:12px}
+.inc-legend{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:.84rem;color:var(--muted);margin-top:8px}
+.inc-legend b{color:var(--ink)}
+.inc-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.inc-stats>div{background:var(--surface-2);border:1px solid var(--line-2);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:2px}
+.inc-stats span{font-size:.78rem;color:var(--muted)}
+.inc-stats b{font-size:1.2rem;font-weight:700;font-variant-numeric:tabular-nums}
+.inc-stats small{font-size:.75rem;color:var(--muted)}
+.pos{color:var(--ok)}
+.neg{color:var(--danger)}
+.exrow{display:grid;grid-template-columns:minmax(0,1fr) 120px auto;gap:8px;margin-bottom:8px}
+@media (max-width:640px){
+  .inc-stats{grid-template-columns:minmax(0,1fr);gap:8px}
+  .inc-stats>div{display:grid;grid-template-columns:1fr auto;align-items:baseline;gap:0 12px;padding:10px 12px}
+  .inc-stats b{font-size:1.05rem;grid-row:span 2}
+  .income-empty>svg{display:none}
+}
 .alerts{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
 .alerts li{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:10px;background:var(--surface-2);font-size:.86rem}
 .alerts li.warn{background:var(--warn-soft)}
@@ -268,6 +294,7 @@ dialog::backdrop{background:rgba(8,12,20,.55)}
   .tabbar a[aria-current="page"]{color:var(--accent)}
   .tabbar svg.i{width:21px;height:21px}
   .hide-m{display:none !important}
+  #toast{bottom:calc(84px + env(safe-area-inset-bottom,0px))}
   .panel{padding:16px}
   .kpi .val{font-size:1.3rem}
   .mswitch span{min-width:0;flex:1}
@@ -295,6 +322,7 @@ dialog::backdrop{background:rgba(8,12,20,.55)}
     <div class="brand"><span class="brand-mark"><svg viewBox="0 0 24 24"><path d="M6 7l6 11 6-11"/></svg></span>Vellum</div>
     <nav id="nav"></nav>
     <div class="side-foot">
+      <button class="nav-l" type="button" data-action="theme" id="sideTheme"></button>
       <button class="nav-l" type="button" data-action="cfg" id="sideCfg"></button>
     </div>
   </aside>
@@ -324,7 +352,7 @@ dialog::backdrop{background:rgba(8,12,20,.55)}
     <details>
       <summary>Aparência e dados</summary>
       <div class="fields">
-        <label>Tema<select id="fTheme"><option value="">Automático</option><option value="light">Claro</option><option value="dark">Escuro</option></select></label>
+        <label>Tema<select id="fTheme"><option value="light">Claro</option><option value="dark">Escuro</option><option value="auto">Automático (igual ao sistema)</option></select></label>
         <p class="hint">O backup guarda metas, empréstimos, lançamentos manuais e categorias que você ajustou. Use para levar para outro aparelho.</p>
         <div class="toolbar">
           <button class="btn ghost sm" type="button" id="btnBackup">Exportar backup</button>
@@ -356,9 +384,9 @@ const store = {
 };
 const K = {
   cfg:'cartoes.cfg', seen:'cartoes.seen', cache:'cartoes.cache', prefs:'cartoes.prefs',
-  budgets:'cartoes.budgets', overrides:'cartoes.overrides', rules:'cartoes.rules', manual:'cartoes.manual', loans:'cartoes.loans'
+  budgets:'cartoes.budgets', overrides:'cartoes.overrides', rules:'cartoes.rules', manual:'cartoes.manual', loans:'cartoes.loans', income:'cartoes.income'
 };
-const DB_KEYS = ['budgets','overrides','rules','manual','loans'];
+const DB_KEYS = ['budgets','overrides','rules','manual','loans','income'];
 const API = 'https://api.pluggy.ai';
 const HISTORY_MONTHS = 6;
 const PALETTE = ['var(--c1)','var(--c2)','var(--c3)','var(--c4)','var(--c5)'];
@@ -403,7 +431,11 @@ const ICON = {
   sync:'<path d="M21 12a9 9 0 1 1-2.6-6.4L21 8"/><path d="M21 3v5h-5"/>',
   left:'<path d="M15 18l-6-6 6-6"/>', right:'<path d="M9 18l6-6-6-6"/>',
   plus:'<path d="M12 5v14M5 12h14"/>', search:'<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>',
-  down:'<path d="M12 3v12M7 10l5 5 5-5M5 21h14"/>'
+  down:'<path d="M12 3v12M7 10l5 5 5-5M5 21h14"/>',
+  sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  moon:'<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>',
+  wallet:'<path d="M3 7a2 2 0 0 1 2-2h13v4"/><path d="M3 7v11a2 2 0 0 0 2 2h15V9H5a2 2 0 0 1-2-2z"/><path d="M16 14.5h.01"/>',
+  edit:'<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>'
 };
 const ic = (n, cls = 'i') => `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICON[n]}</svg>`;
 
@@ -464,13 +496,22 @@ function toast(msg){
   const t = $('#toast'); t.textContent = msg; t.classList.add('show');
   clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('show'), 3200);
 }
-function applyTheme(){ if (prefs.theme) document.documentElement.dataset.theme = prefs.theme; else delete document.documentElement.dataset.theme; }
+const themePref = () => ['light','dark','auto'].includes(prefs.theme) ? prefs.theme : 'light';
+const isDark = () => themePref() === 'dark' || (themePref() === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
+function applyTheme(){
+  document.documentElement.dataset.theme = themePref();
+  document.querySelectorAll('meta[name="theme-color"]').forEach(m => m.content = isDark() ? '#0F1012' : '#F4F6F9');
+}
+function toggleTheme(){
+  prefs.theme = isDark() ? 'light' : 'dark'; store.set(K.prefs, prefs); applyTheme(); render();
+  toast(isDark() ? 'Modo escuro ativado.' : 'Modo claro ativado.');
+}
 function viewFromHash(){ const h = location.hash.replace(/^#\/?/, ''); return VIEWS.some(v => v.id === h) ? h : 'inicio'; }
 
 /* ---------- Dados locais ---------- */
 function loadDb(){
   return { budgets: store.get(K.budgets, {}), overrides: store.get(K.overrides, {}), rules: store.get(K.rules, {}),
-    manual: store.get(K.manual, []), loans: store.get(K.loans, []) };
+    manual: store.get(K.manual, []), loans: store.get(K.loans, []), income: store.get(K.income, { base:0, months:{} }) };
 }
 function saveDb(part){ if (!isDemo) store.set(K[part], db[part]); }
 
@@ -639,7 +680,14 @@ function allTx(){
   });
 }
 const isSpend = t => t.kind === 'out' && !t.isPayment && !t.ignored;
-const isRefund = t => t.kind === 'in' && !t.isPayment && !t.ignored;
+const isRefund = t => t.kind === 'in' && !t.isPayment && !t.ignored && t.cardId !== 'manual';
+function incomeFor(ym){
+  const inc = db.income || {}, m = (inc.months || {})[ym] || {};
+  const base = m.override != null ? +m.override || 0 : +inc.base || 0;
+  const extras = (m.extras || []).reduce((s, x) => s + (+x.amount || 0), 0);
+  const manualIn = db.manual.filter(t => t.kind === 'in' && !db.overrides[t.id]?.ignored && ymOf(t.date) === ym).reduce((s, t) => s + t.amount, 0);
+  return { base, extras, manualIn, total: base + extras + manualIn, set: base + extras + manualIn > 0 };
+}
 
 function context(){
   const cards = (data?.cards || []).map((c, i) => ({ ...c, color: PALETTE[i % PALETTE.length] }));
@@ -764,7 +812,7 @@ function lineChart(series, n, { H = 230, label = '' } = {}){
 function barChart(items, keys, { H = 230, label = '', avg = null } = {}){
   const W = chartWidth(), pl = 52, pr = 10, pt = 18, pb = 26;
   const totals = items.map(it => keys.reduce((s, k) => s + (it.v[k.k] || 0), 0));
-  const max = niceMax(Math.max(1, ...totals, avg || 0));
+  const max = niceMax(Math.max(1, ...totals, avg || 0, ...items.map(it => it.mark || 0)));
   const y = v => pt + (1 - v / max) * (H - pt - pb);
   const bw = (W - pl - pr) / items.length, w = Math.min(46, bw * 0.62);
   let g = '';
@@ -778,6 +826,7 @@ function barChart(items, keys, { H = 230, label = '', avg = null } = {}){
       const isTop = keys.slice(ki + 1).every(kk => !(it.v[kk.k] > 0));
       g += `<rect x="${(cx - w / 2).toFixed(1)}" y="${top.toFixed(1)}" width="${w.toFixed(1)}" height="${Math.max(0, bot - top).toFixed(1)}" rx="${isTop ? 4 : 0}" style="fill:${k.color};opacity:${it.dim ? .45 : 1}"><title>${esc(it.title || it.label)}: ${esc(k.label)} ${money(v)}</title></rect>`;
     });
+    if (it.mark) g += `<line x1="${(cx - w / 2 - 6).toFixed(1)}" x2="${(cx + w / 2 + 6).toFixed(1)}" y1="${y(it.mark).toFixed(1)}" y2="${y(it.mark).toFixed(1)}" style="stroke:var(--ok);stroke-width:3;stroke-linecap:round"><title>Renda: ${money(it.mark)}</title></line>`;
     if (it.top && bw >= 58) g += `<text class="lbl" x="${cx.toFixed(1)}" y="${(y(totals[i]) - 6).toFixed(1)}" text-anchor="middle">${compact(totals[i])}</text>`;
     g += `<text class="ax" x="${cx.toFixed(1)}" y="${H - 6}" text-anchor="middle"${it.bold ? ' style="font-weight:700;fill:var(--ink)"' : ''}>${esc(it.label)}</text>`;
   });
@@ -851,6 +900,8 @@ function viewInicio(c){
     ${kpi(`Comprometido em ${esc(mName(nextM))}`, money(nextTotal), `parcelas ${money0(nx.inst)} · assinaturas ${money0(nx.rec)}${nx.loan ? ' · empréstimos ' + money0(nx.loan) : ''}`)}
   </div>`;
 
+  if (ui.card === 'all') h += incomePanel(P, nextTotal);
+
   // Ritmo de gastos
   const n = Math.max(dim(ym), dim(P.prev));
   const cumul = (list, upto, nd) => { const arr = Array(n).fill(null); const per = Array(nd).fill(0); for (const t of list) per[Math.min(nd, P.dayOf(t)) - 1] += t.amount; let s = 0; for (let i = 0; i < nd; i++) { s += per[i]; if (i < upto) arr[i] = s; } return arr; };
@@ -864,13 +915,13 @@ function viewInicio(c){
   const maxCat = cats[0]?.[1] || 1;
   const catHtml = cats.length ? `<ul class="rows">${cats.map(([k, v]) => {
     const b = db.budgets[k], pv = catPrev[k] || 0, d = pv ? (v - pv) / pv * 100 : null;
-    return `<li class="crow"><span class="dot" style="background:${catColor(k)}"></span><span class="nm">${esc(k)}</span><span class="am">${money(v)}</span>
-      ${b ? progress(v / b * 100, 'thin') : `<div class="progress thin"><span style="width:${(v / maxCat * 100).toFixed(1)}%;background:${catColor(k)}"></span></div>`}
-      <span class="ft"><span>${b ? `meta ${money0(b)} · ${Math.round(v / b * 100)}%` : `${Math.round(v / (P.total || 1) * 100)}% do mês`}</span><span>${d == null ? 'novo' : `<span class="delta ${d > 0.5 ? 'bad' : d < -0.5 ? 'good' : ''}">${pctTxt(d)}</span> vs ${esc(mName(P.prev).slice(0, 3))}`}</span></span></li>`;
+    return `<li><button class="crow crow-btn" type="button" data-gocat="${esc(k)}" title="Ver as compras de ${esc(k)}"><span class="dot" style="background:${catColor(k)}"></span><span class="nm">${esc(k)}</span><span class="am">${money(v)} ${ic('right', 'i chev')}</span>
+      ${b ? progress(v / b * 100, 'thin') : `<span class="progress thin"><span style="width:${(v / maxCat * 100).toFixed(1)}%;background:${catColor(k)}"></span></span>`}
+      <span class="ft"><span>${b ? `meta ${money0(b)} · ${Math.round(v / b * 100)}%` : `${Math.round(v / (P.total || 1) * 100)}% do mês`}</span><span>${d == null ? 'novo' : `<span class="delta ${d > 0.5 ? 'bad' : d < -0.5 ? 'good' : ''}">${pctTxt(d)}</span> vs ${esc(mName(P.prev).slice(0, 3))}`}</span></span></button></li>`;
   }).join('')}</ul>` : `<p class="empty">Nenhum gasto neste mês.</p>`;
   const al = alerts(c, P, catNow);
   h += `<div class="grid2">
-    ${panel('Para onde foi o dinheiro', catHtml, { sub:`Principais categorias em ${esc(mName(ym))}`, action:'<a class="link" href="#/orcamento">Orçamento</a>' })}
+    ${panel('Para onde foi o dinheiro', catHtml, { sub:`Toque numa categoria para ver as compras de ${esc(mName(ym))}`, action:'<a class="link" href="#/orcamento">Orçamento</a>' })}
     ${panel('Atenção', al.length ? `<ul class="alerts">${al.map(a => `<li class="${a.level}"><span class="dot" style="background:var(--${a.level === 'info' ? 'accent' : a.level})"></span><span>${a.html}</span></li>`).join('')}</ul>` : '<p class="empty">Tudo em dia. Nenhum alerta por enquanto.</p>')}
   </div>`;
 
@@ -884,8 +935,63 @@ function viewInicio(c){
   return h;
 }
 
+function incomePanel(P, nextTotal){
+  const ym = ui.month, I = incomeFor(ym), nextM = addM(curYM(), 1);
+  const edit = `<button class="btn ghost sm" type="button" data-action="income">${ic('edit')}${I.set ? 'Editar renda' : 'Informar renda'}</button>`;
+  if (!I.set) return panel('Renda x gastos', `<div class="income-empty">${ic('wallet')}<div><p><b>Quanto você ganha por mês?</b></p>
+    <p class="muted">Informe seu salário e outras entradas para ver quanto da renda já foi gasto, quanto sobra e quanto do próximo mês já está comprometido.</p>
+    <button class="btn" type="button" data-action="income" style="margin-top:12px">${ic('plus')}Informar renda</button></div></div>`);
+  const spent = P.total, left = I.total - spent, pct = spent / I.total * 100;
+  const projLeft = I.total - P.projection, nextInc = incomeFor(nextM).total;
+  const parts = [`fixa ${money(I.base)}`, I.extras ? `extras ${money(I.extras)}` : '', I.manualIn ? `entradas lançadas ${money(I.manualIn)}` : ''].filter(Boolean).join(' + ');
+  return panel('Renda x gastos', `<div class="inc">
+      <div>${progress(pct, 'big')}<div class="inc-legend"><span>Gasto <b class="num">${money(spent)}</b> · ${Math.round(pct)}% da renda</span><span>Renda <b class="num">${money(I.total)}</b></span></div></div>
+      <div class="inc-stats">
+        <div><span>${P.isCur ? 'Sobra até agora' : 'Sobrou no mês'}</span><b class="${left < 0 ? 'neg' : 'pos'}">${money(left)}</b><small>${left < 0 ? 'gastos acima da renda' : `${Math.round(left / I.total * 100)}% da renda`}</small></div>
+        ${P.isCur ? `<div><span>Sobra prevista no fim do mês</span><b class="${projLeft < 0 ? 'neg' : 'pos'}">${money(projLeft)}</b><small>no ritmo atual de gastos</small></div>`
+                  : `<div><span>Mês anterior</span><b>${money(incomeFor(P.prev).total - P.prevTotal)}</b><small>sobra em ${esc(mName(P.prev))}</small></div>`}
+        <div><span>Comprometido em ${esc(mName(nextM))}</span><b>${money(nextTotal)}</b><small>${nextInc ? `${Math.round(nextTotal / nextInc * 100)}% da renda` : 'parcelas, assinaturas e empréstimos'}</small></div>
+      </div>
+      <p class="muted" style="font-size:.78rem">Renda de ${esc(mName(ym))}: ${parts}</p>
+    </div>`, { sub:`Quanto da renda de ${esc(mName(ym))} já foi gasto`, action: edit });
+}
+
+function exRowHtml(x = {}){
+  return `<div class="exrow"><input name="exDesc" placeholder="Ex.: 13º salário, freela" value="${esc(x.desc || '')}" aria-label="Descrição da entrada">
+    <input name="exAmt" type="number" step="0.01" min="0" inputmode="decimal" placeholder="R$" value="${x.amount || ''}" aria-label="Valor da entrada">
+    <button class="btn ghost icon" type="button" data-action="delex" aria-label="Remover entrada">×</button></div>`;
+}
+function openIncome(){
+  const ym = ui.month;
+  const inc = db.income || (db.income = { base:0, months:{} }); inc.months ||= {};
+  const m = inc.months[ym] || {};
+  modal(`<h2>Sua renda</h2><p class="hint">Use o valor líquido, o que cai na conta. Fica salvo só neste navegador.</p>
+    <label>Renda mensal fixa (salário, pró-labore, aposentadoria)<input name="base" type="number" step="0.01" min="0" inputmode="decimal" value="${inc.base || ''}" placeholder="0,00" autofocus></label>
+    <details ${m.override != null || (m.extras || []).length ? 'open' : ''}><summary>Só em ${esc(mLong(ym))}</summary><div class="fields">
+      <label>A renda fixa deste mês foi diferente? (opcional)<input name="override" type="number" step="0.01" min="0" inputmode="decimal" value="${m.override ?? ''}" placeholder="em branco usa a renda fixa"></label>
+      <div><p style="font-size:.84rem;font-weight:500;margin-bottom:8px">Entradas extras do mês</p><div id="exList">${(m.extras || []).map(exRowHtml).join('')}</div>
+      <button class="link" type="button" data-action="addex">+ Adicionar entrada extra</button></div>
+      <p class="hint">Entradas lançadas em Transações (tipo “Entrada”) também somam na renda.</p>
+    </div></details>
+    <div class="dlg-actions"><span></span><div class="right"><button class="btn ghost" type="submit" value="cancel">Cancelar</button><button class="btn" type="submit" value="save">Salvar</button></div></div>`,
+  f => {
+    inc.base = Math.max(0, num(f.get('base')));
+    const ov = String(f.get('override') || '').trim();
+    const amts = f.getAll('exAmt');
+    const extras = f.getAll('exDesc').map((d, i) => ({ id: uid(), desc: String(d).trim() || 'Entrada extra', amount: Math.max(0, num(amts[i])) })).filter(x => x.amount > 0);
+    if (ov === '' && !extras.length) delete inc.months[ym];
+    else inc.months[ym] = { override: ov === '' ? null : Math.max(0, num(ov)), extras };
+    saveDb('income'); render(); toast('Renda salva.');
+  });
+}
+
 function alerts(c, P, catNow){
   const out = [];
+  const I = incomeFor(ui.month);
+  if (ui.card === 'all' && I.set) {
+    if (P.total > I.total) out.push({ level:'danger', html:`Os gastos de ${esc(mName(ui.month))} já passaram a renda em <b>${money(P.total - I.total)}</b>.` });
+    else if (P.isCur && P.day >= 5 && P.projection > I.total) out.push({ level:'warn', html:`No ritmo atual, os gastos do mês passam a renda em <b>${money0(P.projection - I.total)}</b>.` });
+  }
   if (P.isCur) {
     for (const [k, b] of Object.entries(db.budgets)) {
       if (!(b > 0)) continue; const v = catNow[k] || 0, p = v / b * 100;
@@ -939,6 +1045,7 @@ function viewTransacoes(c){
       <label class="search grow">${ic('search')}<span class="sr">Buscar</span><input type="search" data-filter="q" placeholder="Buscar por descrição, categoria ou nota" value="${esc(ui.q)}"></label>
       <label><span class="sr">Categoria</span><select data-filter="cat"><option value="all">Todas as categorias</option>${cats.map(k => `<option ${k === ui.cat ? 'selected' : ''}>${esc(k)}</option>`).join('')}</select></label>
       <label><span class="sr">Tipo</span><select data-filter="kind">${kinds.map(([k, t]) => `<option value="${k}" ${k === ui.kind ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
+      ${ui.cat !== 'all' || ui.q ? '<button class="link" type="button" data-action="clearf">Limpar filtros</button>' : ''}
       <button class="btn" type="button" data-action="newtx">${ic('plus')}Lançamento</button>
       <button class="btn ghost" type="button" data-action="csv" title="Exportar CSV">${ic('down')}<span class="hide-m">CSV</span></button>
     </div>
@@ -967,7 +1074,7 @@ function viewOrcamento(c){
   const rows = cats.map(k => {
     const v = now[k] || 0, b = db.budgets[k] || 0, pct = b ? v / b * 100 : 0;
     return `<li class="brow">
-      <div class="bname"><span class="cat-ico" style="--k:${catColor(k)}">${esc(initials(k))}</span><div style="min-width:0"><strong>${esc(k)}</strong>
+      <div class="bname"><span class="cat-ico" style="--k:${catColor(k)}">${esc(initials(k))}</span><div style="min-width:0"><button class="plain-link" type="button" data-gocat="${esc(k)}" title="Ver as compras de ${esc(k)}"><strong>${esc(k)}</strong></button>
         <div class="muted" style="font-size:.78rem">${esc(cap(mName(addM(ym, -1)).slice(0, 3)))} ${money0(prev[k] || 0)} · média 3 meses ${money0(avg3[k] || 0)}</div></div></div>
       <div class="bnums"><b>${money(v)}</b><span class="muted">de</span><label><span class="sr">Meta para ${esc(k)}</span><input class="money" type="number" min="0" step="10" inputmode="decimal" placeholder="sem meta" data-budget="${esc(k)}" value="${b || ''}"></label></div>
       ${b ? progress(pct) : ''}
@@ -1067,19 +1174,27 @@ function viewRelatorios(c){
   const months = Array.from({ length: HISTORY_MONTHS }, (_, i) => addM(ym, i - (HISTORY_MONTHS - 1))).filter(m => m >= c.minYM);
   const totals = months.map(m => sum(spendIn(c, m)));
   const full = months.filter(m => m !== curYM()), avg = full.length ? full.reduce((s, m) => s + sum(spendIn(c, m)), 0) / full.length : 0;
-  const items = months.map((m, i) => ({ label: mShort(m), title: mLong(m), v:{ s: totals[i] }, top:true, bold: m === ym, dim: m !== ym }));
+  const showInc = ui.card === 'all' && months.some(m => incomeFor(m).set);
+  const items = months.map((m, i) => ({ label: mShort(m), title: mLong(m), v:{ s: totals[i] }, top:true, bold: m === ym, dim: m !== ym, mark: showInc ? incomeFor(m).total : 0 }));
   let h = panel('Evolução dos gastos', barChart(items, [{ k:'s', label:'Gasto', color:'var(--accent)' }], { avg, label:'Gasto por mês' }) +
-    `<div class="legend" style="margin-top:8px"><span><i style="background:var(--accent)"></i>Gasto no mês</span>${avg ? `<span><i class="line" style="background:var(--muted)"></i>Média dos meses fechados: ${money0(avg)}</span>` : ''}</div>`,
+    `<div class="legend" style="margin-top:8px"><span><i style="background:var(--accent)"></i>Gasto no mês</span>${showInc ? '<span><i class="line" style="background:var(--ok)"></i>Renda</span>' : ''}${avg ? `<span><i class="line" style="background:var(--muted)"></i>Média dos meses fechados: ${money0(avg)}</span>` : ''}</div>`,
     { sub:`Últimos ${months.length} meses` });
+
+  if (showInc) {
+    const irows = months.slice().reverse().map(m => { const inc = incomeFor(m).total, sp = sum(spendIn(c, m)), left = inc - sp;
+      return `<tr><td>${esc(mLong(m))}</td><td class="r">${inc ? money(inc) : '—'}</td><td class="r">${money(sp)}</td><td class="r"><span class="${left < 0 ? 'neg' : 'pos'}">${inc ? money(left) : '—'}</span></td><td class="r">${inc ? Math.round(sp / inc * 100) + '%' : '—'}</td></tr>`; }).join('');
+    h += panel('Renda x gastos por mês', `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Mês</th><th class="r">Renda</th><th class="r">Gastos</th><th class="r">Sobra</th><th class="r">% da renda</th></tr></thead><tbody>${irows}</tbody></table></div>`,
+      { sub:'Quanto sobrou de cada mês', action:`<button class="btn ghost sm" type="button" data-action="income">${ic('edit')}Editar renda</button>` });
+  }
 
   const a = byCat(spendIn(c, prev)), b = byCat(spendIn(c, ym));
   const keys = [...new Set([...Object.keys(a), ...Object.keys(b)])].sort((x, y) => Math.abs((b[y] || 0) - (a[y] || 0)) - Math.abs((b[x] || 0) - (a[x] || 0)));
   const ta = sum(spendIn(c, prev)), tb = sum(spendIn(c, ym));
-  const row = (name, x, y, color) => { const d = y - x; const p = x ? d / x * 100 : null;
-    return `<tr><td><div class="nm">${color ? `<span class="dot" style="background:${color}"></span>` : ''}${esc(name)}</div></td><td class="r">${money(x)}</td><td class="r">${money(y)}</td>
+  const row = (name, x, y, color, cat) => { const d = y - x; const p = x ? d / x * 100 : null;
+    return `<tr><td><div class="nm">${color ? `<span class="dot" style="background:${color}"></span>` : ''}${cat ? `<button class="plain-link" type="button" data-gocat="${esc(name)}">${esc(name)}</button>` : esc(name)}</div></td><td class="r">${money(x)}</td><td class="r">${money(y)}</td>
       <td class="r"><span class="delta ${d > 0.5 ? 'bad' : d < -0.5 ? 'good' : ''}">${d > 0 ? '+' : d < 0 ? '−' : ''}${money(Math.abs(d))}</span></td><td class="r">${p == null ? '<span class="muted">novo</span>' : `<span class="delta ${p > 0.5 ? 'bad' : p < -0.5 ? 'good' : ''}">${pctTxt(p)}</span>`}</td></tr>`; };
   const head = `<thead><tr><th>Categoria</th><th class="r">${esc(cap(mName(prev)))}</th><th class="r">${esc(cap(mName(ym)))}</th><th class="r">Diferença</th><th class="r">%</th></tr></thead>`;
-  h += panel('Comparativo com o mês anterior', keys.length ? `<div class="tbl-wrap"><table class="tbl">${head}<tbody>${keys.map(k => row(k, a[k] || 0, b[k] || 0, catColor(k))).join('')}</tbody>
+  h += panel('Comparativo com o mês anterior', keys.length ? `<div class="tbl-wrap"><table class="tbl">${head}<tbody>${keys.map(k => row(k, a[k] || 0, b[k] || 0, catColor(k), true)).join('')}</tbody>
     <tfoot>${row('Total', ta, tb)}</tfoot></table></div>` : '<p class="empty">Sem gastos nestes dois meses.</p>',
     { sub:`${cap(mName(ym))} contra ${mName(prev)}, ordenado pelas maiores variações` });
 
@@ -1091,7 +1206,7 @@ function viewRelatorios(c){
   const merch = {};
   for (const t of spendIn(c, ym)) { const m = merch[t.key] ||= { desc: t.desc, v: 0, n: 0, category: t.category }; m.v += t.amount; m.n++; }
   const top = Object.values(merch).sort((x, y) => y.v - x.v).slice(0, 8);
-  parts.push(panel('Onde você mais gastou', top.length ? `<ul class="rows">${top.map(m => `<li class="crow"><span class="dot" style="background:${catColor(m.category)}"></span><span class="nm">${esc(m.desc)}</span><span class="am">${money(m.v)}</span><span class="ft"><span>${esc(m.category)}</span><span>${m.n} ${m.n === 1 ? 'compra' : 'compras'}</span></span></li>`).join('')}</ul>` : '<p class="empty">Sem gastos neste mês.</p>',
+  parts.push(panel('Onde você mais gastou', top.length ? `<ul class="rows">${top.map(m => `<li><button class="crow crow-btn" type="button" data-goq="${esc(m.desc)}" title="Ver as compras em ${esc(m.desc)}"><span class="dot" style="background:${catColor(m.category)}"></span><span class="nm">${esc(m.desc)}</span><span class="am">${money(m.v)} ${ic('right', 'i chev')}</span><span class="ft"><span>${esc(m.category)}</span><span>${m.n} ${m.n === 1 ? 'compra' : 'compras'}</span></span></button></li>`).join('')}</ul>` : '<p class="empty">Sem gastos neste mês.</p>',
     { sub:`Estabelecimentos em ${esc(mName(ym))}` }));
   const big = spendIn(c, ym).sort((x, y) => y.amount - x.amount).slice(0, 6);
   parts.push(panel('Maiores compras', big.length ? `<ul class="rows">${big.map(t => txRow(t, c)).join('')}</ul>` : '<p class="empty">Sem compras neste mês.</p>', { sub:`Em ${esc(mName(ym))}` }));
@@ -1136,6 +1251,7 @@ function render(){
   $('#nav').innerHTML = navHtml('nav-l', false);
   $('#tabbar').innerHTML = navHtml('', true);
   $('#sideCfg').innerHTML = ic('gear') + '<span>Ajustes</span>';
+  $('#sideTheme').innerHTML = ic(isDark() ? 'sun' : 'moon') + `<span>${isDark() ? 'Modo claro' : 'Modo escuro'}</span>`;
   document.title = v.title + ' · Vellum';
 
   const c = data ? context() : null;
@@ -1147,6 +1263,7 @@ function render(){
     ${filters ? `<div class="tb-filters">${filters}</div>` : ''}
     <div class="tb-actions">
       ${cfg || isDemo ? `<button class="btn ghost" type="button" data-action="sync" ${busy ? 'disabled' : ''} title="Atualizar">${ic('sync')}<span class="hide-m">${busy ? 'Atualizando…' : 'Atualizar'}</span></button>` : ''}
+      <button class="btn ghost icon" type="button" data-action="theme" aria-label="${isDark() ? 'Mudar para o modo claro' : 'Mudar para o modo escuro'}" title="${isDark() ? 'Modo claro' : 'Modo escuro'}">${ic(isDark() ? 'sun' : 'moon')}</button>
       <button class="btn ghost icon only-m" type="button" data-action="cfg" aria-label="Ajustes">${ic('gear')}</button>
     </div>`;
 
@@ -1223,7 +1340,7 @@ function manualFields(t = {}){
 }
 const readManual = f => ({ desc: String(f.get('desc')).trim(), amount: Math.abs(num(f.get('amount'))), date: f.get('date'), kind: f.get('kind'), method: f.get('method') });
 function newTx(){
-  modal(`<h2>Novo lançamento</h2><p class="hint">Para gastos fora do cartão, como Pix, dinheiro ou boleto. Eles entram nos totais, metas e relatórios.</p>
+  modal(`<h2>Novo lançamento</h2><p class="hint">Para gastos fora do cartão, como Pix, dinheiro ou boleto. Gastos entram nos totais e metas; entradas somam na sua renda do mês.</p>
     ${manualFields()}<label>Categoria<select name="category">${catOptions('Outros')}</select></label>
     <div class="dlg-actions"><span></span><div class="right"><button class="btn ghost" type="submit" value="cancel">Cancelar</button><button class="btn" type="submit" value="save">Adicionar</button></div></div>`,
   f => {
@@ -1371,6 +1488,7 @@ function demoDb(){
   return {
     budgets: { 'Mercado':1300, 'Restaurantes':450, 'Delivery':220, 'Combustível':420, 'Compras online':300, 'Lazer':150, 'Transporte por app':150 },
     overrides: {}, rules: {},
+    income: { base:6500, months: { [cur]: { override:null, extras:[{ id:'e-demo', desc:'Freela de design', amount:800 }] } } },
     manual: [{ id:'m-demo1', cardId:'manual', date: cur + '-01', desc:'Feira livre', category:'Mercado', amount:64, kind:'out', method:'Dinheiro', instN:0, instT:0 }],
     loans: [
       { id:'l-demo1', dir:'tomei', desc:'Empréstimo pessoal', who:'Banco Exemplo', principal:10000, start: addM(cur, -8) + '-20', n:24, value:545, first, rate:1.79, note:'',
@@ -1391,7 +1509,7 @@ function openCfg(){
   $('#fProxy').value = c.proxyUrl || '';
   $('#fProxyToken').value = c.proxyToken || '';
   $('#proxyBox').open = !!c.proxyUrl;
-  $('#fTheme').value = prefs.theme || '';
+  $('#fTheme').value = themePref();
   $('#cfg').showModal();
 }
 $('#btnSave').addEventListener('click', () => {
@@ -1414,7 +1532,8 @@ $('#btnSave').addEventListener('click', () => {
   if (!data) data = store.get(K.cache, null);
   sync();
 });
-$('#fTheme').addEventListener('change', e => { prefs.theme = e.target.value; store.set(K.prefs, prefs); applyTheme(); });
+$('#fTheme').addEventListener('change', e => { prefs.theme = e.target.value; store.set(K.prefs, prefs); applyTheme(); render(); });
+matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => { if (themePref() === 'auto') { applyTheme(); render(); } });
 $('#btnCancel').addEventListener('click', () => $('#cfg').close());
 $('#btnBackup').addEventListener('click', exportBackup);
 $('#btnCsv').addEventListener('click', exportCsv);
@@ -1429,11 +1548,18 @@ $('#btnWipe').addEventListener('click', () => {
 
 /* ---------- Eventos ---------- */
 document.addEventListener('click', e => {
+  const go = e.target.closest('[data-gocat],[data-goq]');
+  if (go) { ui.cat = go.dataset.gocat || 'all'; ui.q = go.dataset.goq || ''; ui.kind = 'spend'; if (ui.view === 'transacoes') { render(); scrollTo(0, 0); } else location.hash = '#/transacoes'; return; }
   const tx = e.target.closest('[data-tx]');
   if (tx) { openTx(tx.dataset.tx); return; }
   const b = e.target.closest('button[data-action]'); if (!b) return;
   const a = b.dataset.action, id = b.dataset.id;
   if (a === 'cfg') openCfg();
+  else if (a === 'theme') toggleTheme();
+  else if (a === 'income') openIncome();
+  else if (a === 'addex') { const l = $('#exList'); l.insertAdjacentHTML('beforeend', exRowHtml()); l.lastElementChild.querySelector('input').focus(); }
+  else if (a === 'delex') b.closest('.exrow').remove();
+  else if (a === 'clearf') { ui.cat = 'all'; ui.q = ''; render(); }
   else if (a === 'sync') sync();
   else if (a === 'prevm') { ui.month = addM(ui.month, -1); render(); }
   else if (a === 'nextm') { ui.month = addM(ui.month, 1); render(); }
