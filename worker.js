@@ -28,6 +28,25 @@ async function pluggyKey(env) {
   return cached.key;
 }
 
+// GET /v2/transactions: filtro dateFrom (yyyy-mm-dd), sem pageSize; resposta { results, next },
+// onde "next" é a query string da próxima página (null no fim) e dela se usa só o "after".
+async function recentTransactions(get, accountId, from) {
+  const out = [];
+  const used = new Set();
+  let after = null;
+  for (let i = 0; i < 100; i++) {
+    const q = new URLSearchParams({ accountId, dateFrom: from });
+    if (after) q.set('after', after);
+    const t = await get('/v2/transactions?' + q);
+    out.push(...(t.results || []));
+    if (!t.next) break;
+    after = new URLSearchParams(String(t.next).replace(/^[^?]*\?/, '')).get('after');
+    if (!after || used.has(after)) break;
+    used.add(after);
+  }
+  return out;
+}
+
 function corsHeaders(env) {
   return {
     'Access-Control-Allow-Origin': env.ALLOWED_ORIGIN || '*',
@@ -80,8 +99,7 @@ export default {
       const acc = await get(`/accounts?itemId=${encodeURIComponent(itemId)}`);
       for (const a of acc.results || []) {
         if (a.type !== 'CREDIT') continue;
-        const t = await get(`/v2/transactions?accountId=${encodeURIComponent(a.id)}&from=${from}&pageSize=500`);
-        for (const x of t.results || t.data || t.transactions || []) {
+        for (const x of await recentTransactions(get, a.id, from)) {
           current.push(x.id);
           if (firstRun || seen.has(x.id) || x.type !== 'DEBIT') continue;
           const valor = Math.abs(x.amountInAccountCurrency ?? x.amount).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });

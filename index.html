@@ -270,27 +270,21 @@ async function api(path, retry = true){
 }
 
 async function fetchTransactions(accountId, from, to){
+  // GET /v2/transactions: filtros dateFrom/dateTo (yyyy-mm-dd), sem pageSize.
+  // Resposta { results, next }: "next" é a query string da próxima página (null no fim);
+  // dela só se reaproveita o valor de "after", conforme a documentação da Pluggy.
   const out = [];
   const used = new Set();
-  let cursor = null;
-  for (let i = 0; i < 50; i++) {
-    let path;
-    if (cursor && (cursor.startsWith('/') || /^https?:\/\//.test(cursor))) {
-      const u = new URL(cursor, API);
-      path = u.pathname + u.search;
-    } else {
-      const q = new URLSearchParams({ accountId, from, to, pageSize: '500' });
-      if (cursor) q.set('cursor', cursor);
-      path = '/v2/transactions?' + q;
-    }
-    const t = await api(path);
-    const list = t.results || t.data || t.transactions || [];
-    out.push(...list);
-    const next = t.next ?? t.nextCursor ?? t.next_cursor ?? t.cursor?.next ??
-      t.pagination?.next ?? t.pagination?.nextCursor ?? t.links?.next ?? null;
-    if (!next || typeof next !== 'string' || !list.length || used.has(next)) break;
-    used.add(next);
-    cursor = next;
+  let after = null;
+  for (let i = 0; i < 100; i++) {
+    const q = new URLSearchParams({ accountId, dateFrom: from, dateTo: to });
+    if (after) q.set('after', after);
+    const t = await api('/v2/transactions?' + q);
+    out.push(...(t.results || []));
+    if (!t.next) break;
+    after = new URLSearchParams(String(t.next).replace(/^[^?]*\?/, '')).get('after');
+    if (!after || used.has(after)) break;
+    used.add(after);
   }
   return out;
 }
