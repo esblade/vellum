@@ -10,6 +10,8 @@
 <meta name="theme-color" content="#0D0C13" media="(prefers-color-scheme: dark)">
 <title>Vellum</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%2317142B'/><path d='M9 10l7 13 7-13' stroke='%23C8F25A' stroke-width='3.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
@@ -248,6 +250,13 @@ body.gated .page{max-width:none;min-height:100vh;padding:24px 16px;justify-conte
   .hero,.bill-head,.cc{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .print-head{display:block;font-family:var(--display);font-weight:700;font-size:1.1rem;margin-bottom:6px}
 }
+
+/* Categorias */
+.catlist{display:flex;flex-direction:column;gap:8px;max-height:46vh;overflow-y:auto;overflow-x:hidden;padding:2px 4px 2px 2px}
+.catrow>*{min-width:0}
+.catrow{display:grid;grid-template-columns:44px minmax(0,1fr) 40px;gap:8px;align-items:center}
+.dlg select.swatch{width:44px;height:38px;padding:0;border-radius:12px;background:var(--k);color:transparent;border:0;background-image:none;cursor:pointer}
+.dlg select.swatch option{color:var(--ink);background:var(--surface)}
 
 /* Banner */
 .banner{padding:12px 18px;border-radius:16px;background:var(--accent-soft);display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;font-size:.9rem}
@@ -508,9 +517,9 @@ const store = {
 };
 const K = {
   cfg:'cartoes.cfg', seen:'cartoes.seen', cache:'cartoes.cache', prefs:'cartoes.prefs',
-  budgets:'cartoes.budgets', overrides:'cartoes.overrides', rules:'cartoes.rules', manual:'cartoes.manual', loans:'cartoes.loans', income:'cartoes.income', goals:'cartoes.goals', meta:'cartoes.meta'
+  budgets:'cartoes.budgets', overrides:'cartoes.overrides', rules:'cartoes.rules', manual:'cartoes.manual', loans:'cartoes.loans', income:'cartoes.income', goals:'cartoes.goals', cats:'cartoes.cats', meta:'cartoes.meta'
 };
-const DB_KEYS = ['budgets','overrides','rules','manual','loans','income','goals'];
+const DB_KEYS = ['budgets','overrides','rules','manual','loans','income','goals','cats'];
 const API = 'https://api.pluggy.ai';
 const HISTORY_MONTHS = 6;
 const INITIAL_MONTHS = 12;   // primeira busca de transações
@@ -593,7 +602,6 @@ let data = null;
 let db = loadDb();
 let newIds = new Set();
 let session = { apiKey:null, at:0 };
-let isDemo = false;
 let lastError = '';
 let busy = false;
 let ui = { view: viewFromHash(), month: '', rank:'store', billCard:'', billKey:'', year:0, card:'all', q:'', cat:'all', kind:'spend' };
@@ -627,7 +635,7 @@ const fullDate = d => { if (!d) return '—'; const [y, m, dd] = d.split('-').ma
 const normDesc = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
   .replace(/\bparc(ela)?\b\.?/g, ' ').replace(/\d{1,2}\s*(\/|de)\s*\d{1,2}/g, ' ').replace(/[^a-z0-9]+/g, ' ').trim();
 function hashIdx(s, n){ let h = 0; for (const ch of String(s)) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return h % n; }
-const catColor = c => `var(--k${hashIdx(c, 10)})`;
+const catColor = c => { const i = db?.cats?.colors?.[c]; return `var(--k${i != null ? i : hashIdx(c, 10)})`; };
 const initials = c => String(c || '?').replace(/[^\p{L}\p{N} ]/gu, '').trim().slice(0, 1).toUpperCase() || '?';
 
 function toast(msg){
@@ -649,10 +657,9 @@ function viewFromHash(){ const h = location.hash.replace(/^#\/?/, ''); return VI
 /* ---------- Dados locais ---------- */
 function loadDb(){
   return { budgets: store.get(K.budgets, {}), overrides: store.get(K.overrides, {}), rules: store.get(K.rules, {}),
-    manual: store.get(K.manual, []), loans: store.get(K.loans, []), income: store.get(K.income, { base:0, months:{} }), goals: store.get(K.goals, []) };
+    manual: store.get(K.manual, []), loans: store.get(K.loans, []), income: store.get(K.income, { base:0, months:{} }), goals: store.get(K.goals, []), cats: store.get(K.cats, { custom:[], renamed:{}, colors:{} }) };
 }
 function saveDb(part){
-  if (isDemo) return;
   store.set(K[part], db[part]);
   markDirty(part);
 }
@@ -666,7 +673,7 @@ let sb = null, user = null, authReady = false, access = 'unknown', cloudEmpty = 
 let syncState = { status:'off', msg:'' };
 let pushTimer = null;
 const cloudOn = () => !!(SUPABASE.url && SUPABASE.anonKey && window.supabase);
-const canSync = () => !isDemo && !!sb && !!user && access === 'ok';
+const canSync = () => !!sb && !!user && access === 'ok';
 
 // Cada item (renda, metas, empréstimos...) guarda quando foi alterado; na nuvem vale o mais novo de cada um.
 function partTimes(){
@@ -683,7 +690,7 @@ function setPart(k, v){
   if (k === 'cfg') { cfg = v || null; v ? store.set(K.cfg, v) : store.del(K.cfg); session = { apiKey:null, at:0 }; }
   else { db[k] = v ?? loadDbDefaults()[k]; store.set(K[k], db[k]); }
 }
-const loadDbDefaults = () => ({ budgets:{}, overrides:{}, rules:{}, manual:[], loans:[], income:{ sources:[], months:{} }, goals:[] });
+const loadDbDefaults = () => ({ budgets:{}, overrides:{}, rules:{}, manual:[], loans:[], income:{ sources:[], months:{} }, goals:[], cats:{ custom:[], renamed:{}, colors:{} } });
 function hasContent(k){
   const v = getPart(k);
   if (!v) return false;
@@ -692,7 +699,6 @@ function hasContent(k){
   return Object.keys(v).length > 0;
 }
 function markDirty(k){
-  if (isDemo) return;
   const p = partTimes(); p[k] = Date.now(); setPartTimes(p);
   dirty.add(k); saveDirty(); schedulePush();
 }
@@ -831,7 +837,7 @@ async function logout(skipConfirm){
   await sb.auth.signOut();
   for (const k of Object.keys(K)) if (k !== 'prefs') store.del(K[k]);
   store.del(K.meta + '.dirty'); dirty.clear(); store.del(LOCK_KEY);
-  user = null; access = 'unknown'; cfg = null; data = null; db = loadDb(); newIds = new Set(); lastError = ''; isDemo = false; locked = false;
+  user = null; access = 'unknown'; cfg = null; data = null; db = loadDb(); newIds = new Set(); lastError = ''; locked = false;
   $('#cfg').open && $('#cfg').close(); render(); toast('Você saiu da conta.');
 }
 async function afterLogin(){
@@ -947,6 +953,7 @@ async function api(path, retry = true){
     }
   } catch (e) {
     if (e instanceof AppError) throw e;
+    if (!navigator.onLine) throw new AppError('Sem internet. Mostrando os últimos dados salvos; eles atualizam quando a conexão voltar.');
     throw new AppError(cfg.proxyUrl
       ? 'Não foi possível falar com o intermediário. Confira o endereço do Worker nos ajustes.'
       : 'O navegador bloqueou o acesso direto à API da Pluggy. Configure o intermediário (Cloudflare Worker) nos ajustes.');
@@ -1014,7 +1021,6 @@ function normTx(x, cardId, acct = 'card'){
 }
 
 async function sync(){
-  if (isDemo) { toast('Configure sua conta para ver os dados reais.'); return; }
   if (!cfg) { openCfg(); return; }
   if (busy) return;
   busy = true; render();
@@ -1097,7 +1103,7 @@ const looksLikeBillPayment = t => t.kind === 'in' && t.cardId !== 'manual' &&
   (/\b(pagamento|pagto|pgto|pag fatura)\b/.test(t.key) || ['Pix', 'Transferências'].includes(t.category));
 function allTx(){
   if (!data) return [];
-  return [...data.tx, ...db.manual].map(t0 => {
+  return [...data.tx, ...db.manual].flatMap(t0 => {
     const t = { ...t0 };
     if (t.inst && !t.instT) { const m = String(t.inst).match(/(\d+)\/(\d+)/); if (m) { t.instN = +m[1]; t.instT = +m[2]; } }
     t.key = normDesc(t.desc);
@@ -1109,8 +1115,12 @@ function allTx(){
     if (db.rules[t.key]) t.category = db.rules[t.key];
     const o = db.overrides[t.id];
     if (o) { if (o.category) t.category = o.category; t.note = o.note || ''; t.ignored = !!o.ignored; }
+    t.category = renamedCat(t.category);
     t.isPayment = !!t.isPayment || t.category === PAYMENT || t.category === INTERNAL;
-    return t;
+    // Compra dividida entre categorias: vira uma linha por parte, com o mesmo id de origem.
+    if (o?.split?.length > 1) return o.split.map((p, i) => ({ ...t, id: t.id + '#' + (i + 1), origId: t.id, amount: +p.amount || 0,
+      category: renamedCat(p.category), splitInfo: `${i + 1}/${o.split.length}`, isPayment: !!t0.isPayment || [PAYMENT, INTERNAL].includes(renamedCat(p.category)) }));
+    return [t];
   });
 }
 const isSpend = t => t.kind === 'out' && !t.isPayment && !t.ignored;
@@ -1159,8 +1169,9 @@ function context(){
 const spendIn = (c, ym) => c.spend.filter(t => t.cm === ym);
 function byCat(list){ const o = {}; for (const t of list) o[t.category] = (o[t.category] || 0) + t.amount; return o; }
 function allCategories(){
-  const s = new Set([...BASE_CATS, ...Object.values(CAT).filter(c => c !== PAYMENT), ...Object.keys(db.budgets), ...Object.values(db.rules)]);
-  for (const t of allTx()) if (t.category && t.category !== PAYMENT) s.add(t.category);
+  const s = new Set([...BASE_CATS, ...Object.values(CAT), ...(db.cats?.custom || []), ...Object.keys(db.budgets), ...Object.values(db.rules)].map(renamedCat));
+  for (const t of allTx()) s.add(t.category);
+  s.delete(PAYMENT); s.delete(INTERNAL);
   return [...s].sort((a, b) => a.localeCompare(b, 'pt-BR'));
 }
 
@@ -1300,8 +1311,8 @@ const kpi = (lbl, val, sub = '', extra = '', icon = '', tone = 'k0') => `<div cl
 
 function txRow(t, c){
   const card = c.cardById[t.cardId] || {};
-  const meta = [t.category, c.multi ? card.name : '', t.instT > 1 ? `parcela ${t.instN}/${t.instT}` : '', t.method || '', t.note || ''].filter(Boolean).join(' · ');
-  return `<li><button class="tx${t.ignored ? ' ignored' : ''}" type="button" data-tx="${esc(t.id)}">
+  const meta = [t.category, c.multi ? card.name : '', t.instT > 1 ? `parcela ${t.instN}/${t.instT}` : '', t.splitInfo ? `dividida ${t.splitInfo}` : '', t.method || '', t.note || ''].filter(Boolean).join(' · ');
+  return `<li><button class="tx${t.ignored ? ' ignored' : ''}" type="button" data-tx="${esc(t.origId || t.id)}">
     <span class="cat-ico" style="--k:${catColor(t.category)}">${esc(initials(t.category))}</span>
     <span class="tx-main"><span class="tx-desc">${esc(t.desc)} ${newIds.has(t.id) ? '<span class="badge new">Nova</span>' : ''}</span>
     <span class="tx-meta">${esc(meta)}${t.pending ? ' · <span class="pending">pendente</span>' : ''}${t.ignored ? ' · ignorada' : ''}</span></span>
@@ -1528,6 +1539,7 @@ function viewTransacoes(c){
       <label><span class="sr">Categoria</span><select data-filter="cat"><option value="all">Todas as categorias</option>${cats.map(k => `<option ${k === ui.cat ? 'selected' : ''}>${esc(k)}</option>`).join('')}</select></label>
       <label><span class="sr">Tipo</span><select data-filter="kind">${kinds.map(([k, t]) => `<option value="${k}" ${k === ui.kind ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
       ${ui.cat !== 'all' || ui.q ? '<button class="link" type="button" data-action="clearf">Limpar filtros</button>' : ''}
+      <button class="btn ghost" type="button" data-action="cats">Categorias</button>
       <button class="btn" type="button" data-action="newtx">${ic('plus')}Lançamento</button>
       <button class="btn ghost" type="button" data-action="csv" title="Exportar CSV">${ic('down')}<span class="hide-m">CSV</span></button>
     </div>
@@ -1569,7 +1581,7 @@ function viewOrcamento(c){
       <label class="grow"><span class="sr">Nova categoria</span><select id="addCat"><option value="">Adicionar meta para outra categoria…</option>${options.map(k => `<option>${esc(k)}</option>`).join('')}</select></label>
       <button class="btn ghost" type="button" data-action="addcat">${ic('plus')}Adicionar</button>
     </div>`,
-    { sub:'A meta vale para todos os meses. Deixe em branco para não acompanhar a categoria.', action:`<button class="btn ghost sm" type="button" data-action="suggest">Sugerir pela média de 3 meses</button>` });
+    { sub:'A meta vale para todos os meses. Deixe em branco para não acompanhar a categoria.', action:`<div class="toolbar"><button class="btn ghost sm" type="button" data-action="cats">Categorias</button><button class="btn ghost sm" type="button" data-action="suggest">Sugerir pela média de 3 meses</button></div>` });
   return h;
 }
 
@@ -2015,7 +2027,7 @@ function render(){
   $('#sideTheme').innerHTML = ic(isDark() ? 'sun' : 'moon') + `<span>${isDark() ? 'Modo claro' : 'Modo escuro'}</span>`;
   document.title = v.title + ' · Vellum';
 
-  const gated = cloudOn() && !isDemo && (!user || locked || access === 'denied' || access === 'schema');
+  const gated = cloudOn() && (!user || locked || access === 'denied' || access === 'schema');
   document.body.classList.toggle('gated', gated);
   if (gated) { $('#page').innerHTML = user && locked ? lockScreen() : user && (access === 'denied' || access === 'schema') ? deniedScreen() : authReady ? loginScreen() : ''; return; }
   const c = data ? context() : null;
@@ -2023,16 +2035,15 @@ function render(){
   const synced = data?.syncedAt ? 'Atualizado ' + new Date(data.syncedAt).toLocaleString('pt-BR', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }).replace('.', '') : '';
   const filters = (showMonth ? `<div class="mswitch" role="group" aria-label="Mês"><button type="button" data-action="prevm" aria-label="Mês anterior" ${ui.month <= c.minYM ? 'disabled' : ''}>${ic('left')}</button><span>${esc(mLong(ui.month))}</span><button type="button" data-action="nextm" aria-label="Próximo mês" ${ui.month >= curYM() ? 'disabled' : ''}>${ic('right')}</button></div>` : '') +
     (c && c.multi && !['emprestimos', 'faturas', 'objetivos', 'mais'].includes(v.id) ? `<label class="cardsel"><span class="sr">Cartão ou conta</span><select data-filter="card"><option value="all">${c.banks.length ? 'Todas as contas' : 'Todos os cartões'}</option>${c.accounts.map(k => `<option value="${esc(k.id)}" ${ui.card === k.id ? 'selected' : ''}>${esc(k.name)}</option>`).join('')}${db.manual.length ? `<option value="manual" ${ui.card === 'manual' ? 'selected' : ''}>Fora do cartão</option>` : ''}</select></label>` : '');
-  $('#topbar').innerHTML = `<div class="tb-title"><h1>${esc(v.title)}</h1><p>${busy ? 'Atualizando…' : isDemo ? 'Dados de exemplo' : esc(synced)}${isDemo ? '' : '<span id="syncState"></span>'}</p></div>
+  $('#topbar').innerHTML = `<div class="tb-title"><h1>${esc(v.title)}</h1><p>${busy ? 'Atualizando…' : esc(synced)}<span id="syncState"></span></p></div>
     ${filters ? `<div class="tb-filters">${filters}</div>` : ''}
     <div class="tb-actions">
-      ${cfg || isDemo ? `<button class="btn ghost" type="button" data-action="sync" ${busy ? 'disabled' : ''} title="Atualizar">${ic('sync')}<span class="hide-m">${busy ? 'Atualizando…' : 'Atualizar'}</span></button>` : ''}
+      ${cfg ? `<button class="btn ghost" type="button" data-action="sync" ${busy ? 'disabled' : ''} title="Atualizar">${ic('sync')}<span class="hide-m">${busy ? 'Atualizando…' : 'Atualizar'}</span></button>` : ''}
       <button class="btn ghost icon" type="button" data-action="theme" aria-label="${isDark() ? 'Mudar para o modo claro' : 'Mudar para o modo escuro'}" title="${isDark() ? 'Modo claro' : 'Modo escuro'}">${ic(isDark() ? 'sun' : 'moon')}</button>
       <button class="btn ghost icon only-m" type="button" data-action="cfg" aria-label="Ajustes">${ic('gear')}</button>
     </div>`;
 
   let html = '';
-  if (isDemo) html += `<div class="banner"><p>Você está vendo dados de exemplo. Metas, empréstimos e ajustes feitos aqui não são salvos.</p><button class="link" data-action="exitdemo" type="button">Sair do exemplo</button></div>`;
   if (lastError) html += `<div class="banner err"><p>${esc(lastError)}</p><button class="link" data-action="cfg" type="button">Abrir ajustes</button></div>`;
   const page = $('#page');
   if (!data && !(v.noData && cfg)) {
@@ -2060,19 +2071,82 @@ function modal(html, onSubmit){
   d.showModal();
   setTimeout(() => f.querySelector('[autofocus]')?.focus(), 30);
 }
-const catOptions = sel => allCategories().map(k => `<option ${k === sel ? 'selected' : ''}>${esc(k)}</option>`).join('');
+const catOptions = sel => (sel ? '' : '<option value="">Escolha…</option>') + allCategories().map(k => `<option ${k === sel ? 'selected' : ''}>${esc(k)}</option>`).join('');
+/* ---------- Categorias personalizadas ---------- */
+const catsDb = () => (db.cats ||= { custom:[], renamed:{}, colors:{} });
+const renamedCat = c => { const r = db.cats?.renamed || {}; let x = c, n = 0; while (r[x] && n++ < 10) x = r[x]; return x; };
+function openCats(){
+  const cats = allCategories();
+  const custom = new Set(catsDb().custom || []);
+  const swatches = (sel, name) => `<select name="color" class="swatch" data-name="${esc(name)}" style="--k:var(--k${sel})" aria-label="Cor de ${esc(name)}">${Array.from({ length: 10 }, (_, i) => `<option value="${i}" ${i === sel ? 'selected' : ''}>Cor ${i + 1}</option>`).join('')}</select>`;
+  const colorIdx = c => { const i = db.cats?.colors?.[c]; return i != null ? +i : hashIdx(c, 10); };
+  modal(`<h2>Categorias</h2><p class="hint">Renomeie, troque a cor ou crie categorias novas. Renomear muda a categoria em todas as compras, metas e regras.</p>
+    <div id="catList" class="catlist">${cats.map(c => `<div class="catrow">${swatches(colorIdx(c), c)}
+      <input name="catName" data-old="${esc(c)}" value="${esc(c)}" aria-label="Nome da categoria">
+      ${custom.has(c) ? `<button class="btn ghost icon" type="button" data-action="delcat" aria-label="Excluir ${esc(c)}">×</button>` : '<span></span>'}</div>`).join('')}</div>
+    <div class="catrow new"><span></span><input name="newCat" placeholder="Nova categoria (ex.: Filhos, Presentes)"><span></span></div>
+    <div class="dlg-actions"><span></span><div class="right"><button class="btn ghost" type="submit" value="cancel">Cancelar</button><button class="btn" type="submit" value="save">Salvar</button></div></div>`,
+  f => {
+    const cd = catsDb(); cd.custom ||= []; cd.renamed ||= {}; cd.colors ||= {};
+    const rows = [...document.querySelectorAll('#catList .catrow')];
+    const removed = new Set(cats.filter(c => !rows.some(r => r.querySelector('[name=catName]').dataset.old === c)));
+    cd.custom = cd.custom.filter(c => !removed.has(c));
+    const taken = new Set();
+    for (const r of rows) {
+      const old = r.querySelector('[name=catName]').dataset.old, nu = r.querySelector('[name=catName]').value.trim() || old;
+      if (taken.has(nu.toLowerCase()) && nu !== old) { toast(`Já existe uma categoria chamada “${nu}”.`); return false; }
+      taken.add(nu.toLowerCase());
+      const color = +r.querySelector('[name=color]').value;
+      if (color !== hashIdx(nu, 10) || cd.colors[old] != null) cd.colors[nu] = color;
+      if (nu !== old) renameCategory(old, nu);
+    }
+    const nc = String(f.get('newCat') || '').trim();
+    if (nc && !taken.has(nc.toLowerCase())) cd.custom.push(nc);
+    saveDb('cats'); render(); toast('Categorias salvas.');
+  });
+}
+function renameCategory(old, nu){
+  const cd = catsDb();
+  for (const k of Object.keys(cd.renamed)) if (cd.renamed[k] === old) cd.renamed[k] = nu;
+  cd.renamed[old] = nu; delete cd.renamed[nu];
+  cd.custom = cd.custom.map(c => c === old ? nu : c);
+  if (cd.colors[old] != null && cd.colors[nu] == null) cd.colors[nu] = cd.colors[old];
+  delete cd.colors[old];
+  if (db.budgets[old] != null) { db.budgets[nu] = (db.budgets[nu] || 0) + db.budgets[old]; delete db.budgets[old]; saveDb('budgets'); }
+  for (const k of Object.keys(db.rules)) if (db.rules[k] === old) db.rules[k] = nu;
+  saveDb('rules');
+  for (const o of Object.values(db.overrides)) { if (o.category === old) o.category = nu; for (const p of o.split || []) if (p.category === old) p.category = nu; }
+  saveDb('overrides');
+  for (const m of db.manual) if (m.category === old) m.category = nu;
+  saveDb('manual');
+}
+
+/* ---------- Dividir uma compra ---------- */
+function splitRowHtml(cat = '', amt = ''){
+  return `<div class="exrow"><select name="splitCat" aria-label="Categoria">${catOptions(cat)}</select>
+    <input name="splitAmt" type="number" step="0.01" min="0" inputmode="decimal" placeholder="R$" value="${amt}" aria-label="Valor">
+    <button class="btn ghost icon" type="button" data-action="delex" aria-label="Remover">×</button></div>`;
+}
+
+
 
 function openTx(id){
-  const t = allTx().find(x => x.id === id); if (!t) return;
+  const t = allTx().find(x => (x.origId || x.id) === id); if (!t) return;
+  const total = ([...data.tx, ...db.manual].find(x => x.id === id) || t).amount;
+  const split = db.overrides[id]?.split || [];
   const manual = t.cardId === 'manual';
   const card = data?.cards.find(x => x.id === t.cardId);
   const same = allTx().filter(x => x.key === t.key && x.id !== t.id).length;
-  const info = `<dl class="txinfo"><dt>Data</dt><dd>${fullDate(t.date)}</dd><dt>Valor</dt><dd class="num">${t.kind === 'in' ? '+ ' : ''}${money(t.amount)}</dd>
+  const info = `<dl class="txinfo"><dt>Data</dt><dd>${fullDate(t.date)}</dd><dt>Valor</dt><dd class="num">${t.kind === 'in' ? '+ ' : ''}${money(total)}</dd>
     <dt>Origem</dt><dd>${esc(manual ? (t.method || 'Lançamento manual') : (card?.name || '—'))}</dd>${t.instT > 1 ? `<dt>Parcela</dt><dd>${t.instN} de ${t.instT}</dd>` : ''}${t.pending ? '<dt>Status</dt><dd class="pending">Pendente</dd>' : ''}</dl>`;
   modal(`<h2>${esc(t.desc)}</h2>
     ${manual ? manualFields(t) : info}
     <label>Categoria<select name="category">${catOptions(t.category)}</select></label>
     ${!manual && same ? `<label class="chk"><input type="checkbox" name="rule" ${db.rules[t.key] ? 'checked' : ''}>Usar esta categoria em todas as ${same + 1} transações de “${esc(t.desc)}”</label>` : ''}
+    <details ${split.length > 1 ? 'open' : ''}><summary>Dividir entre categorias</summary><div class="fields">
+      <p class="hint">Ex.: uma compra no mercado com parte em Casa. A soma das partes precisa dar ${money(total)}.</p>
+      <div id="splitList">${(split.length > 1 ? split : [{ category: t.category, amount: total }, { category: '', amount: '' }]).map(p => splitRowHtml(p.category, p.amount)).join('')}</div>
+      <button class="link" type="button" data-action="addsplit">+ Adicionar parte</button></div></details>
     <label>Nota<textarea name="note" placeholder="Ex.: presente de aniversário, dividido com…">${esc(t.note || '')}</textarea></label>
     <label class="chk"><input type="checkbox" name="ignored" ${t.ignored ? 'checked' : ''}>Ignorar nos totais e relatórios</label>
     <div class="dlg-actions">${manual ? '<button class="link danger" type="submit" value="delete">Excluir lançamento</button>' : '<span></span>'}
@@ -2092,7 +2166,14 @@ function openTx(id){
     const base = manual ? category : (data.tx.find(x => x.id === id)?.category);
     const o = { note: (f.get('note') || '').trim(), ignored: !!f.get('ignored') };
     if (!manual && !f.get('rule') && category !== base) o.category = category;
-    if (o.note || o.ignored || o.category) db.overrides[id] = o; else delete db.overrides[id];
+    const sAmts = f.getAll('splitAmt'), parts = f.getAll('splitCat').map((cat, i) => ({ category: cat, amount: Math.round(num(sAmts[i]) * 100) / 100 })).filter(p => p.amount > 0);
+    const opened = document.querySelector('#modal details[open] #splitList');
+    if (opened && parts.length > 1) {
+      const sumParts = parts.reduce((a, p) => a + p.amount, 0);
+      if (Math.abs(sumParts - total) > 0.01) { toast(`As partes somam ${money(sumParts)}, mas a compra é de ${money(total)}.`); return false; }
+      o.split = parts;
+    }
+    if (o.note || o.ignored || o.category || o.split) db.overrides[id] = o; else delete db.overrides[id];
     saveDb('overrides'); render(); toast('Alterações salvas.');
   });
 }
@@ -2184,7 +2265,6 @@ function exportCsv(){
   download(`vellum-transacoes-${today()}.csv`, '﻿' + rows.map(r => r.map(cell).join(';')).join('\r\n'), 'text/csv;charset=utf-8');
 }
 function exportBackup(){
-  if (isDemo) { toast('Saia do modo de exemplo para exportar seus dados.'); return; }
   const out = { app:'vellum', version:2, exportedAt: new Date().toISOString() };
   for (const k of DB_KEYS) out[k] = db[k];
   download(`vellum-backup-${today()}.json`, JSON.stringify(out, null, 2), 'application/json');
@@ -2195,73 +2275,8 @@ async function importBackup(file){
     if (j.app !== 'vellum' || !DB_KEYS.some(k => k in j)) throw new Error();
     if (!confirm('Substituir metas, empréstimos, lançamentos manuais e categorias ajustadas por este backup?')) return;
     for (const k of DB_KEYS) if (k in j) { db[k] = j[k]; saveDb(k); }
-    isDemo = false; render(); toast('Backup importado.');
+    render(); toast('Backup importado.');
   } catch { toast('Arquivo de backup inválido.'); }
-}
-
-/* ---------- Exemplo ---------- */
-function demoData(){
-  let seed = 11; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-  const cur = curYM(), tday = new Date().getDate();
-  const due = addMonthsDate(cur + '-10', 1).slice(0, 8) + '10';
-  const cards = [
-    { id:'d1', name:'Cartão Roxo', bank:'Banco Exemplo', number:'4417', limit:12000, available:7420, due, invoice:3580 },
-    { id:'d2', name:'Cartão Laranja', bank:'Outro Banco', number:'0932', limit:6000, available:3110, due:iso(new Date(Date.now() + 3 * 864e5)), invoice:1290 },
-    { id:'d3', name:'Cartão Verde', bank:'Banco Digital', number:'7781', limit:3500, available:2620, due, invoice:480 }
-  ];
-  const tx = []; let n = 0;
-  const push = (ym, day, desc, category, amount, cardId, extra = {}) => {
-    if (ym > cur) return;
-    const dd = Math.min(Math.max(1, day), dim(ym)); if (ym === cur && dd > tday) return;
-    tx.push({ id:'t' + (n++), cardId, date:`${ym}-${pad(dd)}`, desc, category, amount: Math.round(amount * 100) / 100, kind:'out',
-      pending: ym === cur && dd >= tday - 1, instN:0, instT:0, billMonth:'', ...extra });
-  };
-  const pick = a => a[Math.floor(rnd() * a.length)];
-  for (let k = HISTORY_MONTHS - 1; k >= 0; k--) {
-    const ym = addM(cur, -k), boost = k === 0 ? 1.12 : 1;
-    push(ym, 5, 'Streaming Plus', 'Streaming', 39.9, 'd1');
-    push(ym, 8, 'Música Premium', 'Streaming', 21.9, 'd3');
-    push(ym, 10, 'Academia Corpo Ativo', 'Academia', 99, 'd2');
-    push(ym, 15, 'Operadora Celular', 'Telefone e internet', 59.99, 'd1');
-    push(ym, 20, 'Armazenamento na Nuvem', 'Serviços digitais', 9.9, 'd3');
-    for (let i = 0, q = 4 + Math.floor(rnd() * 2); i < q; i++) push(ym, 2 + Math.floor(rnd() * 27), 'Supermercado Bom Preço', 'Mercado', (140 + rnd() * 210) * boost, 'd1');
-    for (let i = 0, q = 3 + Math.floor(rnd() * 3); i < q; i++) push(ym, 1 + Math.floor(rnd() * 28), pick(['Restaurante Maré','Padaria da Praça','Café Central','Cantina Bella']), 'Restaurantes', (18 + rnd() * 120) * boost, pick(['d2','d3']));
-    for (let i = 0, q = 2 + Math.floor(rnd() * 3); i < q; i++) push(ym, 1 + Math.floor(rnd() * 28), 'Delivery Sabor', 'Delivery', (38 + rnd() * 50) * boost, 'd1');
-    for (let i = 0; i < 2; i++) push(ym, 6 + i * 13, 'Posto Avenida', 'Combustível', 160 + rnd() * 70, 'd2');
-    for (let i = 0, q = 3 + Math.floor(rnd() * 4); i < q; i++) push(ym, 1 + Math.floor(rnd() * 28), 'Transporte por app', 'Transporte por app', 12 + rnd() * 28, 'd3');
-    for (let i = 0, q = 1 + Math.floor(rnd() * 2); i < q; i++) push(ym, 1 + Math.floor(rnd() * 28), 'Farmácia Central', 'Farmácia', 25 + rnd() * 70, 'd3');
-    for (let i = 0, q = 1 + Math.floor(rnd() * 2); i < q; i++) push(ym, 1 + Math.floor(rnd() * 28), 'Loja Online', 'Compras online', 60 + rnd() * 200, 'd3');
-    push(ym, 3 + Math.floor(rnd() * 24), pick(['Cinema Shopping','Teatro Municipal','Parque Aquático']), 'Lazer', 40 + rnd() * 90, 'd2');
-    push(ym, 9, 'Pagamento de fatura', PAYMENT, 2400 + rnd() * 900, 'd1', { kind:'in', isPayment:true });
-  }
-  const inst = (start, desc, cat, value, N, cardId, day) => { for (let k = 1; k <= N; k++) { const ym = addM(cur, start + k - 1); push(ym, day, desc, cat, value, cardId, { instN:k, instT:N, billMonth:ym }); } };
-  inst(-4, 'Loja de Móveis', 'Casa', 289.9, 10, 'd1', 12);
-  inst(-2, 'Notebook TechStore', 'Eletrônicos', 412.5, 12, 'd2', 3);
-  inst(-1, 'Companhia Aérea', 'Viagem', 230, 5, 'd1', 2);
-  inst(-6, 'Geladeira Frost', 'Casa', 180, 6, 'd3', 7);
-  push(cur, 1, 'Estorno Loja Online', 'Compras online', 89.9, 'd3', { kind:'in' });
-  const bills = {};
-  for (const card of cards) bills[card.id] = Array.from({ length: 5 }, (_, i) => {
-    const m = addM(cur, -(i + 1));
-    return { due: addM(m, 1) + '-10', total: tx.filter(t => t.cardId === card.id && t.kind === 'out' && ymOf(t.date) === m).reduce((s, t) => s + t.amount, 0), min: null };
-  }).map(b => ({ ...b, min: Math.round(b.total * 15) / 100 }));
-  return { cards, tx, bills, syncedAt: new Date().toISOString() };
-}
-function demoDb(){
-  const cur = curYM();
-  const first = addM(cur, -7) + '-15';
-  return {
-    budgets: { 'Mercado':1300, 'Restaurantes':450, 'Delivery':220, 'Combustível':420, 'Compras online':300, 'Lazer':150, 'Transporte por app':150 },
-    overrides: {}, rules: {},
-    income: { sources:[{ id:'s1', name:'Salário', amount:5200 }, { id:'s2', name:'Aluguel recebido', amount:1300 }], months: { [cur]: { extras:[{ id:'e-demo', desc:'Freela de design', amount:800 }] } } },
-    manual: [{ id:'m-demo1', cardId:'manual', date: cur + '-01', desc:'Feira livre', category:'Mercado', amount:64, kind:'out', method:'Dinheiro', instN:0, instT:0 }],
-    loans: [
-      { id:'l-demo1', dir:'tomei', desc:'Empréstimo pessoal', who:'Banco Exemplo', principal:10000, start: addM(cur, -8) + '-20', n:24, value:545, first, rate:1.79, note:'',
-        payments: Array.from({ length: 7 }, (_, k) => ({ id:'p' + k, date: addMonthsDate(first, k), amount:545 })) },
-      { id:'l-demo2', dir:'concedi', desc:'Ajuda com a mudança', who:'Irmão', principal:1500, start: addM(cur, -2) + '-02', n:3, value:500, first: addM(cur, -1) + '-05', rate:0, note:'Combinado sem juros',
-        payments: [{ id:'q0', date: addM(cur, -1) + '-06', amount:500 }] }
-    ]
-  };
 }
 
 /* ---------- Ajustes ---------- */
@@ -2295,7 +2310,6 @@ $('#btnSave').addEventListener('click', () => {
   cfg = next; session = { apiKey:null, at:0 };
   store.set(K.cfg, cfg); touch(); schedulePush();
   $('#cfg').close();
-  if (isDemo) { isDemo = false; db = loadDb(); data = null; newIds = new Set(); }
   if (!data) data = store.get(K.cache, null);
   sync();
 });
@@ -2309,7 +2323,7 @@ $('#fRestore').addEventListener('change', e => { const f = e.target.files[0]; if
 $('#btnWipe').addEventListener('click', () => {
   if (!confirm('Apagar credenciais, metas, empréstimos e todos os dados salvos neste navegador? Isso não pode ser desfeito aqui. O que está salvo na sua conta continua lá.')) return;
   Object.values(K).forEach(store.del); store.del(LOCK_KEY); store.del(K.meta + '.dirty'); dirty.clear();
-  cfg = null; data = null; db = loadDb(); prefs = {}; applyTheme(); newIds = new Set(); lastError = ''; isDemo = false;
+  cfg = null; data = null; db = loadDb(); prefs = {}; applyTheme(); newIds = new Set(); lastError = '';
   $('#cfg').close(); render(); toast('Dados apagados deste navegador.');
 });
 
@@ -2348,13 +2362,14 @@ document.addEventListener('click', e => {
   else if (a === 'goalout') moveGoal(id, -1);
   else if (a === 'delgoaldep') { const g = (db.goals || []).find(x => x.id === id); if (!g || !confirm('Remover esta movimentação?')) return; g.deposits = g.deposits.filter(d => d.id !== b.dataset.dep); saveDb('goals'); render(); }
   else if (a === 'gobank') { const bs = data?.banks || []; ui.card = bs.length === 1 ? bs[0].id : 'all'; ui.kind = 'all'; ui.cat = 'all'; ui.q = ''; if (ui.view === 'transacoes') render(); else location.hash = '#/transacoes'; }
+  else if (a === 'cats') openCats();
+  else if (a === 'delcat') b.closest('.catrow').remove();
+  else if (a === 'addsplit') { const l = $('#splitList'); l.insertAdjacentHTML('beforeend', splitRowHtml()); l.lastElementChild.querySelector('input').focus(); }
   else if (a === 'rank') { ui.rank = b.dataset.rank; render(); }
   else if (a === 'clearf') { ui.cat = 'all'; ui.q = ''; render(); }
   else if (a === 'sync') sync();
   else if (a === 'prevm') { ui.month = addM(ui.month, -1); render(); }
   else if (a === 'nextm') { ui.month = addM(ui.month, 1); render(); }
-  else if (a === 'demo') { isDemo = true; lastError = ''; data = demoData(); db = demoDb(); ui.month = curYM(); newIds = new Set(data.tx.slice(-3).map(t => t.id)); render(); }
-  else if (a === 'exitdemo') { isDemo = false; newIds = new Set(); db = loadDb(); data = cfg ? store.get(K.cache, null) : null; render(); }
   else if (a === 'newtx') newTx();
   else if (a === 'csv') exportCsv();
   else if (a === 'newloan') openLoan(null);
@@ -2382,7 +2397,8 @@ document.addEventListener('change', e => {
     const v = num(el.value);
     if (v > 0) db.budgets[el.dataset.budget] = v; else delete db.budgets[el.dataset.budget];
     saveDb('budgets'); render();
-  } else if (el.id === 'incMode') { $('#incAuto').hidden = el.value !== 'auto'; $('#incManual').hidden = el.value === 'auto'; }
+  } else if (el.classList.contains('swatch')) { el.style.setProperty('--k', `var(--k${el.value})`); }
+  else if (el.id === 'incMode') { $('#incAuto').hidden = el.value !== 'auto'; $('#incManual').hidden = el.value === 'auto'; }
   else if (el.dataset.filter === 'card') { ui.card = el.value; render(); }
   else if (el.dataset.filter === 'cat' || el.dataset.filter === 'kind') { ui[el.dataset.filter] = el.value; $('#txList').innerHTML = txListHtml(context()); }
 });
@@ -2393,7 +2409,6 @@ addEventListener('hashchange', () => { ui.view = viewFromHash(); render(); scrol
 let rz; addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { if (!document.querySelector('dialog[open]') && document.activeElement?.tagName !== 'INPUT') render(); }, 200); });
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') { hiddenAt = Date.now(); if (pushTimer) pushNow(); return; }
-  if (isDemo) return;
   if (user && lockOn() && hiddenAt && Date.now() - hiddenAt > LOCK_AFTER_MS) { locked = true; document.querySelector('dialog[open]')?.close(); render(); return; }
   if (locked) return;
   pullSync();
@@ -2403,6 +2418,8 @@ document.addEventListener('visibilitychange', () => {
 /* ---------- Início ---------- */
 applyTheme();
 ui.month = curYM();
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+addEventListener('online', () => { if (cfg && !busy) { lastError = ''; sync(); } });
 (async () => {
   await Promise.all([initCloud(), checkBio()]);
   if (cloudOn()) {
