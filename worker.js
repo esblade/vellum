@@ -11,6 +11,9 @@
 //   NTFY_TOPIC  (secret) nome de tópico longo e aleatório; quem souber o nome recebe os alertas
 //   KV namespace ligado com o nome SEEN
 //   Cron Trigger em Settings → Triggers, ex.: */30 * * * *
+//
+// Sincronização entre aparelhos (renda, metas, empréstimos, lançamentos manuais):
+//   KV namespace ligado com o nome DATA (se não houver, usa o SEEN)
 
 const API = 'https://api.pluggy.ai';
 const ALLOWED_PATHS = [/^\/items\/[\w-]+$/, /^\/accounts$/, /^\/v2\/transactions$/, /^\/bills$/];
@@ -47,11 +50,32 @@ async function recentTransactions(get, accountId, from) {
   return out;
 }
 
+// GET /sync devolve os dados salvos; PUT /sync grava. Um único documento JSON por Worker.
+async function syncData(req, env, h) {
+  const kv = env.DATA || env.SEEN;
+  const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...h, 'Content-Type': 'application/json' } });
+  if (!kv) return json({ error: 'Ligue um KV namespace com o nome DATA ao Worker para sincronizar.' }, 501);
+  if (req.method === 'GET') {
+    const v = await kv.get('userdata');
+    return v ? new Response(v, { headers: { ...h, 'Content-Type': 'application/json' } }) : json({ updatedAt: 0, data: null });
+  }
+  if (req.method === 'PUT') {
+    const text = await req.text();
+    if (text.length > 2_000_000) return json({ error: 'Dados grandes demais.' }, 413);
+    let body;
+    try { body = JSON.parse(text); } catch { return json({ error: 'JSON inválido.' }, 400); }
+    if (!body || typeof body.updatedAt !== 'number' || typeof body.data !== 'object') return json({ error: 'Formato inválido.' }, 400);
+    await kv.put('userdata', JSON.stringify({ updatedAt: body.updatedAt, data: body.data }));
+    return json({ ok: true, updatedAt: body.updatedAt });
+  }
+  return json({ error: 'Método não permitido.' }, 405);
+}
+
 function corsHeaders(env) {
   return {
     'Access-Control-Allow-Origin': env.ALLOWED_ORIGIN || '*',
-    'Access-Control-Allow-Headers': 'Authorization',
-    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Headers': 'Authorization, Content-Type',
+    'Access-Control-Allow-Methods': 'GET, PUT, OPTIONS',
     'Vary': 'Origin',
   };
 }
@@ -60,11 +84,12 @@ export default {
   async fetch(req, env) {
     const h = corsHeaders(env);
     if (req.method === 'OPTIONS') return new Response(null, { headers: h });
-    if (req.method !== 'GET') return new Response('Método não permitido', { status: 405, headers: h });
     if (!env.ACCESS_TOKEN || req.headers.get('Authorization') !== `Bearer ${env.ACCESS_TOKEN}`) {
       return new Response('Não autorizado', { status: 401, headers: h });
     }
     const url = new URL(req.url);
+    if (url.pathname === '/sync') return syncData(req, env, h);
+    if (req.method !== 'GET') return new Response('Método não permitido', { status: 405, headers: h });
     if (!ALLOWED_PATHS.some(p => p.test(url.pathname))) return new Response('Não encontrado', { status: 404, headers: h });
 
     try {
