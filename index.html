@@ -699,7 +699,6 @@ function loginScreen(){
       <h2>Entre para ver suas finanças</h2>
       <p>Seus cartões, renda, metas e empréstimos ficam salvos na sua conta e aparecem em qualquer aparelho.</p>
       <button class="btn gbtn" type="button" data-action="login"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.8 1.1 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3 0 5.8 1.1 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>Entrar com Google</button>
-      <button class="link" type="button" data-action="demo">Ver com dados de exemplo</button>
     </div>
   </section>`;
 }
@@ -909,6 +908,9 @@ function markNew(){
 }
 
 /* ---------- Modelo derivado ---------- */
+const looksLikeBillPayment = t => t.kind === 'in' && t.cardId !== 'manual' &&
+  !/\b(estorno|cashback|reembolso|devolucao|cancelamento)\b/.test(t.key) &&
+  (/\b(pagamento|pagto|pgto|pag fatura)\b/.test(t.key) || ['Pix', 'Transferências'].includes(t.category));
 function allTx(){
   if (!data) return [];
   return [...data.tx, ...db.manual].map(t0 => {
@@ -916,6 +918,9 @@ function allTx(){
     if (t.inst && !t.instT) { const m = String(t.inst).match(/(\d+)\/(\d+)/); if (m) { t.instN = +m[1]; t.instT = +m[2]; } }
     t.key = normDesc(t.desc);
     t.cm = t.instT > 1 && t.billMonth ? t.billMonth : ymOf(t.date);
+    // Pagamento da fatura feito por Pix/transferência: a Pluggy às vezes não marca como pagamento de fatura
+    // e classifica como "Transferência Pix". No cartão, um crédito assim é pagamento, não estorno.
+    if (!t.isPayment && looksLikeBillPayment(t)) t.category = PAYMENT;
     if (db.rules[t.key]) t.category = db.rules[t.key];
     const o = db.overrides[t.id];
     if (o) { if (o.category) t.category = o.category; t.note = o.note || ''; t.ignored = !!o.ignored; }
@@ -1140,14 +1145,18 @@ function viewInicio(c){
   const catNow = byCat(P.cur), catPrev = byCat(spendIn(c, P.prev));
   const budTotal = bud.reduce((s, [, v]) => s + v, 0);
   const budSpent = bud.reduce((s, [k]) => s + (catNow[k] || 0), 0);
-  const refunds = sum(c.T.filter(t => isRefund(t) && t.cm === ym));
 
   const I = incomeFor(ym), nextInc = incomeFor(nextM).total;
   let sobraTile;
   if (ui.card === 'all' && I.set) {
     const v = P.isCur ? I.total - P.projection : I.total - P.total;
     sobraTile = kpi(P.isCur ? 'Sobra prevista' : 'Sobrou no mês', `<span class="${v < 0 ? 'neg' : ''}">${money(v)}</span>`, P.isCur ? 'no fim do mês, no ritmo atual' : `${Math.round(v / I.total * 100)}% da renda`, '', 'wallet', 'k1');
-  } else sobraTile = kpi('Estornos e créditos', money(refunds), 'devolvidos ao cartão neste mês', '', 'wallet', 'k1');
+  } else {
+    const [topCat, topVal] = Object.entries(catNow).sort((a, b) => b[1] - a[1])[0] || [];
+    sobraTile = topCat
+      ? kpi('Maior categoria', money(topVal), `<button class="plain-link" type="button" data-gocat="${esc(topCat)}"><b>${esc(topCat)}</b></button> · ${Math.round(topVal / (P.total || 1) * 100)}% do mês`, '', 'wallet', 'k1')
+      : kpi('Maior categoria', '—', 'nenhum gasto neste mês', '', 'wallet', 'k1');
+  }
   let h = heroHtml(P, nextTotal) + `<div class="kpis">
     ${P.isCur ? kpi('Projeção do mês', money(P.projection), P.prevTotal ? `${esc(prevName)} fechou em ${money0(P.prevTotal)}` : 'no ritmo atual de gastos', '', 'chart', 'k0')
               : kpi('Média por dia', money(P.total / dim(ym)), `${P.cur.length} compras no mês`, '', 'chart', 'k0')}
@@ -1521,7 +1530,6 @@ function welcome(){
     <p>Conecte a conta do Meu Pluggy para acompanhar gastos dos cartões, metas por categoria, parcelas futuras, assinaturas e empréstimos. Tudo fica salvo só neste navegador.</p>
     <div class="row">
       <button class="btn" data-action="cfg" type="button">Conectar conta</button>
-      <button class="btn ghost" data-action="demo" type="button">Ver com dados de exemplo</button>
     </div>
     <div class="feat">
       <div><b>Comparativo mensal</b>Ritmo de gastos dia a dia contra o mês anterior.</div>
