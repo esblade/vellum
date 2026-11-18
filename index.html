@@ -181,6 +181,21 @@ textarea{min-height:72px;resize:vertical;width:100%}
 .search input{padding-left:36px;width:100%;background:var(--surface-2);border-color:transparent}
 .fld-title{font-size:.86rem;font-weight:700;margin-bottom:8px}
 
+/* Entrada e bloqueio */
+body.gated .side,body.gated .topbar,body.gated .tabbar{display:none}
+body.gated .shell{grid-template-columns:minmax(0,1fr)}
+body.gated .page{max-width:none;min-height:100vh;padding:24px 16px;justify-content:center;align-items:center;
+  background:radial-gradient(80% 60% at 100% 0%,rgba(91,61,245,.55),transparent 60%),radial-gradient(70% 60% at 0% 100%,rgba(200,242,90,.2),transparent 60%),var(--hero)}
+.gate{width:100%;display:grid;place-items:center}
+.gate-card{width:min(420px,100%);background:var(--surface);border-radius:26px;padding:34px 28px;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;box-shadow:0 24px 70px rgba(10,8,25,.35)}
+.gate-card h2{font-size:1.5rem;font-weight:700;letter-spacing:-.025em}
+.gate-card p{color:var(--muted);font-size:.92rem;margin-bottom:6px}
+.brand-mark.big{width:56px;height:56px;border-radius:18px;margin-bottom:4px}
+.brand-mark.big svg{width:28px;height:28px}
+.gbtn{width:100%;justify-content:center;padding:13px 16px;font-size:.95rem;background:var(--surface);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line),var(--shadow)}
+.gbtn svg{width:20px;height:20px}
+.gate-card .btn:not(.gbtn){width:100%;justify-content:center;padding:13px 16px}
+
 /* Banner */
 .banner{padding:12px 18px;border-radius:16px;background:var(--accent-soft);display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;font-size:.9rem}
 .banner.err{background:var(--danger-soft)}
@@ -388,11 +403,12 @@ dialog::backdrop{background:rgba(13,12,19,.6);backdrop-filter:blur(3px)}
 <dialog id="cfg">
   <div class="dlg">
     <h2>Ajustes</h2>
-    <p class="hint">Credenciais e dados ficam salvos só neste navegador. Nada é enviado para outro lugar além da API da Pluggy (ou do seu intermediário).</p>
+    <p class="hint" id="cfgHint"></p>
     <label>Client ID<input id="fClientId" autocomplete="off" spellcheck="false"></label>
     <label>Client Secret<input id="fClientSecret" type="password" autocomplete="off" spellcheck="false"></label>
     <label>API key (opcional, se o painel fornecer uma pronta)<input id="fApiKey" type="password" autocomplete="off" spellcheck="false"></label>
     <label>IDs das conexões (um por linha)<textarea id="fItems" spellcheck="false" placeholder="ex.: 6f1b2c3d-..."></textarea></label>
+    <div><p class="fld-title">Conta</p><div id="acctBox"></div></div>
     <details id="proxyBox">
       <summary>Usar intermediário (Cloudflare Worker)</summary>
       <div class="fields">
@@ -402,12 +418,9 @@ dialog::backdrop{background:rgba(13,12,19,.6);backdrop-filter:blur(3px)}
       </div>
     </details>
     <details>
-      <summary>Aparência, sincronização e dados</summary>
+      <summary>Aparência e dados</summary>
       <div class="fields">
         <label>Tema<select id="fTheme"><option value="light">Claro</option><option value="dark">Escuro</option><option value="auto">Automático (igual ao sistema)</option></select></label>
-        <p class="fld-title">Sincronização entre aparelhos</p>
-        <p class="hint" id="syncInfo"></p>
-        <div class="toolbar"><button class="btn ghost sm" type="button" id="btnSyncNow">Sincronizar agora</button></div>
         <p class="hint">O backup guarda metas, empréstimos, lançamentos manuais e categorias que você ajustou. Use para levar para outro aparelho.</p>
         <div class="toolbar">
           <button class="btn ghost sm" type="button" id="btnBackup">Exportar backup</button>
@@ -430,6 +443,7 @@ dialog::backdrop{background:rgba(13,12,19,.6);backdrop-filter:blur(3px)}
 <dialog id="modal"></dialog>
 <div id="toast" role="status" aria-live="polite"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
 <script>
 const $ = s => document.querySelector(s);
 const store = {
@@ -575,30 +589,26 @@ function saveDb(part){
   schedulePush();
 }
 
-/* ---------- Sincronização entre aparelhos (via Worker) ---------- */
+/* ---------- Conta e nuvem (Supabase) ---------- */
+// Preencha com os dados do seu projeto (Project Settings → API). A chave "anon" é pública:
+// quem protege os dados é a regra de acesso da tabela (veja supabase.sql).
+const SUPABASE = { url: '', anonKey: '' };
+let sb = null, user = null, authReady = false;
 let syncState = { status:'off', msg:'' };
 let pushTimer = null;
-const canSync = () => !isDemo && !!cfg?.proxyUrl;
+const cloudOn = () => !!(SUPABASE.url && SUPABASE.anonKey && window.supabase);
+const canSync = () => !isDemo && !!sb && !!user;
 const localStamp = () => store.get(K.meta, {}).updatedAt || 0;
+const touch = () => store.set(K.meta, { updatedAt: Date.now() });
 function hasLocalData(){
   const i = db.income || {};
-  return Object.keys(db.budgets).length || Object.keys(db.overrides).length || Object.keys(db.rules).length ||
-    db.manual.length || db.loans.length || (i.sources || []).length || i.base > 0 || Object.keys(i.months || {}).length;
+  return !!(cfg || Object.keys(db.budgets).length || Object.keys(db.overrides).length || Object.keys(db.rules).length ||
+    db.manual.length || db.loans.length || (i.sources || []).length || i.base > 0 || Object.keys(i.months || {}).length);
 }
-function packDb(){ const o = {}; for (const k of DB_KEYS) o[k] = db[k]; return o; }
-async function syncReq(method, body){
-  const r = await fetch(cfg.proxyUrl.replace(/\/+$/, '') + '/sync', {
-    method, headers:{ Authorization:'Bearer ' + (cfg.proxyToken || ''), ...(body ? { 'Content-Type':'application/json' } : {}) },
-    body: body ? JSON.stringify(body) : undefined
-  });
-  if (!r.ok) {
-    let m = ''; try { m = (await r.json()).error || ''; } catch {}
-    const e = new Error(m || `erro ${r.status}`); e.status = r.status; throw e;
-  }
-  return r.json();
-}
-function syncFail(e){
-  syncState = e.status === 501 ? { status:'nokv', msg: e.message } : e.status === 404 || e.status === 405 ? { status:'old', msg:'' } : { status:'error', msg: e.message };
+function packDb(){ const o = { cfg: cfg || null }; for (const k of DB_KEYS) o[k] = db[k]; return o; }
+function applyRemote(d){
+  for (const k of DB_KEYS) if (k in d) { db[k] = d[k]; store.set(K[k], d[k]); }
+  if (d.cfg) { cfg = d.cfg; store.set(K.cfg, cfg); session = { apiKey:null, at:0 }; }
 }
 function schedulePush(){
   if (!canSync()) return;
@@ -608,43 +618,145 @@ function schedulePush(){
 }
 async function pushNow(){
   clearTimeout(pushTimer);
-  try { await syncReq('PUT', { updatedAt: localStamp() || Date.now(), data: packDb() }); syncState = { status:'ok', msg:'' }; }
-  catch (e) { syncFail(e); }
+  if (!canSync()) return;
+  const { error } = await sb.from('user_data').upsert({ user_id: user.id, data: packDb(), updated_at: localStamp() || Date.now() });
+  syncState = error ? { status:'error', msg: error.message } : { status:'ok', msg:'' };
   renderSync();
 }
 async function pullSync(){
   if (!canSync()) { syncState = { status:'off', msg:'' }; renderSync(); return; }
-  try {
-    const r = await syncReq('GET');
-    const local = localStamp(), remote = r.updatedAt || 0;
-    if (r.data && remote > local) {
-      if (!local && hasLocalData() && !confirm('Este aparelho tem renda, metas ou empréstimos que ainda não foram sincronizados, e já existem dados salvos no intermediário. Usar os dados sincronizados? (Cancelar envia os dados deste aparelho e substitui os de lá.)')) {
-        store.set(K.meta, { updatedAt: Date.now() }); await pushNow(); return;
-      }
-      for (const k of DB_KEYS) if (k in r.data) { db[k] = r.data[k]; store.set(K[k], r.data[k]); }
-      store.set(K.meta, { updatedAt: remote });
-      syncState = { status:'ok', msg:'' };
-      if (!document.querySelector('dialog[open]')) render();
-    } else if (local > remote || (!r.data && hasLocalData())) {
-      if (!local) store.set(K.meta, { updatedAt: Date.now() });
-      await pushNow(); return;
-    } else syncState = { status:'ok', msg:'' };
-  } catch (e) { syncFail(e); }
+  const { data: row, error } = await sb.from('user_data').select('data, updated_at').eq('user_id', user.id).maybeSingle();
+  if (error) { syncState = { status:'error', msg: error.message }; renderSync(); return; }
+  const local = localStamp(), remote = row?.updated_at || 0;
+  if (row?.data && remote > local) {
+    if (!local && hasLocalData() && !confirm('Este navegador tem dados que ainda não estão na sua conta, e a conta já tem dados salvos. Usar os dados da conta? (Cancelar envia os dados deste navegador e substitui os da conta.)')) {
+      touch(); await pushNow(); return;
+    }
+    applyRemote(row.data);
+    store.set(K.meta, { updatedAt: remote });
+    syncState = { status:'ok', msg:'' };
+    if (!document.querySelector('dialog[open]')) render();
+  } else if (local > remote || (!row && hasLocalData())) {
+    if (!local) touch();
+    await pushNow(); return;
+  } else syncState = { status:'ok', msg:'' };
   renderSync();
 }
 function syncShort(){
-  return { off:'salvo só neste aparelho', ok:'sincronizado', saving:'salvando…', error:'falha ao sincronizar', nokv:'sincronização desligada', old:'atualize o Worker' }[syncState.status] || '';
+  return { off:'', ok:'salvo na sua conta', saving:'salvando…', error:'falha ao salvar na conta' }[syncState.status] || '';
 }
 function syncLabel(){
-  return { off:'Renda, metas e empréstimos salvos só neste aparelho', ok:'Sincronizado entre aparelhos', saving:'Salvando…',
-    error:'Falha ao sincronizar' + (syncState.msg ? ': ' + syncState.msg : ''), nokv:'Sincronização: ligue o KV “DATA” no Worker',
-    old:'Sincronização: publique a versão nova do worker.js' }[syncState.status] || '';
+  return { ok:'Tudo salvo na sua conta e disponível em qualquer aparelho', saving:'Salvando na sua conta…',
+    error:'Falha ao salvar na conta' + (syncState.msg ? ': ' + syncState.msg : '') }[syncState.status] || '';
 }
 function renderSync(){
   const el = $('#syncState');
-  if (el) { el.textContent = syncShort(); el.className = 'sync ' + syncState.status; el.title = syncLabel(); }
-  const info = $('#syncInfo');
-  if (info) info.textContent = canSync() ? syncLabel() + '.' : 'Renda, metas, empréstimos e lançamentos manuais ficam só neste aparelho. Configure o intermediário acima (e um KV chamado DATA no Worker) para vê-los em todos os seus aparelhos.';
+  if (el) { const t = syncShort(); el.textContent = t; el.className = t ? 'sync ' + syncState.status : ''; el.title = syncLabel(); }
+  const box = $('#acctBox'); if (!box) return;
+  if (!cloudOn()) { box.innerHTML = '<p class="hint">Sem conta configurada: os dados ficam só neste navegador.</p>'; return; }
+  box.innerHTML = user ? `<p class="hint">Conectado como <b>${esc(user.email || '')}</b>. ${esc(syncLabel() || 'Seus dados ficam salvos na sua conta.')}</p>
+      <div class="toolbar"><button class="btn ghost sm" type="button" data-action="syncnow">Sincronizar agora</button>
+      <span id="lockBtn"></span><button class="btn ghost sm" type="button" data-action="logout">Sair da conta</button></div>`
+    : '<p class="hint">Você não está conectado.</p>';
+  renderLockBtn();
+}
+
+async function initCloud(){
+  if (!cloudOn()) { authReady = true; return; }
+  sb = window.supabase.createClient(SUPABASE.url, SUPABASE.anonKey, { auth:{ persistSession:true, autoRefreshToken:true, detectSessionInUrl:true, flowType:'pkce' } });
+  const { data: { session: s } } = await sb.auth.getSession();
+  user = s?.user || null; authReady = true;
+  sb.auth.onAuthStateChange((event, s2) => {
+    const before = user?.id; user = s2?.user || null;
+    if (event === 'SIGNED_IN' && user && user.id !== before) afterLogin();
+    if (event === 'SIGNED_OUT') { user = null; render(); }
+  });
+}
+async function login(){
+  if (!sb) return;
+  const { error } = await sb.auth.signInWithOAuth({ provider:'google', options:{ redirectTo: location.origin + location.pathname, queryParams:{ prompt:'select_account' } } });
+  if (error) toast('Não foi possível abrir o login do Google: ' + error.message);
+}
+async function logout(){
+  if (!confirm('Sair da conta neste aparelho? Os dados continuam salvos na sua conta.')) return;
+  clearTimeout(pushTimer);
+  if (canSync() && syncState.status === 'saving') await pushNow();
+  await sb.auth.signOut();
+  for (const k of Object.keys(K)) if (k !== 'prefs') store.del(K[k]);
+  store.del(LOCK_KEY);
+  user = null; cfg = null; data = null; db = loadDb(); newIds = new Set(); lastError = ''; isDemo = false; locked = false;
+  $('#cfg').open && $('#cfg').close(); render(); toast('Você saiu da conta.');
+}
+async function afterLogin(){
+  await pullSync();
+  if (cfg) { data = data || store.get(K.cache, null); render(); sync(); }
+  else render();
+}
+function loginScreen(){
+  return `<section class="gate">
+    <div class="gate-card">
+      <span class="brand-mark big"><svg viewBox="0 0 24 24"><path d="M6 7l6 11 6-11"/></svg></span>
+      <h2>Entre para ver suas finanças</h2>
+      <p>Seus cartões, renda, metas e empréstimos ficam salvos na sua conta e aparecem em qualquer aparelho.</p>
+      <button class="btn gbtn" type="button" data-action="login"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.8 1.1 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3 0 5.8 1.1 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>Entrar com Google</button>
+      <button class="link" type="button" data-action="demo">Ver com dados de exemplo</button>
+    </div>
+  </section>`;
+}
+
+/* ---------- Bloqueio com Face ID / digital (por aparelho) ---------- */
+// Usa a biometria do próprio aparelho (WebAuthn). É uma trava local: protege o app aberto neste
+// aparelho; a segurança da conta continua sendo o login do Google.
+const LOCK_KEY = 'cartoes.lock';
+const LOCK_AFTER_MS = 2 * 60 * 1000;
+let locked = false, hiddenAt = 0, bioAvailable = false;
+const b64u = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const unb64u = s => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
+const lockOn = () => !!store.get(LOCK_KEY, null)?.credId;
+const bioName = () => /iPhone|iPad|Macintosh/.test(navigator.userAgent) ? 'Face ID' : 'biometria';
+async function checkBio(){
+  try { bioAvailable = !!window.PublicKeyCredential && await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable(); }
+  catch { bioAvailable = false; }
+}
+async function enableLock(){
+  try {
+    const cred = await navigator.credentials.create({ publicKey:{
+      challenge: crypto.getRandomValues(new Uint8Array(32)),
+      rp:{ name:'Vellum' },
+      user:{ id: crypto.getRandomValues(new Uint8Array(16)), name: user?.email || 'vellum', displayName: user?.email || 'Vellum' },
+      pubKeyCredParams:[{ type:'public-key', alg:-7 }, { type:'public-key', alg:-257 }],
+      authenticatorSelection:{ authenticatorAttachment:'platform', userVerification:'required', residentKey:'preferred' },
+      timeout:60000
+    } });
+    store.set(LOCK_KEY, { credId: b64u(cred.rawId) });
+    toast(`${bioName()} ativado neste aparelho.`);
+  } catch (e) { toast(`Não foi possível ativar: ${e.name === 'NotAllowedError' ? 'cancelado' : e.message}`); }
+  renderSync();
+}
+function disableLock(){ store.del(LOCK_KEY); toast(`${bioName()} desativado neste aparelho.`); renderSync(); }
+async function unlock(){
+  const l = store.get(LOCK_KEY, null); if (!l) { locked = false; render(); return; }
+  try {
+    await navigator.credentials.get({ publicKey:{ challenge: crypto.getRandomValues(new Uint8Array(32)),
+      allowCredentials:[{ type:'public-key', id: unb64u(l.credId) }], userVerification:'required', timeout:60000 } });
+    locked = false; data = data || store.get(K.cache, null); render();
+    if (user) afterLogin();
+  } catch { toast('Não foi possível confirmar. Tente de novo.'); }
+}
+function renderLockBtn(){
+  const el = $('#lockBtn'); if (!el) return;
+  el.innerHTML = bioAvailable ? (lockOn()
+      ? `<button class="btn ghost sm" type="button" data-action="lockoff">Desativar ${bioName()}</button>`
+      : `<button class="btn ghost sm" type="button" data-action="lockon">Pedir ${bioName()} ao abrir</button>`) : '';
+}
+function lockScreen(){
+  return `<section class="gate"><div class="gate-card">
+    <span class="brand-mark big"><svg viewBox="0 0 24 24"><path d="M6 7l6 11 6-11"/></svg></span>
+    <h2>Vellum está bloqueado</h2>
+    <p>Confirme que é você para ver seus dados.</p>
+    <button class="btn" type="button" data-action="unlock">Desbloquear com ${bioName()}</button>
+    ${cloudOn() ? '<button class="link" type="button" data-action="logout">Sair e entrar com Google</button>' : ''}
+  </div></section>`;
 }
 
 /* ---------- API ---------- */
@@ -1430,6 +1542,9 @@ function render(){
   $('#sideTheme').innerHTML = ic(isDark() ? 'sun' : 'moon') + `<span>${isDark() ? 'Modo claro' : 'Modo escuro'}</span>`;
   document.title = v.title + ' · Vellum';
 
+  const gated = cloudOn() && !isDemo && (!user || locked);
+  document.body.classList.toggle('gated', gated);
+  if (gated) { $('#page').innerHTML = user && locked ? lockScreen() : authReady ? loginScreen() : ''; return; }
   const c = data ? context() : null;
   const showMonth = data && v.month;
   const synced = data?.syncedAt ? 'Atualizado ' + new Date(data.syncedAt).toLocaleString('pt-BR', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }).replace('.', '') : '';
@@ -1687,6 +1802,7 @@ function openCfg(){
   $('#fProxyToken').value = c.proxyToken || '';
   $('#proxyBox').open = !!c.proxyUrl;
   $('#fTheme').value = themePref();
+  $('#cfgHint').textContent = canSync() ? 'Tudo o que você preencher aqui fica salvo na sua conta e vale em qualquer aparelho em que você entrar.' : 'Credenciais e dados ficam salvos só neste navegador. Nada é enviado para outro lugar além da API da Pluggy (ou do seu intermediário).';
   renderSync();
   $('#cfg').showModal();
 }
@@ -1704,23 +1820,22 @@ $('#btnSave').addEventListener('click', () => {
     toast('Preencha Client ID e Client Secret, uma API key ou o intermediário.'); return;
   }
   cfg = next; session = { apiKey:null, at:0 };
-  store.set(K.cfg, cfg);
+  store.set(K.cfg, cfg); touch(); schedulePush();
   $('#cfg').close();
   if (isDemo) { isDemo = false; db = loadDb(); data = null; newIds = new Set(); }
   if (!data) data = store.get(K.cache, null);
-  sync(); pullSync();
+  sync();
 });
 $('#fTheme').addEventListener('change', e => { prefs.theme = e.target.value; store.set(K.prefs, prefs); applyTheme(); render(); });
 matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => { if (themePref() === 'auto') { applyTheme(); render(); } });
 $('#btnCancel').addEventListener('click', () => $('#cfg').close());
 $('#btnBackup').addEventListener('click', exportBackup);
-$('#btnSyncNow').addEventListener('click', async () => { if (!canSync()) { toast('Configure o intermediário para sincronizar.'); return; } await pullSync(); toast(syncState.status === 'ok' ? 'Sincronizado.' : syncLabel()); });
 $('#btnCsv').addEventListener('click', exportCsv);
 $('#btnRestore').addEventListener('click', () => $('#fRestore').click());
 $('#fRestore').addEventListener('change', e => { const f = e.target.files[0]; if (f) importBackup(f); e.target.value = ''; });
 $('#btnWipe').addEventListener('click', () => {
-  if (!confirm('Apagar credenciais, metas, empréstimos e todos os dados salvos neste navegador? Isso não pode ser desfeito aqui. O que já foi sincronizado no intermediário continua lá.')) return;
-  Object.values(K).forEach(store.del);
+  if (!confirm('Apagar credenciais, metas, empréstimos e todos os dados salvos neste navegador? Isso não pode ser desfeito aqui. O que está salvo na sua conta continua lá.')) return;
+  Object.values(K).forEach(store.del); store.del(LOCK_KEY);
   cfg = null; data = null; db = loadDb(); prefs = {}; applyTheme(); newIds = new Set(); lastError = ''; isDemo = false;
   $('#cfg').close(); render(); toast('Dados apagados deste navegador.');
 });
@@ -1734,6 +1849,12 @@ document.addEventListener('click', e => {
   const b = e.target.closest('button[data-action]'); if (!b) return;
   const a = b.dataset.action, id = b.dataset.id;
   if (a === 'cfg') openCfg();
+  else if (a === 'login') login();
+  else if (a === 'logout') logout();
+  else if (a === 'syncnow') pullSync().then(() => toast(syncState.status === 'ok' ? 'Tudo salvo na sua conta.' : syncLabel()));
+  else if (a === 'lockon') enableLock();
+  else if (a === 'lockoff') disableLock();
+  else if (a === 'unlock') unlock();
   else if (a === 'theme') toggleTheme();
   else if (a === 'income') openIncome();
   else if (a === 'addex' || a === 'addsrc') { const l = $(a === 'addex' ? '#exList' : '#srcList'); l.insertAdjacentHTML('beforeend', incRowHtml(a === 'addex' ? 'ex' : 'src')); l.lastElementChild.querySelector('input').focus(); }
@@ -1781,16 +1902,26 @@ document.addEventListener('input', e => {
 addEventListener('hashchange', () => { ui.view = viewFromHash(); render(); scrollTo(0, 0); });
 let rz; addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { if (!document.querySelector('dialog[open]') && document.activeElement?.tagName !== 'INPUT') render(); }, 200); });
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState !== 'visible' || !cfg || isDemo || busy) return;
+  if (document.visibilityState === 'hidden') { hiddenAt = Date.now(); if (pushTimer) pushNow(); return; }
+  if (isDemo) return;
+  if (user && lockOn() && hiddenAt && Date.now() - hiddenAt > LOCK_AFTER_MS) { locked = true; document.querySelector('dialog[open]')?.close(); render(); return; }
+  if (locked) return;
   pullSync();
-  if (!data || Date.now() - new Date(data.syncedAt).getTime() > 15 * 60 * 1000) sync();
+  if (cfg && !busy && (!data || Date.now() - new Date(data.syncedAt).getTime() > 15 * 60 * 1000)) sync();
 });
 
 /* ---------- Início ---------- */
 applyTheme();
 ui.month = curYM();
-if (cfg) { data = store.get(K.cache, null); render(); sync(); pullSync(); }
-else render();
+(async () => {
+  await Promise.all([initCloud(), checkBio()]);
+  if (cloudOn()) {
+    if (!user) { render(); return; }
+    if (lockOn()) { locked = true; render(); return; }
+    data = store.get(K.cache, null); render(); afterLogin(); return;
+  }
+  if (cfg) { data = store.get(K.cache, null); render(); sync(); } else render();
+})();
 </script>
 </body>
 </html>
