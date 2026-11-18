@@ -38,7 +38,18 @@ O Worker resolve bloqueio de CORS, guarda o Client Secret fora do celular e, se 
 2. Em Settings → Variables and Secrets, crie `PLUGGY_CLIENT_ID`, `PLUGGY_CLIENT_SECRET`, `ACCESS_TOKEN` e `ALLOWED_ORIGIN` (`https://SEU_USUARIO.github.io`).
 3. Na página, em Ajustes → Usar intermediário, informe o endereço do Worker e o mesmo `ACCESS_TOKEN`.
 
-O Worker libera `/items`, `/accounts`, `/v2/transactions` e `/bills`. Se você publicou uma versão antiga, publique de novo para o histórico de faturas aparecer em Relatórios (sem isso, o resto funciona normalmente).
+### Sincronizar renda, metas e empréstimos entre aparelhos
+
+Sem isso, renda, metas, empréstimos e lançamentos manuais ficam só no navegador onde foram digitados. Com o Worker:
+
+1. Em Workers & Pages → KV, crie um namespace (ex.: `vellum-dados`).
+2. No Worker, em Settings → Bindings → Add → KV namespace, ligue esse namespace com o nome `DATA`.
+3. Publique a versão atual de `worker.js`.
+4. Em cada aparelho (computador e celular), abra Ajustes → Usar intermediário e informe o endereço do Worker e o `ACCESS_TOKEN`.
+
+O app envia as alterações sozinho e busca as novas ao abrir; o topo mostra "sincronizado". Vale a versão mais recente.
+
+O Worker libera `/items`, `/accounts`, `/v2/transactions`, `/bills` e `/sync`. Se você publicou uma versão antiga, publique de novo para o histórico de faturas aparecer em Relatórios (sem isso, o resto funciona normalmente).
 
 Para os alertas no iPhone:
 
