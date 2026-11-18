@@ -5,7 +5,7 @@ Página única de gestão de gastos pessoais. Lê os cartões de crédito conect
 ## Telas
 
 - **Visão geral**: gasto do mês comparado ao mesmo período do mês anterior, renda e sobra, projeção, ritmo de gastos, categorias (clicáveis), conta corrente, objetivos, cartões e alertas.
-- **Transações**: busca, filtros por categoria, tipo, cartão ou conta, troca de categoria (só nesta compra ou em todas do mesmo estabelecimento), notas, ignorar nos totais, lançamentos manuais e CSV.
+- **Transações**: busca, filtros por categoria, tipo, cartão ou conta, troca de categoria (só nesta compra ou em todas do mesmo estabelecimento), dividir uma compra entre categorias, notas, ignorar nos totais, lançamentos manuais e CSV. O botão **Categorias** cria, renomeia e muda a cor das categorias.
 - **Faturas**: fatura aberta de cada cartão (fecha em, vence em, limite), lançamentos da fatura, parcelas que ainda vão entrar, próximas 6 faturas previstas e faturas anteriores.
 - **Orçamento**: meta mensal por categoria, com mês anterior, média de 3 meses e sugestão automática.
 - **Parcelas e assinaturas**: compras parceladas em andamento, gastos recorrentes e compromissos dos próximos 12 meses.
@@ -19,6 +19,20 @@ Página única de gestão de gastos pessoais. Lê os cartões de crédito conect
 Se a conexão do Meu Pluggy também trouxer a conta corrente, o app mostra o saldo, conta Pix, débito e boletos como gasto e, por padrão, usa o que entra na conta como **renda automática**. Pagamento da fatura, aplicações, resgates e transferências entre suas contas não contam nem como gasto nem como renda. Em "Editar renda" dá para trocar para renda informada manualmente.
 
 Em Ajustes dá para escolher tema claro/escuro, ligar o Face ID e exportar ou importar um backup (JSON).
+
+## App na Tela de Início
+
+No iPhone, abra o site no Safari → Compartilhar → **Adicionar à Tela de Início**. O Vellum vira um app com ícone próprio, abre em tela cheia e funciona sem internet mostrando os últimos dados salvos (eles atualizam sozinhos quando a conexão volta). No Android, o Chrome oferece "Instalar app". Os dados financeiros nunca ficam no cache do app: Pluggy e Supabase são sempre consultados pela rede.
+
+Os ícones ficam em `icons/` e podem ser gerados de novo com `node tools/gerar-icones.js`.
+
+## Testes
+
+As regras que mais dão problema (pagamento de fatura por Pix, conta corrente, parcelas, assinaturas, faturas, compra dividida, renomear categoria e objetivos) têm testes automáticos. Para rodar:
+
+```
+node --test "tests/*.test.js"
+```
 
 ## Publicar no GitHub Pages (grátis em repositório público)
 
