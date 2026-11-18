@@ -197,3 +197,21 @@ test('renda prevista ignora apostas, transferências de valor variável e o que 
   exp = plain(app.run('expectedIncome(curYM())'));
   assert.equal(exp.length, 0);
 });
+
+test('cartões: visual e bandeira pelo banco/nome, e o Croma vira NUBANK CROMA PLATINUM', () => {
+  setData([]);
+  const deco = c => plain(app.run(`decorateCard(${JSON.stringify(c)}, 0)`));
+  const croma = deco({ id: 'n', name: 'CROMA PLATINUM', bank: 'Nubank' });
+  assert.equal(croma.name, 'NUBANK CROMA PLATINUM');
+  assert.equal(croma.theme, 'nubank');
+  assert.equal(croma.network, 'master');
+  assert.equal(croma.tier, 'platinum');
+  const itau = deco({ id: 'i', name: 'ITI ITAU VISA PLATINUM', bank: 'Itaú' });
+  assert.deepEqual([itau.theme, itau.network], ['itau', 'visa']);
+  assert.equal(deco({ id: 'b', name: 'OUROCARD VISA', bank: 'Banco do Brasil' }).theme, 'bb');
+  assert.equal(deco({ id: 's', name: "SAM'S CLUB MASTERCARD", bank: 'Carrefour' }).theme, 'sams');
+  // nome escolhido pelo usuário vence o automático
+  app.run(`db.cardPrefs = { n: { name: 'Meu Nubank', theme: 'violeta' } }`);
+  const custom = deco({ id: 'n', name: 'CROMA PLATINUM', bank: 'Nubank' });
+  assert.deepEqual([custom.name, custom.theme], ['Meu Nubank', 'violeta']);
+});
