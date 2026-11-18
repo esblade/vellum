@@ -274,6 +274,9 @@ svg.hov.on .hv-bar{opacity:.05}
 #chartTip .tip-sub{color:rgba(255,255,255,.65);font-size:.75rem;margin:-1px 0 3px 18px}
 @media print{#chartTip{display:none !important}}
 
+.notify-box{display:flex;flex-direction:column;gap:10px}
+.notify-box label:not(.chk){max-width:220px}
+
 /* Banner */
 .banner{padding:12px 18px;border-radius:16px;background:var(--accent-soft);display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;font-size:.9rem}
 .banner.err{background:var(--danger-soft)}
@@ -536,6 +539,7 @@ dialog::backdrop{background:rgba(13,12,19,.6);backdrop-filter:blur(3px)}
     <label>API key (opcional, se o painel fornecer uma pronta)<input id="fApiKey" type="password" autocomplete="off" spellcheck="false"></label>
     <label>IDs das conexões (um por linha)<textarea id="fItems" spellcheck="false" placeholder="ex.: 6f1b2c3d-..."></textarea></label>
     <div><p class="fld-title">Conta</p><div id="acctBox"></div></div>
+    <div><p class="fld-title">Notificações</p><div id="notifyBox" class="notify-box"></div></div>
     <details id="proxyBox">
       <summary>Usar intermediário (Cloudflare Worker)</summary>
       <div class="fields">
@@ -580,9 +584,9 @@ const store = {
 };
 const K = {
   cfg:'cartoes.cfg', seen:'cartoes.seen', cache:'cartoes.cache', prefs:'cartoes.prefs',
-  budgets:'cartoes.budgets', overrides:'cartoes.overrides', rules:'cartoes.rules', manual:'cartoes.manual', loans:'cartoes.loans', income:'cartoes.income', goals:'cartoes.goals', cats:'cartoes.cats', cardPrefs:'cartoes.cardPrefs', meta:'cartoes.meta'
+  budgets:'cartoes.budgets', overrides:'cartoes.overrides', rules:'cartoes.rules', manual:'cartoes.manual', loans:'cartoes.loans', income:'cartoes.income', goals:'cartoes.goals', cats:'cartoes.cats', cardPrefs:'cartoes.cardPrefs', notify:'cartoes.notify', meta:'cartoes.meta'
 };
-const DB_KEYS = ['budgets','overrides','rules','manual','loans','income','goals','cats','cardPrefs'];
+const DB_KEYS = ['budgets','overrides','rules','manual','loans','income','goals','cats','cardPrefs','notify'];
 const API = 'https://api.pluggy.ai';
 const HISTORY_MONTHS = 6;
 const INITIAL_MONTHS = 12;   // primeira busca de transações
@@ -721,7 +725,7 @@ function viewFromHash(){ const h = location.hash.replace(/^#\/?/, ''); return VI
 /* ---------- Dados locais ---------- */
 function loadDb(){
   return { budgets: store.get(K.budgets, {}), overrides: store.get(K.overrides, {}), rules: store.get(K.rules, {}),
-    manual: store.get(K.manual, []), loans: store.get(K.loans, []), income: store.get(K.income, { base:0, months:{} }), goals: store.get(K.goals, []), cats: store.get(K.cats, { custom:[], renamed:{}, colors:{} }), cardPrefs: store.get(K.cardPrefs, {}) };
+    manual: store.get(K.manual, []), loans: store.get(K.loans, []), income: store.get(K.income, { base:0, months:{} }), goals: store.get(K.goals, []), cats: store.get(K.cats, { custom:[], renamed:{}, colors:{} }), cardPrefs: store.get(K.cardPrefs, {}), notify: store.get(K.notify, {}) };
 }
 function saveDb(part){
   store.set(K[part], db[part]);
@@ -754,7 +758,7 @@ function setPart(k, v){
   if (k === 'cfg') { cfg = v || null; v ? store.set(K.cfg, v) : store.del(K.cfg); session = { apiKey:null, at:0 }; }
   else { db[k] = v ?? loadDbDefaults()[k]; store.set(K[k], db[k]); }
 }
-const loadDbDefaults = () => ({ budgets:{}, overrides:{}, rules:{}, manual:[], loans:[], income:{ sources:[], months:{} }, goals:[], cats:{ custom:[], renamed:{}, colors:{} }, cardPrefs:{} });
+const loadDbDefaults = () => ({ budgets:{}, overrides:{}, rules:{}, manual:[], loans:[], income:{ sources:[], months:{} }, goals:[], cats:{ custom:[], renamed:{}, colors:{} }, cardPrefs:{}, notify:{} });
 function hasContent(k){
   const v = getPart(k);
   if (!v) return false;
@@ -935,6 +939,60 @@ function loginScreen(){
       <button class="btn gbtn" type="button" data-action="login"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.8 1.1 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3 0 5.8 1.1 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>Entrar com Google</button>
     </div>
   </section>`;
+}
+
+/* ---------- Notificações (push) ---------- */
+// Chave pública das notificações (a privada fica só nos segredos da função "alertas" no Supabase).
+const VAPID_PUBLIC = 'BPFdvN3xFcgDQpWq7UmlFW6iLH7pHcMCUmSVlDjhhlT05snK6t1YHePsOeGwQ5kghZ3rHI4d-ihLxh5Lvhm9xjg';
+const notifyPrefs = () => ({ income: true, budgets: true, threshold: 80, ...(db.notify || {}) });
+const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent);
+const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+async function currentSub(){
+  if (!pushSupported()) return null;
+  const reg = await navigator.serviceWorker.getRegistration();
+  return reg ? reg.pushManager.getSubscription() : null;
+}
+const b64ToBytes = b => { const s = (b + '='.repeat((4 - b.length % 4) % 4)).replace(/-/g, '+').replace(/_/g, '/'); return Uint8Array.from(atob(s), c => c.charCodeAt(0)); };
+async function enablePush(){
+  if (!canSync()) { toast('Entre com sua conta para ativar os avisos.'); return; }
+  try {
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') { toast('Permissão negada. Libere as notificações do Vellum nos ajustes do aparelho.'); renderNotify(); return; }
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription() || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(VAPID_PUBLIC) });
+    const j = sub.toJSON();
+    const { error } = await sb.from('push_subscriptions').upsert({ endpoint: j.endpoint, user_id: user.id, p256dh: j.keys.p256dh, auth: j.keys.auth, device: navigator.userAgent.slice(0, 160) }, { onConflict: 'endpoint' });
+    if (error) throw error;
+    if (db.notify?.enabled === false) { db.notify.enabled = true; saveDb('notify'); }
+    toast('Avisos ativados neste aparelho.');
+  } catch (e) { toast('Não foi possível ativar: ' + (e.message || e)); }
+  renderNotify();
+}
+async function disablePush(){
+  const sub = await currentSub();
+  if (sub) { await sb.from('push_subscriptions').delete().eq('endpoint', sub.endpoint); await sub.unsubscribe(); }
+  toast('Avisos desativados neste aparelho.'); renderNotify();
+}
+async function testPush(){
+  const { data: res, error } = await sb.functions.invoke('alertas', { body: { test: true } });
+  if (error) toast('O teste falhou. Confira se a função "alertas" foi publicada no Supabase.');
+  else toast(res?.report?.length ? 'Teste enviado. Deve chegar em alguns segundos.' : 'Nenhum aparelho com avisos ativos.');
+}
+async function renderNotify(){
+  const box = $('#notifyBox'); if (!box) return;
+  if (!canSync()) { box.innerHTML = '<p class="hint">Entre com sua conta para receber avisos.</p>'; return; }
+  const n = notifyPrefs(), sub = await currentSub().catch(() => null);
+  const needsHome = isIOS() && !isStandalone();
+  const status = !pushSupported() || needsHome
+    ? (isIOS() ? 'No iPhone, os avisos só funcionam com o Vellum na Tela de Início: no Safari, Compartilhar → Adicionar à Tela de Início, e abra por lá.' : 'Este navegador não recebe notificações.')
+    : sub ? 'Este aparelho recebe os avisos.' : Notification.permission === 'denied' ? 'As notificações estão bloqueadas para o Vellum neste aparelho. Libere nos ajustes do navegador ou do sistema.' : 'Este aparelho ainda não recebe os avisos.';
+  box.innerHTML = `<p class="hint">${esc(status)}</p>
+    ${pushSupported() && !needsHome ? `<div class="toolbar">${sub ? '<button class="btn ghost sm" type="button" data-action="pushtest">Enviar teste</button><button class="btn ghost sm" type="button" data-action="pushoff">Desativar neste aparelho</button>' : '<button class="btn sm" type="button" data-action="pushon">Ativar neste aparelho</button>'}</div>` : ''}
+    <label class="chk"><input type="checkbox" data-notify="income" ${n.income ? 'checked' : ''}>Avisar quando o gasto do mês chegar perto da renda</label>
+    <label class="chk"><input type="checkbox" data-notify="budgets" ${n.budgets ? 'checked' : ''}>Avisar quando uma categoria chegar perto da meta</label>
+    <label>Avisar a partir de<select data-notify="threshold">${[70, 80, 90].map(v => `<option value="${v}" ${+n.threshold === v ? 'selected' : ''}>${v}%</option>`).join('')}</select></label>
+    <p class="hint">A conta é checada a cada 30 minutos, mesmo com o app fechado. Cada aviso chega uma vez por mês: ao chegar no percentual escolhido e ao passar de 100%.</p>`;
 }
 
 /* ---------- Bloqueio com Face ID / digital (por aparelho) ---------- */
@@ -1734,13 +1792,14 @@ function alerts(c, P, catNow){
   const I = incomeFor(ui.month);
   if (ui.card === 'all' && I.set) {
     if (P.total > I.total) out.push({ level:'danger', html:`Os gastos de ${esc(mName(ui.month))} já passaram a renda em <b>${money(P.total - I.total)}</b>.` });
+    else if (P.total / I.total * 100 >= notifyPrefs().threshold) out.push({ level:'warn', html:`Você já gastou <b>${Math.floor(P.total / I.total * 100)}% da renda</b> de ${esc(mName(ui.month))}: restam ${money(I.total - P.total)}.` });
     else if (P.isCur && P.day >= 5 && P.projection > I.total) out.push({ level:'warn', html:`No ritmo atual, os gastos do mês passam a renda em <b>${money0(P.projection - I.total)}</b>.` });
   }
   if (P.isCur) {
     for (const [k, b] of Object.entries(db.budgets)) {
       if (!(b > 0)) continue; const v = catNow[k] || 0, p = v / b * 100;
       if (p >= 100) out.push({ level:'danger', html:`<b>${esc(k)}</b> passou da meta: ${money(v)} de ${money0(b)}.` });
-      else if (p >= 80) out.push({ level:'warn', html:`<b>${esc(k)}</b> já usou ${Math.round(p)}% da meta (${money(v)} de ${money0(b)}).` });
+      else if (p >= notifyPrefs().threshold) out.push({ level:'warn', html:`<b>${esc(k)}</b> já usou ${Math.round(p)}% da meta (${money(v)} de ${money0(b)}).` });
     }
     if (P.prevTotal > 0 && P.day >= 5 && P.projection > P.prevTotal * 1.15)
       out.push({ level:'warn', html:`No ritmo atual, o mês fecha em <b>${money0(P.projection)}</b>, ${Math.round((P.projection / P.prevTotal - 1) * 100)}% acima de ${esc(mName(P.prev))}.` });
@@ -2545,6 +2604,7 @@ function openCfg(){
   $('#fTheme').value = themePref();
   $('#cfgHint').textContent = canSync() ? 'Tudo o que você preencher aqui, e as transações dos cartões, fica salvo na sua conta e vale em qualquer aparelho em que você entrar.' : 'Credenciais e dados ficam salvos só neste navegador. Nada é enviado para outro lugar além da API da Pluggy (ou do seu intermediário).';
   renderSync();
+  renderNotify();
   $('#cfg').showModal();
 }
 $('#btnSave').addEventListener('click', () => {
@@ -2667,6 +2727,9 @@ document.addEventListener('click', e => {
     saveDb('income'); b.closest('li')?.remove(); render(); toast('Essa entrada não será mais prevista.');
   }
   else if (a === 'editcard') openCard(id);
+  else if (a === 'pushon') enablePush();
+  else if (a === 'pushoff') disablePush();
+  else if (a === 'pushtest') testPush();
   else if (a === 'rank') { ui.rank = b.dataset.rank; render(); }
   else if (a === 'clearf') { ui.cat = 'all'; ui.q = ''; render(); }
   else if (a === 'sync') sync();
@@ -2700,6 +2763,7 @@ document.addEventListener('change', e => {
     if (v > 0) db.budgets[el.dataset.budget] = v; else delete db.budgets[el.dataset.budget];
     saveDb('budgets'); render();
   } else if (el.classList.contains('swatch')) { el.style.setProperty('--k', `var(--k${el.value})`); }
+  else if (el.dataset.notify) { const n = db.notify ||= {}; n[el.dataset.notify] = el.type === 'checkbox' ? el.checked : +el.value; saveDb('notify'); render(); }
   else if (el.id === 'cardTheme' || el.id === 'cardNet') previewCard();
   else if (el.id === 'incMode') { $('#incAuto').hidden = el.value !== 'auto'; $('#incManual').hidden = el.value === 'auto'; }
   else if (el.dataset.filter === 'card') { ui.card = el.value; render(); }
