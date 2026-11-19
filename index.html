@@ -531,12 +531,15 @@ select[aria-expanded="true"]{border-color:var(--accent);box-shadow:0 0 0 4px col
 /* Transactions */
 .day{display:flex;justify-content:space-between;margin:16px 0 4px;font-size:.75rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.06em}
 .day:first-child{margin-top:0}
-.tx{display:grid;grid-template-columns:38px minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 10px;margin:0 -10px;border:0;background:none;text-align:left;cursor:pointer;border-radius:14px;width:calc(100% + 20px)}
+.tx{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 10px;margin:0 -10px;border:0;background:none;text-align:left;cursor:pointer;border-radius:14px;width:calc(100% + 20px)}
 .tx:hover{background:var(--surface-2)}
 .cat-ico{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;font-family:var(--display);font-weight:700;font-size:.85rem;color:var(--k);background:color-mix(in srgb,var(--k) 15%,transparent)}
 .tx-main{display:flex;flex-direction:column;min-width:0}
 .tx-desc{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tx-meta{font-size:.78rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tx-cat{color:color-mix(in srgb,var(--k) 55%,var(--muted));font-weight:600}
+.tx-cat::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--k);margin-right:6px;vertical-align:1px}
+.tx-main{gap:2px}
 .tx-amt{font-variant-numeric:tabular-nums;font-weight:700;white-space:nowrap;text-align:right}
 .tx-amt.in{color:var(--ok)}
 .tx.ignored .tx-desc,.tx.ignored .tx-amt{text-decoration:line-through;color:var(--muted)}
@@ -2137,13 +2140,14 @@ const panel = (title, body, { sub = '', action = '' } = {}) =>
   `<section class="panel"><div class="panel-h"><div><h2>${title}</h2>${sub ? `<p>${sub}</p>` : ''}</div>${action}</div>${body}</section>`;
 const kpi = (lbl, val, sub = '', extra = '', icon = '', tone = 'k0') => `<div class="panel kpi"><span class="lbl">${icon ? `<span class="kico" style="--k:var(--${tone})">${ic(icon)}</span>` : ''}${lbl}</span><span class="val">${val}</span>${extra}${sub ? `<span class="sub">${sub}</span>` : ''}</div>`;
 
+// Categoria escrita por extenso, com a cor dela só num pontinho e de leve no texto.
+const txCat = k => `<span class="tx-cat" style="--k:${catColor(k)}">${esc(k)}</span>`;
 function txRow(t, c){
   const card = c.cardById[t.cardId] || {};
-  const meta = [t.category, c.multi ? card.name : '', t.instT > 1 ? `parcela ${t.instN}/${t.instT}` : '', t.splitInfo ? `dividida ${t.splitInfo}` : '', t.method || '', t.note || ''].filter(Boolean).join(' · ');
+  const meta = [c.multi ? card.name : '', t.instT > 1 ? `parcela ${t.instN}/${t.instT}` : '', t.splitInfo ? `dividida ${t.splitInfo}` : '', t.method || '', t.note || ''].filter(Boolean).join(' · ');
   return `<li><button class="tx${t.ignored ? ' ignored' : ''}" type="button" data-tx="${esc(t.origId || t.id)}">
-    <span class="cat-ico" style="--k:${catColor(t.category)}">${esc(initials(t.category))}</span>
     <span class="tx-main"><span class="tx-desc">${esc(t.desc)} ${newIds.has(t.id) ? '<span class="badge new">Nova</span>' : ''}</span>
-    <span class="tx-meta">${esc(meta)}${t.pending ? ' · <span class="pending">pendente</span>' : ''}${t.ignored ? ' · ignorada' : ''}</span></span>
+    <span class="tx-meta">${txCat(t.category)}${meta ? ' · ' + esc(meta) : ''}${t.pending ? ' · <span class="pending">pendente</span>' : ''}${t.ignored ? ' · ignorada' : ''}</span></span>
     <span class="tx-amt num ${t.kind}">${t.kind === 'in' ? '+ ' : ''}${money(t.amount)}</span></button></li>`;
 }
 
@@ -2798,8 +2802,8 @@ function viewFaturas(c){
     ${kpi('Estornos', money(estornos), 'descontados da fatura', '', 'wallet', 'k1')}
     ${kpi('Próxima fatura', money(totalOf(addM(key, 1))), `${esc(mName(addM(key, 1)))} · já lançado + parcelas`, '', 'chart', 'k2')}
   </div>`;
-  const projRows = proj.map(p => `<li><div class="tx" style="cursor:default"><span class="cat-ico" style="--k:${catColor(p.category)}">${esc(initials(p.category))}</span>
-      <span class="tx-main"><span class="tx-desc">${esc(p.desc)}</span><span class="tx-meta">${esc(p.category)} · parcela ${Math.min(p.n, p.total)}/${p.total} · prevista</span></span>
+  const projRows = proj.map(p => `<li><div class="tx" style="cursor:default">
+      <span class="tx-main"><span class="tx-desc">${esc(p.desc)}</span><span class="tx-meta">${txCat(p.category)} · parcela ${Math.min(p.n, p.total)}/${p.total} · prevista</span></span>
       <span class="tx-amt num">${money(p.value)}</span></div></li>`).join('');
   const groups = {}; for (const t of list) (groups[t.date] ||= []).push(t);
   const listHtml = (list.length || proj.length)
@@ -3080,6 +3084,14 @@ function modal(html, onSubmit){
   });
   d.showModal();
   setTimeout(() => f.querySelector('[autofocus]')?.focus(), 30);
+}
+// Clicar no fundo escuro fecha a janela (só quando o clique começa e termina fora dela, para não fechar ao arrastar uma seleção de texto).
+{
+  const d = $('#modal');
+  const outside = e => { const r = d.getBoundingClientRect(); return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom; };
+  let downOut = false;
+  d.addEventListener('pointerdown', e => { downOut = e.target === d && outside(e); });
+  d.addEventListener('click', e => { if (downOut && e.target === d && outside(e)) d.close(); downOut = false; });
 }
 const catOptions = sel => (sel ? '' : '<option value="">Escolha…</option>') + allCategories().map(k => `<option ${k === sel ? 'selected' : ''}>${esc(k)}</option>`).join('');
 /* ---------- Categorias personalizadas ---------- */
