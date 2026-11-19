@@ -983,6 +983,7 @@ let sb = null, user = null, authReady = false, access = 'unknown', cloudEmpty = 
 let syncState = { status:'off', msg:'' };
 let pushTimer = null;
 const cloudOn = () => !!(SUPABASE.url && SUPABASE.anonKey && window.supabase);
+const ACCESS_KEY = 'cartoes.acesso';
 const canSync = () => !!sb && !!user && access === 'ok';
 
 // Cada item (renda, metas, empréstimos...) guarda quando foi alterado; na nuvem vale o mais novo de cada um.
@@ -1102,6 +1103,8 @@ async function checkAccess(){
   if (!sb || !user) { access = 'unknown'; return false; }
   const { data: ok, error } = await sb.rpc('is_allowed');
   access = error ? 'schema' : ok ? 'ok' : 'denied';
+  // Lembra neste aparelho que o acesso já foi liberado, para abrir na hora no próximo F5.
+  if (access === 'ok') store.set(ACCESS_KEY, user.id); else if (access === 'denied') store.del(ACCESS_KEY);
   return access === 'ok';
 }
 
@@ -1148,7 +1151,7 @@ async function logout(skipConfirm){
   if (canSync() && dirty.size) await pushNow();
   await sb.auth.signOut();
   for (const k of Object.keys(K)) if (k !== 'prefs') store.del(K[k]);
-  store.del(K.meta + '.dirty'); dirty.clear(); store.del(LOCK_KEY); store.del(ONB_KEY);
+  store.del(K.meta + '.dirty'); dirty.clear(); store.del(LOCK_KEY); store.del(ONB_KEY); store.del(ACCESS_KEY);
   user = null; access = 'unknown'; cfg = null; data = null; db = loadDb(); newIds = new Set(); lastError = ''; locked = false;
   if (cfgOpen()) location.hash = '#/inicio'; render(); toast('Você saiu da conta.');
 }
@@ -1156,6 +1159,7 @@ async function afterLogin(){
   if (!await checkAccess()) { render(); return; }
   await pullSync();
   if (cfgOpen()) fillCfg();
+  render();   // já mostra o app com os ajustes da conta; as transações chegam em seguida
   const local = store.get(K.cache, null), cloud = await loadCloudData();
   cloudEmpty = !cloud;
   const t = d => d?.syncedAt ? new Date(d.syncedAt).getTime() : 0;
@@ -3432,7 +3436,9 @@ addEventListener('online', () => { if (cfg && !busy) { lastError = ''; sync(); }
   if (cloudOn()) {
     if (!user) { render(); return; }
     if (lockOn()) { locked = true; render(); return; }
-    data = store.get(K.cache, null); render(); afterLogin(); return;
+    data = store.get(K.cache, null);
+    if (store.get(ACCESS_KEY, null) === user.id) access = 'ok';   // já liberado antes: abre na hora e confere em segundo plano
+    render(); afterLogin(); return;
   }
   if (cfg) { data = store.get(K.cache, null); render(); sync(); } else render();
 })();
