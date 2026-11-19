@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Confirme seu e-mail</title>
+</head>
+<body style="margin:0;padding:0;background:#F3F2F8;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#17142B;">
+<span style="display:none;max-height:0;overflow:hidden;opacity:0;">Confirme seu e-mail para começar a usar o Vellum.</span>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#F3F2F8;">
+  <tr><td align="center" style="padding:28px 14px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;">
+      <tr><td style="background:#17142B;border-radius:22px 22px 0 0;padding:26px 28px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+          <td style="vertical-align:middle;"><img src="https://esblade.github.io/vellum/icons/icon-192.png" width="40" height="40" alt="Vellum" style="display:block;border-radius:12px;"></td>
+          <td style="vertical-align:middle;padding-left:12px;font-size:20px;font-weight:700;color:#FFFFFF;letter-spacing:-0.3px;">Vellum</td>
+        </tr></table>
+        <p style="margin:18px 0 0;font-size:24px;line-height:1.25;font-weight:700;color:#FFFFFF;letter-spacing:-0.4px;">Confirme seu e-mail</p>
+      </td></tr>
+      <tr><td style="background:#FFFFFF;border-radius:0 0 22px 22px;padding:28px;">
+        <p style="margin:0 0 22px;font-size:16px;line-height:1.55;color:#3B3854;">Que bom ter você por aqui! Falta só confirmar que <b>{{ .Email }}</b> é seu. Ao confirmar, seu acesso ao Vellum é liberado na hora.</p>
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"><tr><td align="center">
+          <a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#5B3DF5;color:#FFFFFF;text-decoration:none;font-size:16px;font-weight:700;padding:15px 28px;border-radius:14px;">Confirmar e-mail</a>
+        </td></tr></table>
+        <p style="margin:22px 0 0;font-size:14px;line-height:1.55;color:#3B3854;">Depois de confirmar, o Vellum abre e um passo a passo mostra como conectar seus bancos pelo Meu Pluggy. Leva uns 5 minutos.</p>
+        <p style="margin:22px 0 0;font-size:12px;line-height:1.5;color:#736F8A;">Se o botão não abrir, copie e cole este endereço no navegador:<br>
+          <a href="{{ .ConfirmationURL }}" style="color:#5B3DF5;word-break:break-all;">{{ .ConfirmationURL }}</a></p>
+        <hr style="border:0;border-top:1px solid #EFEDF5;margin:24px 0 16px;">
+        <p style="margin:0;font-size:12px;line-height:1.5;color:#736F8A;">Você recebeu este e-mail porque alguém criou uma conta no Vellum com este endereço. Se não foi você, é só ignorar: nada acontece sem a confirmação.</p>
+      </td></tr>
+      <tr><td align="center" style="padding:18px 10px 0;font-size:12px;color:#736F8A;">Vellum · suas finanças num lugar só</td></tr>
+    </table>
+  </td></tr>
+</table>
+</body>
+</html>

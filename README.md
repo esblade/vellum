@@ -77,7 +77,11 @@ Com a conta ligada, o app pede "Entrar com Google". Cartões (credenciais da Plu
 3. Em Project Settings → API, copie a **Project URL** e a chave **anon public**. Cole as duas no começo do `<script>` do `index.html`, em `const SUPABASE = { url: '...', anonKey: '...' }`. A chave anon é pública por natureza; o que protege os dados é a regra da tabela.
 4. Em Authentication → URL Configuration, coloque em **Site URL** o endereço do site (ex.: `https://SEU_USUARIO.github.io/vellum/`) e adicione o mesmo endereço em **Redirect URLs**.
 
-### Liberar acesso para outra pessoa
+### Acesso de quem cria conta
+
+Rode uma vez o `supabase-liberacao.sql`: a partir daí, quem confirma o e-mail do cadastro (ou entra com Google) é liberado na hora. Os e-mails em português ficam em `supabase/emails` (veja o LEIA-ME de lá).
+
+### Liberar acesso para outra pessoa (manual)
 
 Só e-mails da tabela `allowed_users` conseguem usar o app. Para liberar um parente, rode no SQL Editor:
 

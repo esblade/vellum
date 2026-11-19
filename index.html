@@ -1069,7 +1069,7 @@ function deniedScreen(){
     <span class="brand-mark big"><svg viewBox="0 0 24 24"><path d="M6 7l6 11 6-11"/></svg></span>
     <h2>${schema ? 'Falta atualizar o banco' : 'Acesso ainda não liberado'}</h2>
     <p>${schema ? 'Rode o arquivo supabase.sql atualizado no SQL Editor do Supabase e entre de novo.'
-      : `O e-mail <b>${esc(user?.email || '')}</b> ainda não tem acesso. Peça para quem administra o app liberar este e-mail.`}</p>
+      : `O acesso de <b>${esc(user?.email || '')}</b> é liberado quando o e-mail é confirmado. Abra o link que enviamos no cadastro (confira o spam) e toque em <b>Tentar de novo</b>. Se já confirmou, fale com quem administra o app.`}</p>
     <button class="btn" type="button" data-action="recheck">Tentar de novo</button>
     <button class="link" type="button" data-action="logoutnow">Entrar com outra conta</button>
   </div></section>`;
