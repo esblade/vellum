@@ -2,6 +2,11 @@
 
 Para lançar uma versão nova, escreva um item no topo desta lista: o número que estiver aqui em cima é a versão que o app mostra. As versões seguem o formato MAIOR.MENOR.CORREÇÃO: muda o MENOR quando chega algo novo e a CORREÇÃO quando é ajuste ou conserto.
 
+## 1.13.0 — 19/11/2026
+- Ajustes virou uma página normal (#/ajustes), sem janela por cima; o que você digita não se perde quando os dados atualizam.
+- Enquanto nenhum banco estiver conectado, o menu fica escondido e qualquer endereço leva ao tutorial.
+- O tutorial pode ser reaberto a qualquer momento em Ajustes → Ajuda.
+
 ## 1.12.2 — 19/11/2026
 - Tutorial e Ajustes explicam melhor os dois passos de um banco novo: autorizar no Meu Pluggy (Open Finance) e depois trazer para o Vellum.
 
