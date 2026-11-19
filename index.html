@@ -309,6 +309,16 @@ svg.hov.on .hv-bar{opacity:.05}
 .sug-val small{color:var(--muted);font-size:.74rem}
 @media (max-width:640px){.bud-right{text-align:left;align-items:flex-start}.bud-val{font-size:1.5rem}}
 
+/* Conexões */
+.conn-box{display:flex;flex-direction:column;gap:10px}
+.conn-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.conn-list li{display:grid;grid-template-columns:36px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 12px;border-radius:14px;background:var(--surface-2)}
+.conn-ico{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent)}
+.conn-name{display:flex;flex-direction:column;gap:3px;font-weight:600;font-size:.88rem;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.conn-name small{font-weight:500;color:var(--muted);font-size:.75rem}
+.conn-acts{display:flex;gap:6px;align-items:center}
+.conn-acts .icon{width:34px;height:34px;padding:0;justify-content:center;font-size:1.1rem}
+
 /* Banner */
 .banner{padding:12px 18px;border-radius:16px;background:var(--accent-soft);display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;font-size:.9rem}
 .banner.err{background:var(--danger-soft)}
@@ -589,7 +599,11 @@ dialog::backdrop{background:rgba(13,12,19,.6);backdrop-filter:blur(3px)}
     <label>Client ID<input id="fClientId" autocomplete="off" spellcheck="false"></label>
     <label>Client Secret<input id="fClientSecret" type="password" autocomplete="off" spellcheck="false"></label>
     <label>API key (opcional, se o painel fornecer uma pronta)<input id="fApiKey" type="password" autocomplete="off" spellcheck="false"></label>
-    <label>IDs das conexões (um por linha)<textarea id="fItems" spellcheck="false" placeholder="ex.: 6f1b2c3d-..."></textarea></label>
+    <div><p class="fld-title">Bancos conectados</p><div id="connBox" class="conn-box"></div></div>
+    <details id="itemsBox"><summary>IDs das conexões (avançado)</summary><div class="fields">
+      <p class="hint">Normalmente você não precisa mexer aqui: o botão "Conectar banco" preenche sozinho.</p>
+      <label>IDs das conexões (um por linha)<textarea id="fItems" spellcheck="false" placeholder="ex.: 6f1b2c3d-..."></textarea></label>
+    </div></details>
     <div><p class="fld-title">Conta</p><div id="acctBox"></div></div>
     <div><p class="fld-title">Notificações</p><div id="notifyBox" class="notify-box"></div></div>
     <details id="proxyBox">
@@ -1047,6 +1061,92 @@ async function renderNotify(){
     <p class="hint">A conta é checada a cada 30 minutos, mesmo com o app fechado. Cada aviso chega uma vez por mês: ao chegar no percentual escolhido e ao passar de 100%.</p>`;
 }
 
+/* ---------- Conexões com bancos (Pluggy Connect + Meu Pluggy) ---------- */
+// O banco é autorizado no meu.pluggy.ai (Open Finance). Aqui, a janela da Pluggy cria a "ponte" com o
+// conector MeuPluggy (id 200) na aplicação da pessoa e devolve o ID da conexão, que é salvo sozinho.
+const MEU_PLUGGY_CONNECTOR = 200;
+const PLUGGY_CONNECT_JS = 'https://cdn.pluggy.ai/pluggy-connect/v2.7.0/pluggy-connect.js';
+let pluggyScript = null;
+function loadPluggyConnect(){
+  if (window.PluggyConnect) return Promise.resolve();
+  return pluggyScript ||= new Promise((ok, fail) => {
+    const sc = document.createElement('script'); sc.src = PLUGGY_CONNECT_JS; sc.async = true;
+    sc.onload = () => window.PluggyConnect ? ok() : fail(new Error('janela da Pluggy indisponível'));
+    sc.onerror = () => { pluggyScript = null; fail(new Error('não foi possível carregar a janela da Pluggy')); };
+    document.head.appendChild(sc);
+  });
+}
+async function connectToken(creds, itemId){
+  let key = creds.apiKey;
+  if (!key) {
+    const r = await fetch(API + '/auth', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ clientId: creds.clientId, clientSecret: creds.clientSecret }) });
+    if (!r.ok) throw new Error('a Pluggy recusou o Client ID ou o Client Secret');
+    key = (await r.json()).apiKey;
+  }
+  const r = await fetch(API + '/connect_token', { method:'POST', headers:{ 'Content-Type':'application/json', 'X-API-KEY': key },
+    body: JSON.stringify({ ...(itemId ? { itemId } : {}), options: { clientUserId: user?.email || 'vellum' } }) });
+  if (!r.ok) throw new Error('não foi possível abrir a conexão (' + r.status + ')');
+  return (await r.json()).accessToken;
+}
+async function openPluggyConnect(updateItem){
+  const form = readCfgForm();
+  if (!form.apiKey && !(form.clientId && form.clientSecret)) { toast('Preencha o Client ID e o Client Secret da sua aplicação na Pluggy primeiro.'); $('#fClientId').focus(); return; }
+  const btn = document.querySelector(updateItem ? `[data-action="renewconn"][data-id="${CSS.escape(updateItem)}"]` : '[data-action="newconn"]');
+  if (btn) { btn.disabled = true; btn.dataset.label = btn.innerHTML; btn.textContent = 'Abrindo…'; }
+  try {
+    const [token] = await Promise.all([connectToken(form, updateItem), loadPluggyConnect()]);
+    const widget = new window.PluggyConnect({
+      connectToken: token,
+      connectorIds: [MEU_PLUGGY_CONNECTOR],
+      ...(updateItem ? { updateItem } : {}),
+      onSuccess: d => {
+        const id = d?.item?.id; if (!id) return;
+        const next = readCfgForm();
+        if (!next.itemIds.includes(id)) next.itemIds.push(id);
+        $('#fItems').value = next.itemIds.join('\n');
+        saveCfg(next, { close: false });
+        toast(updateItem ? 'Conexão renovada.' : 'Banco conectado! Buscando os dados…');
+        renderConnections();
+      },
+      onError: e => toast('A conexão não foi concluída: ' + (e?.message || 'erro na Pluggy'))
+    });
+    await widget.init();
+  } catch (e) { toast('Não foi possível conectar: ' + (e.message || e)); }
+  finally { if (btn) { btn.disabled = false; btn.innerHTML = btn.dataset.label; } }
+}
+function removeConnection(id){
+  const accts = [...(data?.cards || []), ...(data?.banks || [])].filter(a => a.itemId === id).map(a => a.name);
+  if (!confirm(`Tirar esta conexão do Vellum?${accts.length ? ' (' + accts.join(', ') + ')' : ''} Ela continua no seu Meu Pluggy; você pode conectar de novo depois.`)) return;
+  const next = readCfgForm(); next.itemIds = next.itemIds.filter(x => x !== id);
+  $('#fItems').value = next.itemIds.join('\n');
+  if (next.itemIds.length) saveCfg(next, { close: false }); else { cfg = next; store.set(K.cfg, cfg); touch(); schedulePush(); }
+  renderConnections(); toast('Conexão removida do Vellum.');
+}
+const connStatus = {};
+async function renderConnections(){
+  const box = $('#connBox'); if (!box) return;
+  const ids = $('#fItems').value.split(/[\s,;]+/).map(x => x.trim()).filter(Boolean);
+  const accts = [...(data?.cards || []).map(decorateCard), ...(data?.banks || [])];
+  const label = id => { const l = accts.filter(a => a.itemId === id).map(a => a.name); return l.length ? l.join(' · ') : 'Conexão ' + id.slice(0, 8); };
+  const st = id => { const x = connStatus[id]; if (!x) return '<span class="badge">verificando…</span>';
+    if (x.error) return '<span class="badge danger">não encontrada</span>';
+    const ok = ['UPDATED', 'UPDATING'].includes(x.status) && x.executionStatus !== 'ERROR';
+    return `<span class="badge ${ok ? 'ok' : 'warn'}">${ok ? 'ativa' : x.status === 'LOGIN_ERROR' || x.status === 'OUTDATED' || x.status === 'WAITING_USER_INPUT' ? 'precisa renovar' : esc((x.status || '').toLowerCase())}</span>`; };
+  box.innerHTML = `${ids.length ? `<ul class="conn-list">${ids.map(id => `<li><span class="conn-ico">${ic('card')}</span><span class="conn-name">${esc(label(id))}<small>${st(id)}${connStatus[id]?.lastUpdatedAt ? ' · atualizada ' + esc(shortDate(String(connStatus[id].lastUpdatedAt).slice(0, 10))) : ''}</small></span>
+      <span class="conn-acts"><button class="btn ghost sm" type="button" data-action="renewconn" data-id="${esc(id)}">Renovar</button><button class="btn ghost icon sm" type="button" data-action="delconn" data-id="${esc(id)}" aria-label="Remover conexão" title="Remover do Vellum">×</button></span></li>`).join('')}</ul>`
+      : '<p class="hint">Nenhum banco conectado ainda.</p>'}
+    <div class="toolbar"><button class="btn sm" type="button" data-action="newconn">${ic('plus')}Conectar banco</button>
+      <a class="btn ghost sm" href="https://meu.pluggy.ai" target="_blank" rel="noopener">Abrir o Meu Pluggy</a></div>
+    <p class="hint">Primeiro autorize o banco no <b>Meu Pluggy</b> (é lá que acontece o Open Finance). Depois toque em <b>Conectar banco</b>, entre com a mesma conta do Meu Pluggy e escolha o banco: o Vellum salva a conexão sozinho.</p>`;
+  // status de cada conexão (sem travar a tela)
+  if (!cfg || !(cfg.proxyUrl || cfg.apiKey || (cfg.clientId && cfg.clientSecret))) return;   // status só com os ajustes salvos
+  for (const id of ids) if (!connStatus[id]) {
+    connStatus[id] = { pending: true };
+    api(`/items/${encodeURIComponent(id)}`).then(it => { connStatus[id] = it; }).catch(() => { connStatus[id] = { error: true }; })
+      .finally(() => { if ($('#cfg').open) renderConnections(); });
+  }
+}
+
 /* ---------- Bloqueio com Face ID / digital (por aparelho) ---------- */
 // Usa a biometria do próprio aparelho (WebAuthn). É uma trava local: protege o app aberto neste
 // aparelho; a segurança da conta continua sendo o login do Google.
@@ -1226,9 +1326,9 @@ async function sync(){
           limit: cd.creditLimit ?? null, available: cd.availableCreditLimit ?? null,
           due: cd.balanceDueDate ? String(cd.balanceDueDate).slice(0, 10) : null,
           close: cd.balanceCloseDate ? String(cd.balanceCloseDate).slice(0, 10) : null,
-          invoice: Math.abs(a.balance ?? 0)
+          invoice: Math.abs(a.balance ?? 0), itemId
         };
-        if (isBank) banks.push({ id: a.id, type:'bank', name: a.marketingName || a.name || 'Conta', bank, number: String(a.number || '').slice(-4), subtype: a.subtype || '', balance: a.balance ?? null });
+        if (isBank) banks.push({ id: a.id, itemId, type:'bank', name: a.marketingName || a.name || 'Conta', bank, number: String(a.number || '').slice(-4), subtype: a.subtype || '', balance: a.balance ?? null });
         else cards.push(card);
         // Busca só o período recente quando já há histórico salvo (pendentes mudam por algumas semanas);
         // na primeira vez, busca os últimos INITIAL_MONTHS meses.
@@ -2726,6 +2826,7 @@ function openCfg(){
   $('#fClientSecret').value = c.clientSecret || '';
   $('#fApiKey').value = c.apiKey || '';
   $('#fItems').value = (c.itemIds || []).join('\n');
+  renderConnections();
   $('#fProxy').value = c.proxyUrl || '';
   $('#fProxyToken').value = c.proxyToken || '';
   $('#proxyBox').open = !!c.proxyUrl;
@@ -2735,8 +2836,8 @@ function openCfg(){
   renderNotify();
   $('#cfg').showModal();
 }
-$('#btnSave').addEventListener('click', () => {
-  const next = {
+function readCfgForm(){
+  return {
     clientId: $('#fClientId').value.trim(),
     clientSecret: $('#fClientSecret').value.trim(),
     apiKey: $('#fApiKey').value.trim(),
@@ -2744,15 +2845,21 @@ $('#btnSave').addEventListener('click', () => {
     proxyUrl: $('#fProxy').value.trim(),
     proxyToken: $('#fProxyToken').value.trim()
   };
-  if (!next.itemIds.length) { toast('Informe pelo menos um ID de conexão.'); return; }
+}
+function saveCfg(next, { close = true } = {}){
+  cfg = next; session = { apiKey:null, at:0 };
+  store.set(K.cfg, cfg); touch(); schedulePush();
+  if (close) $('#cfg').close();
+  if (!data) data = store.get(K.cache, null);
+  sync();
+}
+$('#btnSave').addEventListener('click', () => {
+  const next = readCfgForm();
+  if (!next.itemIds.length) { toast('Conecte pelo menos um banco (botão "Conectar banco").'); return; }
   if (!next.proxyUrl && !next.apiKey && !(next.clientId && next.clientSecret)) {
     toast('Preencha Client ID e Client Secret, uma API key ou o intermediário.'); return;
   }
-  cfg = next; session = { apiKey:null, at:0 };
-  store.set(K.cfg, cfg); touch(); schedulePush();
-  $('#cfg').close();
-  if (!data) data = store.get(K.cache, null);
-  sync();
+  saveCfg(next);
 });
 $('#fTheme').addEventListener('change', e => { prefs.theme = e.target.value; store.set(K.prefs, prefs); applyTheme(); render(); });
 matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => { if (themePref() === 'auto') { applyTheme(); render(); } });
@@ -2858,6 +2965,9 @@ document.addEventListener('click', e => {
   else if (a === 'pushon') enablePush();
   else if (a === 'pushoff') disablePush();
   else if (a === 'pushtest') testPush();
+  else if (a === 'newconn') openPluggyConnect();
+  else if (a === 'renewconn') openPluggyConnect(id);
+  else if (a === 'delconn') removeConnection(id);
   else if (a === 'rank') { ui.rank = b.dataset.rank; render(); }
   else if (a === 'clearf') { ui.cat = 'all'; ui.q = ''; render(); }
   else if (a === 'sync') sync();

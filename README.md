@@ -51,6 +51,17 @@ No iPhone, abra o endereço no Safari e use Compartilhar → Adicionar à Tela d
 2. Em Ajustes, preencha Client ID, Client Secret e os IDs das conexões.
 3. Se aparecer o aviso de que o navegador bloqueou o acesso direto à API, use o Worker abaixo.
 
+## Conectar bancos (Meu Pluggy)
+
+Uso pessoal gratuito, sem prazo: até 5 conexões ativas, só contas do próprio titular. Cada pessoa precisa, uma vez:
+
+1. Conectar os bancos em [meu.pluggy.ai](https://meu.pluggy.ai) (é lá que acontece a autorização do Open Finance).
+2. Criar uma aplicação no [Dashboard da Pluggy](https://dashboard.pluggy.ai) entrando com a **mesma conta** do Meu Pluggy e ativar o conector MeuPluggy nas configurações de conectores.
+3. No Vellum, em Ajustes, colar o Client ID e o Client Secret dessa aplicação.
+4. Tocar em **Conectar banco**: abre a janela da Pluggy só com o Meu Pluggy; entre, escolha o banco e o Vellum salva a conexão sozinho. Repita para cada banco.
+
+Em Ajustes → Bancos conectados aparecem as conexões com o status de cada uma, e os botões **Renovar** (quando a autorização vence) e **×** (tira a conexão do Vellum, sem apagar no Meu Pluggy).
+
 ## Conta com login Google (dados em qualquer aparelho)
 
 Com a conta ligada, o app pede "Entrar com Google". Cartões (credenciais da Pluggy), renda, metas, empréstimos, lançamentos manuais e categorias ajustadas ficam salvos no Supabase e aparecem em qualquer aparelho em que você entrar. Sem a conta, tudo continua funcionando só no navegador.
