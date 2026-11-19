@@ -2,6 +2,9 @@
 
 Para lançar uma versão nova, escreva um item no topo desta lista: o número que estiver aqui em cima é a versão que o app mostra. As versões seguem o formato MAIOR.MENOR.CORREÇÃO: muda o MENOR quando chega algo novo e a CORREÇÃO quando é ajuste ou conserto.
 
+## 1.13.3 — 19/11/2026
+- Botão para reenviar o e-mail de confirmação, depois de criar a conta ou ao tentar entrar sem ter confirmado (um pedido por minuto).
+
 ## 1.13.2 — 19/11/2026
 - Ao recarregar a página antes de conectar um banco, o menu completo não pisca mais antes do menu do tutorial.
 - O app abre bem mais rápido ao recarregar: o aparelho lembra que seu acesso já foi liberado e confere em segundo plano, e a tela aparece sem esperar as transações chegarem.
