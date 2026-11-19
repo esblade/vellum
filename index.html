@@ -319,6 +319,22 @@ svg.hov.on .hv-bar{opacity:.05}
 .conn-acts{display:flex;gap:6px;align-items:center}
 .conn-acts .icon{width:34px;height:34px;padding:0;justify-content:center;font-size:1.1rem}
 
+/* Janela da Pluggy e versão */
+dialog.pluggy-host{width:100vw;height:100vh;max-width:none;max-height:none;margin:0;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none;overflow:hidden}
+dialog.pluggy-host::backdrop{background:transparent}
+.side-ver{border:0;background:none;color:var(--side-ink);opacity:.7;font:inherit;font-size:.74rem;text-align:left;padding:8px 12px 0;cursor:pointer}
+.side-ver:hover{opacity:1;color:#fff}
+.side-ver b{font-weight:700}
+.mais-ver{grid-column:1/-1;border:0;background:none;color:var(--muted);font:inherit;font-size:.8rem;padding:14px 0 0;cursor:pointer;text-align:center;width:100%}
+.mais-ver:hover{color:var(--accent)}
+.cfg-left{display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+.cfg-ver{font-weight:600;color:var(--muted);font-size:.78rem}
+.news{display:flex;flex-direction:column;gap:14px;max-height:60vh;overflow:auto;padding-right:4px}
+.news-h{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.news-h small{color:var(--muted);margin-left:auto}
+.news-v ul{margin:0;padding-left:18px;font-size:.86rem;color:var(--ink-2);display:flex;flex-direction:column;gap:3px}
+.news-v code{font-size:.8rem;background:var(--surface-2);padding:1px 5px;border-radius:5px}
+
 /* Banner */
 .banner{padding:12px 18px;border-radius:16px;background:var(--accent-soft);display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;font-size:.9rem}
 .banner.err{background:var(--danger-soft)}
@@ -583,6 +599,7 @@ dialog::backdrop{background:rgba(13,12,19,.6);backdrop-filter:blur(3px)}
     <div class="side-foot">
       <button class="nav-l" type="button" data-action="theme" id="sideTheme"></button>
       <button class="nav-l" type="button" data-action="cfg" id="sideCfg"></button>
+      <button class="side-ver" type="button" data-action="news" id="sideVer"></button>
     </div>
   </aside>
   <div class="main">
@@ -606,14 +623,6 @@ dialog::backdrop{background:rgba(13,12,19,.6);backdrop-filter:blur(3px)}
     </div></details>
     <div><p class="fld-title">Conta</p><div id="acctBox"></div></div>
     <div><p class="fld-title">Notificações</p><div id="notifyBox" class="notify-box"></div></div>
-    <details id="proxyBox">
-      <summary>Usar intermediário (Cloudflare Worker)</summary>
-      <div class="fields">
-        <p class="hint">Use se o navegador bloquear o acesso direto à API. Com o intermediário, Client ID e Secret ficam no Worker e podem ficar em branco aqui.</p>
-        <label>Endereço do Worker<input id="fProxy" type="url" placeholder="https://meus-cartoes.seunome.workers.dev" spellcheck="false"></label>
-        <label>Token de acesso<input id="fProxyToken" type="password" autocomplete="off" spellcheck="false"></label>
-      </div>
-    </details>
     <details>
       <summary>Aparência e dados</summary>
       <div class="fields">
@@ -628,7 +637,7 @@ dialog::backdrop{background:rgba(13,12,19,.6);backdrop-filter:blur(3px)}
       </div>
     </details>
     <div class="dlg-actions">
-      <button class="link danger" id="btnWipe" type="button">Apagar dados deste navegador</button>
+      <span class="cfg-left"><button class="link danger" id="btnWipe" type="button">Apagar dados deste navegador</button><button class="link cfg-ver" type="button" data-action="news" id="cfgVer"></button></span>
       <div class="right">
         <button class="btn ghost" id="btnCancel" type="button">Cancelar</button>
         <button class="btn" id="btnSave" type="button">Salvar e atualizar</button>
@@ -638,10 +647,13 @@ dialog::backdrop{background:rgba(13,12,19,.6);backdrop-filter:blur(3px)}
 </dialog>
 
 <dialog id="modal"></dialog>
+<dialog id="pluggyHost" class="pluggy-host" aria-label="Conectar banco"></dialog>
 <div id="toast" role="status" aria-live="polite"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
 <script>
+// Versão do app: é a primeira versão do CHANGELOG.md. Para lançar uma versão nova, basta escrever o item no topo de lá.
+let APP_VERSION = '', changelogMd = '';
 const $ = s => document.querySelector(s);
 const store = {
   get(k, d){ try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
@@ -1108,10 +1120,13 @@ async function openPluggyConnect(updateItem){
         toast(updateItem ? 'Conexão renovada.' : 'Banco conectado! Buscando os dados…');
         renderConnections();
       },
-      onError: e => toast('A conexão não foi concluída: ' + (e?.message || 'erro na Pluggy'))
+      onError: e => toast('A conexão não foi concluída: ' + (e?.message || 'erro na Pluggy')),
+      onClose: () => { const h = $('#pluggyHost'); if (h.open) h.close(); h.innerHTML = ''; }
     });
-    await widget.init();
-  } catch (e) { toast('Não foi possível conectar: ' + (e.message || e)); }
+    const host = $('#pluggyHost');
+    host.innerHTML = ''; if (!host.open) host.showModal();
+    await widget.init(host);
+  } catch (e) { const h = $('#pluggyHost'); if (h.open) h.close(); toast('Não foi possível conectar: ' + (e.message || e)); }
   finally { if (btn) { btn.disabled = false; btn.innerHTML = btn.dataset.label; } }
 }
 function removeConnection(id){
@@ -1145,6 +1160,33 @@ async function renderConnections(){
     api(`/items/${encodeURIComponent(id)}`).then(it => { connStatus[id] = it; }).catch(() => { connStatus[id] = { error: true }; })
       .finally(() => { if ($('#cfg').open) renderConnections(); });
   }
+}
+
+/* ---------- Novidades (CHANGELOG.md) ---------- */
+async function loadChangelog(){
+  try { const r = await fetch('CHANGELOG.md', { cache: 'no-cache' }); if (r.ok) changelogMd = await r.text(); } catch {}
+  APP_VERSION = changelogMd.match(/^## (\d+\.\d+\.\d+)/m)?.[1] || APP_VERSION;
+  renderVersion();
+}
+const versionLabel = () => APP_VERSION ? 'v' + APP_VERSION : '';
+function renderVersion(){
+  const sv = $('#sideVer'); if (sv) sv.innerHTML = `Vellum ${APP_VERSION ? '<b>' + versionLabel() + '</b> · ' : '· '}novidades`;
+  const cv = $('#cfgVer'); if (cv) cv.textContent = APP_VERSION ? 'Versão ' + APP_VERSION : 'Novidades';
+  const mv = document.querySelector('.mais-ver'); if (mv) mv.textContent = `Vellum ${versionLabel()} · ver novidades`.replace('  ', ' ');
+}
+async function openNews(){
+  $('#cfg').open && $('#cfg').close();
+  if (!changelogMd) await loadChangelog();
+  const md = changelogMd;
+  const blocks = md.split(/\n(?=## )/).filter(b => b.startsWith('## ')).slice(0, 12);
+  const html = blocks.length ? blocks.map(b => {
+    const [head, ...lines] = b.split('\n');
+    const [ver, date] = head.replace(/^##\s*/, '').split(/\s+—\s+/);
+    const items = lines.filter(l => /^\s*-\s+/.test(l)).map(l => `<li>${esc(l.replace(/^\s*-\s+/, '')).replace(/\`([^\`]+)\`/g, '<code>$1</code>')}</li>`).join('');
+    return `<section class="news-v"><div class="news-h"><b>v${esc(ver)}</b>${ver === APP_VERSION ? '<span class="badge new">atual</span>' : ''}<small>${esc(date || '')}</small></div><ul>${items}</ul></section>`;
+  }).join('') : '<p class="hint">Não foi possível carregar a lista de novidades agora.</p>';
+  modal(`<h2>Novidades</h2>${APP_VERSION ? `<p class="hint">Você está na versão <b>${APP_VERSION}</b>.</p>` : ''}<div class="news">${html}</div>
+    <div class="dlg-actions"><span></span><div class="right"><button class="btn" type="submit" value="cancel">Fechar</button></div></div>`, () => {});
 }
 
 /* ---------- Bloqueio com Face ID / digital (por aparelho) ---------- */
@@ -2527,7 +2569,8 @@ function viewAno(c){
 function viewMais(){
   const items = VIEWS.filter(v => !v.hidden && !MOBILE_MAIN.includes(v.id));
   return `<div class="mais">${items.map(v => `<a class="mais-i" href="#/${v.id}">${ic(v.icon)}<span>${esc(v.title)}</span></a>`).join('')}
-    <button class="mais-i" type="button" data-action="cfg">${ic('gear')}<span>Ajustes</span></button></div>`;
+    <button class="mais-i" type="button" data-action="cfg">${ic('gear')}<span>Ajustes</span></button></div>
+    <button class="mais-ver" type="button" data-action="news">Vellum ${versionLabel()} · ver novidades</button>`;
 }
 
 /* ---------- PDF ---------- */
@@ -2564,6 +2607,7 @@ function render(){
   const inMain = MOBILE_MAIN.includes(v.id);
   $('#tabbar').innerHTML = VIEWS.filter(x => MOBILE_MAIN.includes(x.id) || x.id === 'mais').map(x => `<a href="#/${x.id}" ${x.id === v.id || (x.id === 'mais' && !inMain) ? 'aria-current="page"' : ''}>${ic(x.icon)}<span>${x.short}</span></a>`).join('');
   $('#sideCfg').innerHTML = ic('gear') + '<span>Ajustes</span>';
+  renderVersion();
   $('#sideTheme').innerHTML = ic(isDark() ? 'sun' : 'moon') + `<span>${isDark() ? 'Modo claro' : 'Modo escuro'}</span>`;
   document.title = v.title + ' · Vellum';
 
@@ -2827,10 +2871,8 @@ function openCfg(){
   $('#fApiKey').value = c.apiKey || '';
   $('#fItems').value = (c.itemIds || []).join('\n');
   renderConnections();
-  $('#fProxy').value = c.proxyUrl || '';
-  $('#fProxyToken').value = c.proxyToken || '';
-  $('#proxyBox').open = !!c.proxyUrl;
   $('#fTheme').value = themePref();
+  renderVersion();
   $('#cfgHint').textContent = canSync() ? 'Tudo o que você preencher aqui, e as transações dos cartões, fica salvo na sua conta e vale em qualquer aparelho em que você entrar.' : 'Credenciais e dados ficam salvos só neste navegador. Nada é enviado para outro lugar além da API da Pluggy (ou do seu intermediário).';
   renderSync();
   renderNotify();
@@ -2842,8 +2884,8 @@ function readCfgForm(){
     clientSecret: $('#fClientSecret').value.trim(),
     apiKey: $('#fApiKey').value.trim(),
     itemIds: $('#fItems').value.split(/[\s,;]+/).map(s => s.trim()).filter(Boolean),
-    proxyUrl: $('#fProxy').value.trim(),
-    proxyToken: $('#fProxyToken').value.trim()
+    proxyUrl: '',
+    proxyToken: ''
   };
 }
 function saveCfg(next, { close = true } = {}){
@@ -2857,13 +2899,18 @@ $('#btnSave').addEventListener('click', () => {
   const next = readCfgForm();
   if (!next.itemIds.length) { toast('Conecte pelo menos um banco (botão "Conectar banco").'); return; }
   if (!next.proxyUrl && !next.apiKey && !(next.clientId && next.clientSecret)) {
-    toast('Preencha Client ID e Client Secret, uma API key ou o intermediário.'); return;
+    toast('Preencha o Client ID e o Client Secret (ou uma API key).'); return;
   }
   saveCfg(next);
 });
 $('#fTheme').addEventListener('change', e => { prefs.theme = e.target.value; store.set(K.prefs, prefs); applyTheme(); render(); });
 matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => { if (themePref() === 'auto') { applyTheme(); render(); } });
 $('#btnCancel').addEventListener('click', () => $('#cfg').close());
+// Fecha ao clicar no fundo escuro (só quando o clique começa e termina fora da janela, para não fechar ao selecionar texto).
+let cfgDownOutside = false;
+const outsideCfg = e => { const r = $('#cfg').getBoundingClientRect(); return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom; };
+$('#cfg').addEventListener('pointerdown', e => { cfgDownOutside = e.target === $('#cfg') && outsideCfg(e); });
+$('#cfg').addEventListener('click', e => { if (cfgDownOutside && e.target === $('#cfg') && outsideCfg(e)) $('#cfg').close(); cfgDownOutside = false; });
 $('#btnBackup').addEventListener('click', exportBackup);
 $('#btnCsv').addEventListener('click', exportCsv);
 $('#btnRestore').addEventListener('click', () => $('#fRestore').click());
@@ -2968,6 +3015,7 @@ document.addEventListener('click', e => {
   else if (a === 'newconn') openPluggyConnect();
   else if (a === 'renewconn') openPluggyConnect(id);
   else if (a === 'delconn') removeConnection(id);
+  else if (a === 'news') openNews();
   else if (a === 'rank') { ui.rank = b.dataset.rank; render(); }
   else if (a === 'clearf') { ui.cat = 'all'; ui.q = ''; render(); }
   else if (a === 'sync') sync();
@@ -3030,6 +3078,7 @@ document.addEventListener('visibilitychange', () => {
 /* ---------- Início ---------- */
 applyTheme();
 ui.month = curYM();
+loadChangelog();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 addEventListener('online', () => { if (cfg && !busy) { lastError = ''; sync(); } });
 (async () => {

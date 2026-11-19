@@ -26,6 +26,10 @@ No iPhone, abra o site no Safari → Compartilhar → **Adicionar à Tela de In�
 
 Os ícones ficam em `icons/` e podem ser gerados de novo com `node tools/gerar-icones.js`.
 
+## Versões
+
+A versão atual aparece no menu lateral (e em "Mais" no celular); tocando nela abre a lista de novidades. Ela vem só do `CHANGELOG.md`: para lançar uma versão nova, escreva o item novo no topo dele (ex.: `## 1.12.0 — 20/11/2026` e a lista do que mudou). Não precisa mudar nada no código.
+
 ## Testes
 
 As regras que mais dão problema (pagamento de fatura por Pix, conta corrente, parcelas, assinaturas, faturas, compra dividida, renomear categoria e objetivos) têm testes automáticos. Para rodar:

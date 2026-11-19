@@ -1,8 +1,10 @@
 // Service worker do Vellum: abre o app na hora e funciona sem internet com os últimos dados salvos.
 // A página (index.html) vem sempre da rede quando há conexão, então atualizações publicadas chegam sozinhas.
-const CACHE = 'vellum-v2';
+// Não precisa mudar a cada versão: o que muda (index.html, CHANGELOG.md) é buscado na rede primeiro
+// e os outros arquivos se atualizam sozinhos em segundo plano.
+const CACHE = 'vellum-v3';
 const SHELL = [
-  './', './index.html', './manifest.webmanifest',
+  './', './index.html', './manifest.webmanifest', './CHANGELOG.md',
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png',
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js'
 ];
@@ -22,6 +24,10 @@ self.addEventListener('fetch', e => {
   if (req.mode === 'navigate') {
     e.respondWith(fetch(req).then(r => { const copy = r.clone(); caches.open(CACHE).then(c => c.put('./index.html', copy)); return r; })
       .catch(() => caches.match('./index.html')));
+    return;
+  }
+  if (url.origin === location.origin && url.pathname.endsWith('/CHANGELOG.md')) {   // versão sempre atualizada
+    e.respondWith(fetch(req).then(r => { const copy = r.clone(); caches.open(CACHE).then(c => c.put(req, copy)); return r; }).catch(() => caches.match(req)));
     return;
   }
   const cacheable = url.origin === location.origin || ['cdn.jsdelivr.net', 'fonts.googleapis.com', 'fonts.gstatic.com'].includes(url.hostname);
