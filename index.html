@@ -652,8 +652,8 @@ dialog::backdrop{background:rgba(13,12,19,.6);backdrop-filter:blur(3px)}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
 <script>
-// Versão do app: atualize junto com o CHANGELOG.md e o CACHE do sw.js (um teste confere).
-const APP_VERSION = '1.11.0';
+// Versão do app: é a primeira versão do CHANGELOG.md. Para lançar uma versão nova, basta escrever o item no topo de lá.
+let APP_VERSION = '', changelogMd = '';
 const $ = s => document.querySelector(s);
 const store = {
   get(k, d){ try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
@@ -1163,10 +1163,21 @@ async function renderConnections(){
 }
 
 /* ---------- Novidades (CHANGELOG.md) ---------- */
+async function loadChangelog(){
+  try { const r = await fetch('CHANGELOG.md', { cache: 'no-cache' }); if (r.ok) changelogMd = await r.text(); } catch {}
+  APP_VERSION = changelogMd.match(/^## (\d+\.\d+\.\d+)/m)?.[1] || APP_VERSION;
+  renderVersion();
+}
+const versionLabel = () => APP_VERSION ? 'v' + APP_VERSION : '';
+function renderVersion(){
+  const sv = $('#sideVer'); if (sv) sv.innerHTML = `Vellum ${APP_VERSION ? '<b>' + versionLabel() + '</b> · ' : '· '}novidades`;
+  const cv = $('#cfgVer'); if (cv) cv.textContent = APP_VERSION ? 'Versão ' + APP_VERSION : 'Novidades';
+  const mv = document.querySelector('.mais-ver'); if (mv) mv.textContent = `Vellum ${versionLabel()} · ver novidades`.replace('  ', ' ');
+}
 async function openNews(){
   $('#cfg').open && $('#cfg').close();
-  let md = '';
-  try { const r = await fetch('CHANGELOG.md', { cache: 'no-cache' }); if (r.ok) md = await r.text(); } catch {}
+  if (!changelogMd) await loadChangelog();
+  const md = changelogMd;
   const blocks = md.split(/\n(?=## )/).filter(b => b.startsWith('## ')).slice(0, 12);
   const html = blocks.length ? blocks.map(b => {
     const [head, ...lines] = b.split('\n');
@@ -1174,7 +1185,7 @@ async function openNews(){
     const items = lines.filter(l => /^\s*-\s+/.test(l)).map(l => `<li>${esc(l.replace(/^\s*-\s+/, '')).replace(/\`([^\`]+)\`/g, '<code>$1</code>')}</li>`).join('');
     return `<section class="news-v"><div class="news-h"><b>v${esc(ver)}</b>${ver === APP_VERSION ? '<span class="badge new">atual</span>' : ''}<small>${esc(date || '')}</small></div><ul>${items}</ul></section>`;
   }).join('') : '<p class="hint">Não foi possível carregar a lista de novidades agora.</p>';
-  modal(`<h2>Novidades</h2><p class="hint">Você está na versão <b>${APP_VERSION}</b>.</p><div class="news">${html}</div>
+  modal(`<h2>Novidades</h2>${APP_VERSION ? `<p class="hint">Você está na versão <b>${APP_VERSION}</b>.</p>` : ''}<div class="news">${html}</div>
     <div class="dlg-actions"><span></span><div class="right"><button class="btn" type="submit" value="cancel">Fechar</button></div></div>`, () => {});
 }
 
@@ -2559,7 +2570,7 @@ function viewMais(){
   const items = VIEWS.filter(v => !v.hidden && !MOBILE_MAIN.includes(v.id));
   return `<div class="mais">${items.map(v => `<a class="mais-i" href="#/${v.id}">${ic(v.icon)}<span>${esc(v.title)}</span></a>`).join('')}
     <button class="mais-i" type="button" data-action="cfg">${ic('gear')}<span>Ajustes</span></button></div>
-    <button class="mais-ver" type="button" data-action="news">Vellum v${APP_VERSION} · ver novidades</button>`;
+    <button class="mais-ver" type="button" data-action="news">Vellum ${versionLabel()} · ver novidades</button>`;
 }
 
 /* ---------- PDF ---------- */
@@ -2596,7 +2607,7 @@ function render(){
   const inMain = MOBILE_MAIN.includes(v.id);
   $('#tabbar').innerHTML = VIEWS.filter(x => MOBILE_MAIN.includes(x.id) || x.id === 'mais').map(x => `<a href="#/${x.id}" ${x.id === v.id || (x.id === 'mais' && !inMain) ? 'aria-current="page"' : ''}>${ic(x.icon)}<span>${x.short}</span></a>`).join('');
   $('#sideCfg').innerHTML = ic('gear') + '<span>Ajustes</span>';
-  $('#sideVer').innerHTML = `Vellum <b>v${APP_VERSION}</b> · novidades`;
+  renderVersion();
   $('#sideTheme').innerHTML = ic(isDark() ? 'sun' : 'moon') + `<span>${isDark() ? 'Modo claro' : 'Modo escuro'}</span>`;
   document.title = v.title + ' · Vellum';
 
@@ -2861,7 +2872,7 @@ function openCfg(){
   $('#fItems').value = (c.itemIds || []).join('\n');
   renderConnections();
   $('#fTheme').value = themePref();
-  $('#cfgVer').textContent = 'Versão ' + APP_VERSION;
+  renderVersion();
   $('#cfgHint').textContent = canSync() ? 'Tudo o que você preencher aqui, e as transações dos cartões, fica salvo na sua conta e vale em qualquer aparelho em que você entrar.' : 'Credenciais e dados ficam salvos só neste navegador. Nada é enviado para outro lugar além da API da Pluggy (ou do seu intermediário).';
   renderSync();
   renderNotify();
@@ -3067,6 +3078,7 @@ document.addEventListener('visibilitychange', () => {
 /* ---------- Início ---------- */
 applyTheme();
 ui.month = curYM();
+loadChangelog();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 addEventListener('online', () => { if (cfg && !busy) { lastError = ''; sync(); } });
 (async () => {

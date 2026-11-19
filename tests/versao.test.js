@@ -1,17 +1,14 @@
-// Confere que a versão está igual no app, no CHANGELOG.md e no cache do sw.js.
+// A versão do app é a primeira do CHANGELOG.md (único lugar para atualizar).
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
 const read = f => fs.readFileSync(path.join(__dirname, '..', f), 'utf8');
 
-test('versão igual no index.html, CHANGELOG.md e sw.js', () => {
-  const app = read('index.html').match(/const APP_VERSION = '(\d+\.\d+\.\d+)'/)?.[1];
-  const log = read('CHANGELOG.md').match(/^## (\d+\.\d+\.\d+)/m)?.[1];
-  const sw = read('sw.js').match(/const CACHE = 'vellum-(\d+\.\d+\.\d+)'/)?.[1];
-  assert.ok(app, 'APP_VERSION não encontrado no index.html');
-  assert.equal(log, app, 'a primeira versão do CHANGELOG.md deve ser a APP_VERSION');
-  assert.equal(sw, app, 'o CACHE do sw.js deve usar a APP_VERSION');
+test('a versão vem só do CHANGELOG.md (nada fixo no app nem no service worker)', () => {
+  assert.match(read('CHANGELOG.md'), /^## \d+\.\d+\.\d+ — /m, 'o CHANGELOG precisa ter versões no formato "## X.Y.Z — data"');
+  assert.doesNotMatch(read('index.html'), /APP_VERSION = '\d/, 'a versão não deve ficar fixa no index.html');
+  assert.doesNotMatch(read('sw.js'), /vellum-\d+\.\d+\.\d+/, 'o cache do sw.js não deve ter a versão');
 });
 
 test('versões do CHANGELOG em ordem decrescente e sem repetir', () => {

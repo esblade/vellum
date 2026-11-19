@@ -28,7 +28,7 @@ Os ícones ficam em `icons/` e podem ser gerados de novo com `node tools/gerar-i
 
 ## Versões
 
-A versão atual aparece no menu lateral (e em "Mais" no celular); tocando nela abre a lista de novidades, que vem do `CHANGELOG.md`. Para lançar uma versão nova: suba o número em `APP_VERSION` (index.html) e em `CACHE` (sw.js) e adicione o item no topo do `CHANGELOG.md`. Os testes avisam se os três ficarem diferentes.
+A versão atual aparece no menu lateral (e em "Mais" no celular); tocando nela abre a lista de novidades. Ela vem só do `CHANGELOG.md`: para lançar uma versão nova, escreva o item novo no topo dele (ex.: `## 1.12.0 — 20/11/2026` e a lista do que mudou). Não precisa mudar nada no código.
 
 ## Testes
 

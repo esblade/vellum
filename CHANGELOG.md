@@ -1,11 +1,12 @@
 # Novidades do Vellum
 
-As versões seguem o formato MAIOR.MENOR.CORREÇÃO: muda o MENOR quando chega algo novo e a CORREÇÃO quando é ajuste ou conserto. A versão do app fica em `APP_VERSION` no `index.html` e precisa ser igual à primeira versão desta lista (um teste confere).
+Para lançar uma versão nova, escreva um item no topo desta lista: o número que estiver aqui em cima é a versão que o app mostra. As versões seguem o formato MAIOR.MENOR.CORREÇÃO: muda o MENOR quando chega algo novo e a CORREÇÃO quando é ajuste ou conserto.
 
 ## 1.11.0 — 19/11/2026
 - Versão do app no menu lateral (e em "Mais" no celular), com esta lista de novidades.
 - A janela "Conectar banco" da Pluggy abre por cima dos Ajustes.
 - Ajustes fecha ao clicar fora.
+- A versão fica em um lugar só: este arquivo.
 - Removida a opção de intermediário (Cloudflare Worker) dos Ajustes.
 
 ## 1.10.0 — 19/11/2026
