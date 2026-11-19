@@ -2,6 +2,13 @@
 
 Para lançar uma versão nova, escreva um item no topo desta lista: o número que estiver aqui em cima é a versão que o app mostra. As versões seguem o formato MAIOR.MENOR.CORREÇÃO: muda o MENOR quando chega algo novo e a CORREÇÃO quando é ajuste ou conserto.
 
+## 1.16.0 — 19/11/2026
+- Relatórios em duas abas, Mês e Ano (a Visão anual virou a aba Ano).
+- Aba Mês com resumo em frases, "Para onde vai a renda" e a evolução dos gastos separando contas fixas e dia a dia.
+- Comparativo mostra só as maiores variações, com as outras categorias recolhidas; ranking de lugares e dias da semana consideram só o dia a dia.
+- Orçamento: novo quadro "Quanto dá para o dia a dia" (renda menos contas fixas e o que você quer guardar) e a marca de onde cada meta deveria estar hoje.
+- Faturas: previsão de fechamento da fatura aberta e resumo por categoria.
+
 ## 1.15.0 — 19/11/2026
 - Gastos separados em contas fixas (aluguel, contas, assinaturas, parcelas) e dia a dia (mercado, delivery, transporte, compras).
 - Visão geral nova: o topo mostra quanto ainda dá para gastar no mês e por dia, já separando as contas fixas, e como a renda está dividida.
