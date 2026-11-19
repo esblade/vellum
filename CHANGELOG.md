@@ -2,6 +2,9 @@
 
 Para lançar uma versão nova, escreva um item no topo desta lista: o número que estiver aqui em cima é a versão que o app mostra. As versões seguem o formato MAIOR.MENOR.CORREÇÃO: muda o MENOR quando chega algo novo e a CORREÇÃO quando é ajuste ou conserto.
 
+## 1.12.2 — 19/11/2026
+- Tutorial e Ajustes explicam melhor os dois passos de um banco novo: autorizar no Meu Pluggy (Open Finance) e depois trazer para o Vellum.
+
 ## 1.12.1 — 19/11/2026
 - Acesso liberado automaticamente quando a pessoa confirma o e-mail (ou entra com Google).
 - E-mails de cadastro, recuperação de senha e troca de e-mail em português, no visual do Vellum.

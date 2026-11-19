@@ -245,6 +245,8 @@ body.gated .page{max-width:none;min-height:100vh;padding:24px 16px;justify-conte
 .onb-body{display:flex;flex-direction:column;gap:12px}
 .onb-body h2{font-size:1.2rem;font-weight:700}
 .onb-body p{color:var(--ink-2);font-size:.93rem;line-height:1.5}
+.onb-why{background:var(--accent-soft);border-radius:14px;padding:12px 14px;font-size:.88rem;line-height:1.5;color:var(--ink-2)}
+.onb-why b{color:var(--ink)}
 .onb-list{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px;font-size:.93rem;color:var(--ink-2)}
 .onb-link{align-self:flex-start}
 .onb-link svg.i{width:15px;height:15px}
@@ -1162,20 +1164,21 @@ const setOnb = n => { store.set(ONB_KEY, n); render(); scrollTo(0, 0); };
 function onboardingScreen(){
   const step = onbStep();
   const name = user?.user_metadata?.name || user?.user_metadata?.full_name || '';
-  const steps = ['Meu Pluggy', 'Dashboard', 'Chaves', 'Conectar banco'];
+  const steps = ['Autorizar bancos', 'Dashboard', 'Chaves', 'Trazer ao Vellum'];
   const ext = (href, txt) => `<a class="btn ghost onb-link" href="${href}" target="_blank" rel="noopener">${txt} ${ic('right')}</a>`;
   const nav = (back, nextLabel, nextAction = 'onbnext') => `<div class="onb-nav">${back ? '<button class="btn ghost" type="button" data-action="onbback">Voltar</button>' : '<span></span>'}<button class="btn" type="button" data-action="${nextAction}">${nextLabel}</button></div>`;
   const body = [
-    `<h2>1. Conecte seus bancos no Meu Pluggy</h2>
-     <p>O Vellum lê seus cartões e contas pelo <b>Open Finance</b>, através da Pluggy. A autorização dos bancos acontece no Meu Pluggy, que é gratuito.</p>
+    `<h2>1. Autorize seus bancos no Meu Pluggy</h2>
+     <p>O Vellum lê seus cartões e contas pelo <b>Open Finance</b>, através da Pluggy (gratuito para uso pessoal).</p>
+     <div class="onb-why"><b>Por que fora do app?</b> A autorização do Open Finance (CPF e aprovação no app do banco) só pode ser feita no site do Meu Pluggy. Aqui você só autoriza; no <b>passo 4</b> o Vellum traz esses bancos com um toque.</div>
      <ol class="onb-list">
        <li>Abra o Meu Pluggy e crie sua conta (pode entrar com Google).</li>
        <li>Toque em <b>Conectar conta</b>, escolha o banco e informe seu CPF.</li>
-       <li>O app do banco abre: aprove o compartilhamento. Faça isso para cada banco ou cartão.</li>
+       <li>O app do banco abre: aprove o compartilhamento. Faça isso para cada banco ou cartão que quiser ver no Vellum.</li>
      </ol>
      ${ext('https://meu.pluggy.ai', 'Abrir o Meu Pluggy')}
-     <p class="hint">Gratuito para uso pessoal: até 5 conexões, só contas suas.</p>
-     ${nav(false, 'Já conectei meus bancos')}`,
+     <p class="hint">Até 5 conexões, só contas suas.</p>
+     ${nav(false, 'Já autorizei meus bancos')}`,
     `<h2>2. Crie sua aplicação no Dashboard da Pluggy</h2>
      <p>É a "chave" que permite ao Vellum ler os dados que estão no seu Meu Pluggy.</p>
      <ol class="onb-list">
@@ -1194,10 +1197,10 @@ function onboardingScreen(){
        <p class="hint">As chaves ficam salvas só na sua conta do Vellum.</p>
        <div class="onb-nav"><button class="btn ghost" type="button" data-action="onbback">Voltar</button><button class="btn" type="submit">Verificar e continuar</button></div>
      </form>`,
-    `<h2>4. Conecte seu primeiro banco</h2>
-     <p>Toque no botão abaixo. Abre a janela da Pluggy: entre com a conta do Meu Pluggy e escolha o banco. Repita para cada banco depois, em Ajustes.</p>
-     <button class="btn onb-big" type="button" data-action="onbconnect">${ic('plus')}Conectar banco</button>
-     <p class="hint">Se o banco não aparecer na lista, confira se ele já foi autorizado no Meu Pluggy (passo 1).</p>
+    `<h2>4. Traga seus bancos para o Vellum</h2>
+     <p>Agora é só ligar ao Vellum os bancos que você autorizou no passo 1. Toque no botão, entre com a conta do Meu Pluggy e escolha um banco.</p>
+     <button class="btn onb-big" type="button" data-action="onbconnect">${ic('plus')}Trazer banco do Meu Pluggy</button>
+     <p class="hint">A Pluggy pede <b>uma vez para cada banco</b>: depois do primeiro, traga os outros em Ajustes → Bancos conectados. Se um banco não aparecer na lista, ele ainda não foi autorizado no Meu Pluggy (passo 1).</p>
      ${nav(true, 'Fazer depois', 'onbskip')}`
   ][step];
   return `<section class="onb">
@@ -1355,9 +1358,9 @@ async function renderConnections(){
   box.innerHTML = `${ids.length ? `<ul class="conn-list">${ids.map(id => `<li><span class="conn-ico">${ic('card')}</span><span class="conn-name">${esc(label(id))}<small>${st(id)}${connStatus[id]?.lastUpdatedAt ? ' · atualizada ' + esc(shortDate(String(connStatus[id].lastUpdatedAt).slice(0, 10))) : ''}</small></span>
       <span class="conn-acts"><button class="btn ghost sm" type="button" data-action="renewconn" data-id="${esc(id)}">Renovar</button><button class="btn ghost icon sm" type="button" data-action="delconn" data-id="${esc(id)}" aria-label="Remover conexão" title="Remover do Vellum">×</button></span></li>`).join('')}</ul>`
       : '<p class="hint">Nenhum banco conectado ainda.</p>'}
-    <div class="toolbar"><button class="btn sm" type="button" data-action="newconn">${ic('plus')}Conectar banco</button>
-      <a class="btn ghost sm" href="https://meu.pluggy.ai" target="_blank" rel="noopener">Abrir o Meu Pluggy</a></div>
-    <p class="hint">Primeiro autorize o banco no <b>Meu Pluggy</b> (é lá que acontece o Open Finance). Depois toque em <b>Conectar banco</b>, entre com a mesma conta do Meu Pluggy e escolha o banco: o Vellum salva a conexão sozinho.</p>`;
+    <div class="toolbar"><button class="btn sm" type="button" data-action="newconn">${ic('plus')}Trazer banco do Meu Pluggy</button>
+      <a class="btn ghost sm" href="https://meu.pluggy.ai" target="_blank" rel="noopener">Autorizar banco novo no Meu Pluggy</a></div>
+    <p class="hint">Banco novo é em dois passos: <b>1)</b> autorize no Meu Pluggy (só lá dá para fazer o Open Finance); <b>2)</b> toque em <b>Trazer banco do Meu Pluggy</b> e escolha o banco. O Vellum salva a conexão sozinho.</p>`;
   // status de cada conexão (sem travar a tela)
   if (!cfg || !(cfg.proxyUrl || cfg.apiKey || (cfg.clientId && cfg.clientSecret))) return;   // status só com os ajustes salvos
   for (const id of ids) if (!connStatus[id]) {
