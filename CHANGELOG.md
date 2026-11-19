@@ -2,6 +2,9 @@
 
 Para lançar uma versão nova, escreva um item no topo desta lista: o número que estiver aqui em cima é a versão que o app mostra. As versões seguem o formato MAIOR.MENOR.CORREÇÃO: muda o MENOR quando chega algo novo e a CORREÇÃO quando é ajuste ou conserto.
 
+## 1.13.2 — 19/11/2026
+- Ao recarregar a página antes de conectar um banco, o menu completo não pisca mais antes do menu do tutorial.
+
 ## 1.13.1 — 19/11/2026
 - Ajustes organizado em cartões (Pluggy, Bancos, Conta, Notificações, Aparência, Seus dados, Ajuda, Apagar dados), com índice ao lado em telas grandes.
 - Durante a configuração, o menu mostra os passos do tutorial com o progresso e as telas que liberam depois de conectar um banco.

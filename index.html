@@ -431,6 +431,7 @@ dialog.pluggy-host::backdrop{background:transparent}
 @media (max-width:860px){.aj-card{padding:18px 16px;border-radius:18px}.aj-actions .btn{flex:1;justify-content:center}}
 #sideCfg[aria-current]{background:var(--lime);color:var(--lime-ink);font-weight:700}
 body.setup .tabbar{grid-template-columns:repeat(2,1fr)}
+body.booting #nav,body.booting .tabbar,body.booting .tb-actions{visibility:hidden}
 .setup-nav{display:flex;flex-direction:column;gap:3px}
 .setup-t{font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--side-ink);opacity:.7;padding:4px 12px}
 .setup-bar{height:6px;border-radius:99px;background:rgba(255,255,255,.12);margin:2px 12px 0;overflow:hidden}
@@ -2911,6 +2912,9 @@ function render(){
   const setup = cloudOn() && !!user && access === 'ok' && !locked && !configured();
   if (setup && !['ajustes', 'tutorial'].includes(ui.view)) { ui.view = 'tutorial'; history.replaceState(null, '', '#/tutorial'); }
   document.body.classList.toggle('setup', setup);
+  // Logo após o F5: ainda conferindo o acesso e sem nada salvo aqui. Não mostra menu nenhum para não piscar o errado.
+  const booting = cloudOn() && !!user && !locked && access === 'unknown' && !configured();
+  document.body.classList.toggle('booting', booting);
   const v = VIEWS.find(x => x.id === ui.view) || VIEWS[0];
   const navHtml = (cls, short) => VIEWS.filter(x => !x.hidden).map(x => `<a class="${cls}" href="#/${x.id}" ${x.id === v.id ? 'aria-current="page"' : ''}>${ic(x.icon)}<span>${short ? x.short : x.title}</span></a>`).join('');
   const setupSteps = ['Autorizar bancos', 'Criar aplicação', 'Colar as chaves', 'Trazer ao Vellum'];
@@ -2952,6 +2956,7 @@ function render(){
       <button class="btn ghost icon only-m" type="button" data-action="cfg" aria-label="Ajustes">${ic('gear')}</button>
     </div>`;
 
+  if (booting) { $('#cfg').hidden = true; $('#page').hidden = false; $('#page').innerHTML = '<section class="panel"><p class="empty">Carregando sua conta…</p></section>'; return; }
   if (v.id === 'ajustes') { renderSync(); return; }
   let html = '';
   if (lastError) html += `<div class="banner err"><p>${esc(lastError)}</p><button class="link" data-action="cfg" type="button">Abrir ajustes</button></div>`;
