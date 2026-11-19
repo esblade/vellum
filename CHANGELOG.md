@@ -2,6 +2,10 @@
 
 Para lançar uma versão nova, escreva um item no topo desta lista: o número que estiver aqui em cima é a versão que o app mostra. As versões seguem o formato MAIOR.MENOR.CORREÇÃO: muda o MENOR quando chega algo novo e a CORREÇÃO quando é ajuste ou conserto.
 
+## 1.12.0 — 19/11/2026
+- Tela de entrada nova, pensada para o celular: entrar ou criar conta com e-mail e senha, ou com Google, e recuperar a senha.
+- Tutorial no primeiro acesso: criar a conta no Meu Pluggy, a aplicação no Dashboard, colar e conferir o Client ID e o Secret e conectar o primeiro banco.
+
 ## 1.11.0 — 19/11/2026
 - Versão do app no menu lateral (e em "Mais" no celular), com esta lista de novidades.
 - A janela "Conectar banco" da Pluggy abre por cima dos Ajustes.

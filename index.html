@@ -203,6 +203,69 @@ body.gated .shell{grid-template-columns:minmax(0,1fr)}
 body.gated .page{max-width:none;min-height:100vh;padding:24px 16px;justify-content:center;align-items:center;
   background:radial-gradient(80% 60% at 100% 0%,rgba(91,61,245,.55),transparent 60%),radial-gradient(70% 60% at 0% 100%,rgba(200,242,90,.2),transparent 60%),var(--hero)}
 .gate{width:100%;display:grid;place-items:center}
+.auth{width:100%;max-width:1040px;min-height:calc(100vh - 48px);display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:56px;align-items:center}
+.auth-hero{color:#fff;display:flex;flex-direction:column;gap:14px}
+.auth-hero h1{font-size:clamp(2rem,4vw,3.1rem);font-weight:700;letter-spacing:-.035em;line-height:1.05;margin:6px 0 0}
+.auth-hero p{color:rgba(255,255,255,.75);font-size:1.02rem;max-width:42ch}
+.auth-feats{list-style:none;padding:0;margin:10px 0 0;display:flex;flex-direction:column;gap:12px}
+.auth-feats li{display:flex;align-items:center;gap:10px;color:rgba(255,255,255,.88);font-size:.94rem}
+.auth-feats svg.i{color:var(--lime)}
+.auth-card{background:var(--surface);border-radius:26px;padding:30px 28px;box-shadow:0 24px 70px rgba(10,8,25,.35);display:flex;flex-direction:column;gap:14px;width:100%;max-width:440px;justify-self:end}
+.auth-card h2{font-size:1.4rem;font-weight:700}
+.auth-tabs{display:grid;grid-template-columns:1fr 1fr;background:var(--surface-2);border-radius:14px;padding:4px}
+.auth-tabs button{border:0;background:none;border-radius:11px;padding:11px;font:inherit;font-weight:700;color:var(--muted);cursor:pointer}
+.auth-tabs button[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(23,20,43,.12)}
+.auth-or{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:.8rem}
+.auth-or::before,.auth-or::after{content:"";flex:1;height:1px;background:var(--line)}
+.auth-form,.onb-keys{display:flex;flex-direction:column;gap:12px}
+.auth-f{display:flex;flex-direction:column;gap:6px;font-size:.84rem;font-weight:600}
+.auth-f input{width:100%;font-size:16px;height:50px !important;background:var(--surface-2)}
+.pw-wrap{position:relative;display:block}
+.pw-wrap input{padding-right:48px}
+.pw-eye{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:0;background:none;color:var(--muted);width:38px;height:38px;display:grid;place-items:center;cursor:pointer;border-radius:10px}
+.pw-eye:hover{color:var(--ink);background:var(--surface)}
+.auth-main{height:52px;justify-content:center;font-size:1rem;width:100%}
+.auth-card .gbtn{height:52px}
+.auth-forgot{align-self:flex-end;font-size:.82rem;margin-top:-4px}
+.auth-help{font-size:.8rem;color:var(--muted)}
+.auth-msg{font-size:.86rem;padding:10px 12px;border-radius:12px;line-height:1.4}
+.auth-msg.err{background:var(--danger-soft);color:var(--danger)}
+.auth-msg.ok{background:var(--ok-soft);color:var(--ok)}
+.auth-back{align-self:center}
+.onb{max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:16px;width:100%}
+.onb-head h1{font-size:1.7rem;font-weight:700;letter-spacing:-.025em;margin:2px 0}
+.onb-hi{color:var(--accent);font-weight:700;font-size:.9rem}
+.onb-head p{color:var(--muted)}
+.onb-steps{list-style:none;padding:0;margin:0;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;position:relative}
+.onb-steps li{display:flex;flex-direction:column;align-items:center;gap:6px;font-size:.74rem;color:var(--muted);text-align:center}
+.onb-steps li span{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-weight:700;background:var(--surface);border:2px solid var(--line)}
+.onb-steps li.cur span{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.onb-steps li.done span{background:var(--ok);color:#fff;border-color:var(--ok)}
+.onb-steps li.cur small{color:var(--ink);font-weight:700}
+.onb-body{display:flex;flex-direction:column;gap:12px}
+.onb-body h2{font-size:1.2rem;font-weight:700}
+.onb-body p{color:var(--ink-2);font-size:.93rem;line-height:1.5}
+.onb-list{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px;font-size:.93rem;color:var(--ink-2)}
+.onb-link{align-self:flex-start}
+.onb-link svg.i{width:15px;height:15px}
+.onb-nav{display:flex;justify-content:space-between;gap:10px;margin-top:6px}
+.onb-big{height:54px;justify-content:center;font-size:1rem}
+.onb-skip{align-self:center;font-size:.84rem;color:var(--muted)}
+@media (max-width:860px){
+  body.gated .page{padding:0;align-items:stretch;justify-content:flex-start}
+  .auth{grid-template-columns:minmax(0,1fr);gap:0;min-height:100vh;min-height:100dvh;align-content:start}
+  .auth-hero{padding:calc(26px + env(safe-area-inset-top,0px)) 22px 24px;gap:8px}
+  .auth-hero .brand-mark.big{width:44px;height:44px;border-radius:14px}
+  .auth-hero h1{font-size:1.75rem}
+  .auth-hero p{font-size:.92rem}
+  .auth-feats{display:none}
+  .auth-card{max-width:none;justify-self:stretch;border-radius:28px 28px 0 0;padding:24px 20px calc(28px + env(safe-area-inset-bottom,0px));min-height:calc(100dvh - 190px);box-shadow:0 -12px 40px rgba(10,8,25,.25);gap:12px}
+  .auth-card h2{font-size:1.25rem}
+  .onb-head h1{font-size:1.4rem}
+  .onb-steps li small{font-size:.68rem}
+  .onb-nav .btn{flex:1;justify-content:center}
+  .onb-link{align-self:stretch;justify-content:center}
+}
 .gate-card{width:min(420px,100%);background:var(--surface);border-radius:26px;padding:34px 28px;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;box-shadow:0 24px 70px rgba(10,8,25,.35)}
 .gate-card h2{font-size:1.5rem;font-weight:700;letter-spacing:-.025em}
 .gate-card p{color:var(--muted);font-size:.92rem;margin-bottom:6px}
@@ -720,6 +783,7 @@ const ICON = {
   year:'<rect x="3" y="4.5" width="18" height="16.5" rx="2"/><path d="M3 10h18M8 2.5v4M16 2.5v4M7.5 14h.01M12 14h.01M16.5 14h.01M7.5 17.5h.01M12 17.5h.01"/>',
   dots:'<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>',
   print:'<path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M6 14h12v7H6z"/>',
+  eye:'<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
   sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
   moon:'<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>',
   wallet:'<path d="M3 7a2 2 0 0 1 2-2h13v4"/><path d="M3 7v11a2 2 0 0 0 2 2h15V9H5a2 2 0 0 1-2-2z"/><path d="M16 14.5h.01"/>',
@@ -969,6 +1033,8 @@ async function initCloud(){
     const before = user?.id; user = s2?.user || null;
     if (event === 'SIGNED_IN' && user && user.id !== before) afterLogin();
     if (event === 'SIGNED_OUT') { user = null; access = 'unknown'; render(); }
+    if (event === 'PASSWORD_RECOVERY') setTimeout(askNewPassword, 300);
+    if (event === 'SIGNED_IN') { authMsg = null; authMode = 'login'; }
   });
 }
 async function login(){
@@ -982,7 +1048,7 @@ async function logout(skipConfirm){
   if (canSync() && dirty.size) await pushNow();
   await sb.auth.signOut();
   for (const k of Object.keys(K)) if (k !== 'prefs') store.del(K[k]);
-  store.del(K.meta + '.dirty'); dirty.clear(); store.del(LOCK_KEY);
+  store.del(K.meta + '.dirty'); dirty.clear(); store.del(LOCK_KEY); store.del(ONB_KEY); store.del('cartoes.onbSkip');
   user = null; access = 'unknown'; cfg = null; data = null; db = loadDb(); newIds = new Set(); lastError = ''; locked = false;
   $('#cfg').open && $('#cfg').close(); render(); toast('Você saiu da conta.');
 }
@@ -1008,15 +1074,151 @@ function deniedScreen(){
     <button class="link" type="button" data-action="logoutnow">Entrar com outra conta</button>
   </div></section>`;
 }
+/* ---------- Tela de entrada: entrar, criar conta, Google, esqueci a senha ---------- */
+let authMode = 'login', authMsg = null, authBusy = false;
+const GOOGLE_SVG = '<svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.8 1.1 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3 0 5.8 1.1 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>';
+const authError = m => {
+  const s = String(m || '');
+  if (/invalid login credentials/i.test(s)) return 'E-mail ou senha incorretos.';
+  if (/already registered|already exists/i.test(s)) return 'Já existe uma conta com este e-mail. Entre ou use "Esqueci a senha".';
+  if (/email not confirmed/i.test(s)) return 'Confirme seu e-mail pelo link que enviamos antes de entrar.';
+  if (/password should be at least|weak password/i.test(s)) return 'A senha precisa ter pelo menos 8 caracteres, com letras e números.';
+  if (/rate limit|too many/i.test(s)) return 'Muitas tentativas seguidas. Espere alguns minutos e tente de novo.';
+  if (/invalid email|unable to validate email/i.test(s)) return 'Confira o e-mail digitado.';
+  return s || 'Algo deu errado. Tente de novo.';
+};
 function loginScreen(){
-  return `<section class="gate">
-    <div class="gate-card">
+  const m = authMode, msg = authMsg ? `<p class="auth-msg ${authMsg.ok ? 'ok' : 'err'}" role="status">${esc(authMsg.text)}</p>` : '';
+  const pw = (name, auto) => `<label class="auth-f"><span>Senha</span><span class="pw-wrap"><input name="${name}" type="password" required minlength="8" autocomplete="${auto}" placeholder="${m === 'signup' ? 'Mínimo de 8 caracteres' : 'Sua senha'}">
+    <button type="button" class="pw-eye" data-action="pweye" aria-label="Mostrar senha">${ic('eye')}</button></span></label>`;
+  const form = m === 'reset'
+    ? `<form class="auth-form" data-auth="reset" novalidate>
+        <p class="auth-help">Digite o e-mail da sua conta. Enviaremos um link para criar uma senha nova.</p>
+        <label class="auth-f"><span>E-mail</span><input name="email" type="email" required autocomplete="email" inputmode="email" placeholder="voce@email.com"></label>
+        ${msg}<button class="btn auth-main" type="submit" ${authBusy ? 'disabled' : ''}>${authBusy ? 'Enviando…' : 'Enviar link'}</button>
+        <button class="link auth-back" type="button" data-action="authmode" data-mode="login">Voltar para entrar</button></form>`
+    : `<div class="auth-tabs" role="tablist">
+        <button type="button" role="tab" aria-selected="${m === 'login'}" data-action="authmode" data-mode="login">Entrar</button>
+        <button type="button" role="tab" aria-selected="${m === 'signup'}" data-action="authmode" data-mode="signup">Criar conta</button></div>
+      <button class="btn gbtn" type="button" data-action="login">${GOOGLE_SVG}${m === 'signup' ? 'Criar conta com Google' : 'Entrar com Google'}</button>
+      <div class="auth-or"><span>ou com e-mail</span></div>
+      <form class="auth-form" data-auth="${m}" novalidate>
+        ${m === 'signup' ? '<label class="auth-f"><span>Seu nome</span><input name="name" autocomplete="name" placeholder="Como quer ser chamado"></label>' : ''}
+        <label class="auth-f"><span>E-mail</span><input name="email" type="email" required autocomplete="email" inputmode="email" placeholder="voce@email.com"></label>
+        ${pw('password', m === 'signup' ? 'new-password' : 'current-password')}
+        ${m === 'login' ? '<button class="link auth-forgot" type="button" data-action="authmode" data-mode="reset">Esqueci a senha</button>' : '<p class="auth-help">Ao criar a conta, você recebe um e-mail para confirmar o endereço.</p>'}
+        ${msg}<button class="btn auth-main" type="submit" ${authBusy ? 'disabled' : ''}>${authBusy ? 'Aguarde…' : m === 'signup' ? 'Criar conta' : 'Entrar'}</button>
+      </form>`;
+  return `<section class="auth">
+    <div class="auth-hero">
       <span class="brand-mark big"><svg viewBox="0 0 24 24"><path d="M6 7l6 11 6-11"/></svg></span>
-      <h2>Entre para ver suas finanças</h2>
-      <p>Seus cartões, renda, metas e empréstimos ficam salvos na sua conta e aparecem em qualquer aparelho.</p>
-      <button class="btn gbtn" type="button" data-action="login"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.8 1.1 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3 0 5.8 1.1 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>Entrar com Google</button>
+      <h1>Suas finanças num lugar só</h1>
+      <p>Cartões, conta, renda, metas e empréstimos, salvos na sua conta e em qualquer aparelho.</p>
+      <ul class="auth-feats"><li>${ic('card')}Faturas e parcelas de todos os cartões</li><li>${ic('target')}Metas por categoria com avisos</li><li>${ic('chart')}Para onde foi o dinheiro, mês a mês</li></ul>
+    </div>
+    <div class="auth-card">
+      <h2>${m === 'signup' ? 'Criar sua conta' : m === 'reset' ? 'Recuperar senha' : 'Bem-vindo de volta'}</h2>
+      ${form}
     </div>
   </section>`;
+}
+async function submitAuth(f){
+  const mode = f.dataset.auth, fd = new FormData(f);
+  const email = String(fd.get('email') || '').trim(), password = String(fd.get('password') || '');
+  if (!/^\S+@\S+\.\S+$/.test(email)) { authMsg = { text: 'Digite um e-mail válido.' }; render(); return; }
+  if (mode !== 'reset' && password.length < 8) { authMsg = { text: 'A senha precisa ter pelo menos 8 caracteres.' }; render(); return; }
+  authBusy = true; authMsg = null; render();
+  const redirectTo = location.origin + location.pathname;
+  try {
+    if (mode === 'login') {
+      const { error } = await sb.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+    } else if (mode === 'signup') {
+      const { data: d, error } = await sb.auth.signUp({ email, password, options: { emailRedirectTo: redirectTo, data: { name: String(fd.get('name') || '').trim() } } });
+      if (error) throw error;
+      if (d?.user && Array.isArray(d.user.identities) && !d.user.identities.length) throw new Error('already registered');
+      if (!d?.session) { authMode = 'login'; authMsg = { ok: true, text: `Conta criada! Enviamos um link de confirmação para ${email}. Abra o e-mail, confirme e depois entre aqui.` }; }
+    } else {
+      const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo });
+      if (error) throw error;
+      authMode = 'login'; authMsg = { ok: true, text: `Se existir uma conta com ${email}, você vai receber um link para criar uma senha nova.` };
+    }
+  } catch (e) { authMsg = { text: authError(e.message || e) }; }
+  authBusy = false; render();
+}
+// Link do e-mail de "esqueci a senha": pede a senha nova.
+function askNewPassword(){
+  modal(`<h2>Criar senha nova</h2><p class="hint">Escolha uma senha nova para ${esc(user?.email || 'sua conta')}.</p>
+    <label>Senha nova<input name="pw" type="password" minlength="8" required autocomplete="new-password" autofocus></label>
+    <div class="dlg-actions"><span></span><div class="right"><button class="btn" type="submit" value="save">Salvar senha</button></div></div>`,
+  f => { const pw = String(f.get('pw') || ''); if (pw.length < 8) { toast('A senha precisa ter pelo menos 8 caracteres.'); return false; }
+    sb.auth.updateUser({ password: pw }).then(({ error }) => toast(error ? authError(error.message) : 'Senha alterada.')); });
+}
+
+/* ---------- Primeiro acesso: tutorial da Pluggy ---------- */
+const ONB_KEY = 'cartoes.onb';
+const onbStep = () => Math.max(0, Math.min(3, +store.get(ONB_KEY, 0) || 0));
+const setOnb = n => { store.set(ONB_KEY, n); render(); scrollTo(0, 0); };
+function onboardingScreen(){
+  const step = onbStep();
+  const name = user?.user_metadata?.name || user?.user_metadata?.full_name || '';
+  const steps = ['Meu Pluggy', 'Dashboard', 'Chaves', 'Conectar banco'];
+  const ext = (href, txt) => `<a class="btn ghost onb-link" href="${href}" target="_blank" rel="noopener">${txt} ${ic('right')}</a>`;
+  const nav = (back, nextLabel, nextAction = 'onbnext') => `<div class="onb-nav">${back ? '<button class="btn ghost" type="button" data-action="onbback">Voltar</button>' : '<span></span>'}<button class="btn" type="button" data-action="${nextAction}">${nextLabel}</button></div>`;
+  const body = [
+    `<h2>1. Conecte seus bancos no Meu Pluggy</h2>
+     <p>O Vellum lê seus cartões e contas pelo <b>Open Finance</b>, através da Pluggy. A autorização dos bancos acontece no Meu Pluggy, que é gratuito.</p>
+     <ol class="onb-list">
+       <li>Abra o Meu Pluggy e crie sua conta (pode entrar com Google).</li>
+       <li>Toque em <b>Conectar conta</b>, escolha o banco e informe seu CPF.</li>
+       <li>O app do banco abre: aprove o compartilhamento. Faça isso para cada banco ou cartão.</li>
+     </ol>
+     ${ext('https://meu.pluggy.ai', 'Abrir o Meu Pluggy')}
+     <p class="hint">Gratuito para uso pessoal: até 5 conexões, só contas suas.</p>
+     ${nav(false, 'Já conectei meus bancos')}`,
+    `<h2>2. Crie sua aplicação no Dashboard da Pluggy</h2>
+     <p>É a "chave" que permite ao Vellum ler os dados que estão no seu Meu Pluggy.</p>
+     <ol class="onb-list">
+       <li>Abra o Dashboard e entre com a <b>mesma conta</b> do Meu Pluggy.</li>
+       <li>Crie uma aplicação (qualquer nome, ex.: "Vellum"). Pode ignorar o aviso de teste de 15 dias: ele não vale para uso pessoal.</li>
+       <li>Nas configurações de <b>conectores</b> da aplicação, ative o conector <b>MeuPluggy</b>.</li>
+     </ol>
+     ${ext('https://dashboard.pluggy.ai', 'Abrir o Dashboard')}
+     ${nav(true, 'Já criei a aplicação')}`,
+    `<h2>3. Copie o Client ID e o Client Secret</h2>
+     <p>Na sua aplicação do Dashboard, copie as duas chaves e cole aqui. <b>O Client Secret só aparece uma vez</b>, quando é gerado; se perdeu, gere um novo lá.</p>
+     <form class="onb-keys" data-onb="keys" novalidate>
+       <label class="auth-f"><span>Client ID</span><input name="clientId" autocomplete="off" spellcheck="false" required value="${esc(cfg?.clientId || '')}" placeholder="ex.: 1a2b3c4d-..."></label>
+       <label class="auth-f"><span>Client Secret</span><span class="pw-wrap"><input name="clientSecret" type="password" autocomplete="off" spellcheck="false" required value="${esc(cfg?.clientSecret || '')}" placeholder="cole o secret">
+         <button type="button" class="pw-eye" data-action="pweye" aria-label="Mostrar">${ic('eye')}</button></span></label>
+       <p class="hint">As chaves ficam salvas só na sua conta do Vellum.</p>
+       <div class="onb-nav"><button class="btn ghost" type="button" data-action="onbback">Voltar</button><button class="btn" type="submit">Verificar e continuar</button></div>
+     </form>`,
+    `<h2>4. Conecte seu primeiro banco</h2>
+     <p>Toque no botão abaixo. Abre a janela da Pluggy: entre com a conta do Meu Pluggy e escolha o banco. Repita para cada banco depois, em Ajustes.</p>
+     <button class="btn onb-big" type="button" data-action="onbconnect">${ic('plus')}Conectar banco</button>
+     <p class="hint">Se o banco não aparecer na lista, confira se ele já foi autorizado no Meu Pluggy (passo 1).</p>
+     ${nav(true, 'Fazer depois', 'onbskip')}`
+  ][step];
+  return `<section class="onb">
+    <div class="onb-head"><span class="onb-hi">${name ? `Olá, ${esc(name.split(' ')[0])}!` : 'Bem-vindo!'}</span><h1>Vamos configurar o Vellum</h1><p>Leva uns 5 minutos e você faz só uma vez.</p></div>
+    <ol class="onb-steps">${steps.map((s, i) => `<li class="${i < step ? 'done' : i === step ? 'cur' : ''}"><span>${i < step ? '✓' : i + 1}</span><small>${s}</small></li>`).join('')}</ol>
+    <div class="panel onb-body">${body}</div>
+    <button class="link onb-skip" type="button" data-action="onbskip">Pular tutorial e abrir os Ajustes</button>
+  </section>`;
+}
+async function submitOnbKeys(f){
+  const fd = new FormData(f), clientId = String(fd.get('clientId') || '').trim(), clientSecret = String(fd.get('clientSecret') || '').trim();
+  if (!clientId || !clientSecret) { toast('Cole o Client ID e o Client Secret.'); return; }
+  const btn = f.querySelector('[type=submit]'); btn.disabled = true; btn.textContent = 'Verificando…';
+  try {
+    const r = await fetch(API + '/auth', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ clientId, clientSecret }) });
+    if (!r.ok) throw new Error('A Pluggy não aceitou essas chaves. Confira se copiou certinho (sem espaços).');
+    cfg = { ...(cfg || {}), clientId, clientSecret, apiKey: '', itemIds: cfg?.itemIds || [], proxyUrl: '', proxyToken: '' };
+    session = { apiKey:null, at:0 };
+    store.set(K.cfg, cfg); touch(); schedulePush();
+    toast('Chaves conferidas!'); setOnb(3);
+  } catch (e) { toast(e.message || String(e)); btn.disabled = false; btn.textContent = 'Verificar e continuar'; }
 }
 
 /* ---------- Notificações (push) ---------- */
@@ -1101,9 +1303,11 @@ async function connectToken(creds, itemId){
   return (await r.json()).accessToken;
 }
 async function openPluggyConnect(updateItem){
-  const form = readCfgForm();
-  if (!form.apiKey && !(form.clientId && form.clientSecret)) { toast('Preencha o Client ID e o Client Secret da sua aplicação na Pluggy primeiro.'); $('#fClientId').focus(); return; }
-  const btn = document.querySelector(updateItem ? `[data-action="renewconn"][data-id="${CSS.escape(updateItem)}"]` : '[data-action="newconn"]');
+  const inCfg = $('#cfg').open;
+  const base = () => inCfg ? readCfgForm() : { clientId:'', clientSecret:'', apiKey:'', proxyUrl:'', proxyToken:'', ...(cfg || {}), itemIds: [...(cfg?.itemIds || [])] };
+  const form = base();
+  if (!form.apiKey && !(form.clientId && form.clientSecret)) { toast('Preencha o Client ID e o Client Secret da sua aplicação na Pluggy primeiro.'); if (inCfg) $('#fClientId').focus(); else setOnb(2); return; }
+  const btn = document.querySelector(updateItem ? `[data-action="renewconn"][data-id="${CSS.escape(updateItem)}"]` : inCfg ? '[data-action="newconn"]' : '[data-action="onbconnect"]');
   if (btn) { btn.disabled = true; btn.dataset.label = btn.innerHTML; btn.textContent = 'Abrindo…'; }
   try {
     const [token] = await Promise.all([connectToken(form, updateItem), loadPluggyConnect()]);
@@ -1113,12 +1317,13 @@ async function openPluggyConnect(updateItem){
       ...(updateItem ? { updateItem } : {}),
       onSuccess: d => {
         const id = d?.item?.id; if (!id) return;
-        const next = readCfgForm();
+        const next = base();
         if (!next.itemIds.includes(id)) next.itemIds.push(id);
-        $('#fItems').value = next.itemIds.join('\n');
+        if (inCfg) $('#fItems').value = next.itemIds.join('\n');
+        store.del(ONB_KEY);
         saveCfg(next, { close: false });
         toast(updateItem ? 'Conexão renovada.' : 'Banco conectado! Buscando os dados…');
-        renderConnections();
+        if (inCfg) renderConnections();
       },
       onError: e => toast('A conexão não foi concluída: ' + (e?.message || 'erro na Pluggy')),
       onClose: () => { const h = $('#pluggyHost'); if (h.open) h.close(); h.innerHTML = ''; }
@@ -2631,7 +2836,8 @@ function render(){
   if (lastError) html += `<div class="banner err"><p>${esc(lastError)}</p><button class="link" data-action="cfg" type="button">Abrir ajustes</button></div>`;
   const page = $('#page');
   if (!data && !(v.noData && cfg)) {
-    page.innerHTML = html + (busy ? '<section class="panel"><p class="empty">Buscando seus cartões e lançamentos dos últimos meses…</p></section>' : welcome());
+    const firstAccess = cloudOn() && user && !(cfg?.itemIds?.length) && !store.get('cartoes.onbSkip', false);
+    page.innerHTML = html + (busy ? '<section class="panel"><p class="empty">Buscando seus cartões e lançamentos dos últimos meses…</p></section>' : firstAccess ? onboardingScreen() : welcome());
     return;
   }
   const ctx = c || { cards:[], banks:[], accounts:[], shownCards:[], cardById:{}, T:[], spend:[], minYM:curYM(), multi:false };
@@ -3016,6 +3222,12 @@ document.addEventListener('click', e => {
   else if (a === 'renewconn') openPluggyConnect(id);
   else if (a === 'delconn') removeConnection(id);
   else if (a === 'news') openNews();
+  else if (a === 'authmode') { authMode = b.dataset.mode; authMsg = null; render(); setTimeout(() => document.querySelector('.auth-form input')?.focus(), 30); }
+  else if (a === 'pweye') { const i = b.parentElement.querySelector('input'); i.type = i.type === 'password' ? 'text' : 'password'; b.setAttribute('aria-label', i.type === 'password' ? 'Mostrar senha' : 'Esconder senha'); }
+  else if (a === 'onbnext') setOnb(onbStep() + 1);
+  else if (a === 'onbback') setOnb(onbStep() - 1);
+  else if (a === 'onbskip') { store.set('cartoes.onbSkip', true); render(); openCfg(); }
+  else if (a === 'onbconnect') openPluggyConnect();
   else if (a === 'rank') { ui.rank = b.dataset.rank; render(); }
   else if (a === 'clearf') { ui.cat = 'all'; ui.q = ''; render(); }
   else if (a === 'sync') sync();
@@ -3045,6 +3257,11 @@ document.addEventListener('click', e => {
   }
   else if (a === 'suggest') openSuggest();
   else if (a === 'sugall' || a === 'sugnone') document.querySelectorAll('#modal [name=cat]').forEach(x => x.checked = a === 'sugall');
+});
+document.addEventListener('submit', e => {
+  const f = e.target;
+  if (f.matches?.('form[data-auth]')) { e.preventDefault(); submitAuth(f); }
+  else if (f.matches?.('form[data-onb="keys"]')) { e.preventDefault(); submitOnbKeys(f); }
 });
 document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'addVal') document.querySelector('[data-action=addcat]')?.click(); });
 document.addEventListener('change', e => {
