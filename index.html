@@ -56,6 +56,7 @@
   color-scheme:dark;
 }
 *,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none !important}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--ink);font:400 15px/1.5 var(--font);-webkit-font-smoothing:antialiased}
 button,input,select,textarea{font:inherit;color:inherit}
@@ -400,6 +401,18 @@ dialog.pluggy-host::backdrop{background:transparent}
 .news-v ul{margin:0;padding-left:18px;font-size:.86rem;color:var(--ink-2);display:flex;flex-direction:column;gap:3px}
 .news-v code{font-size:.8rem;background:var(--surface-2);padding:1px 5px;border-radius:5px}
 
+/* Ajustes como página e modo configuração */
+.settings{max-width:820px;margin:0 auto;padding:12px 32px 72px}
+.settings-in{background:var(--surface);border:1px solid var(--panel-border);border-radius:var(--radius);box-shadow:var(--shadow);padding:24px 26px}
+.settings-in>div:first-child:empty{display:none}
+#sideCfg[aria-current]{background:var(--lime);color:var(--lime-ink);font-weight:700}
+body.setup #nav,body.setup .tabbar{display:none}
+@media (max-width:860px){
+  .settings{padding:8px 14px calc(110px + env(safe-area-inset-bottom,0px))}
+  .settings-in{padding:18px 16px;border-radius:18px}
+  body.setup .page,body.setup .settings{padding-bottom:calc(28px + env(safe-area-inset-bottom,0px))}
+}
+
 /* Banner */
 .banner{padding:12px 18px;border-radius:16px;background:var(--accent-soft);display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;font-size:.9rem}
 .banner.err{background:var(--danger-soft)}
@@ -670,46 +683,49 @@ dialog::backdrop{background:rgba(13,12,19,.6);backdrop-filter:blur(3px)}
   <div class="main">
     <header class="topbar"><div class="topbar-in" id="topbar"></div></header>
     <main class="page" id="page"></main>
+    <section id="cfg" class="settings" hidden>
+      <div class="dlg settings-in">
+        <div id="setupNote"></div>
+        <p class="hint" id="cfgHint"></p>
+        <label>Client ID<input id="fClientId" autocomplete="off" spellcheck="false"></label>
+        <label>Client Secret<input id="fClientSecret" type="password" autocomplete="off" spellcheck="false"></label>
+        <label>API key (opcional, se o painel fornecer uma pronta)<input id="fApiKey" type="password" autocomplete="off" spellcheck="false"></label>
+        <div><p class="fld-title">Bancos conectados</p><div id="connBox" class="conn-box"></div></div>
+        <details id="itemsBox"><summary>IDs das conexões (avançado)</summary><div class="fields">
+          <p class="hint">Normalmente você não precisa mexer aqui: o botão "Conectar banco" preenche sozinho.</p>
+          <label>IDs das conexões (um por linha)<textarea id="fItems" spellcheck="false" placeholder="ex.: 6f1b2c3d-..."></textarea></label>
+        </div></details>
+        <div><p class="fld-title">Conta</p><div id="acctBox"></div></div>
+        <div><p class="fld-title">Notificações</p><div id="notifyBox" class="notify-box"></div></div>
+        <details>
+          <summary>Aparência e dados</summary>
+          <div class="fields">
+            <label>Tema<select id="fTheme"><option value="light">Claro</option><option value="dark">Escuro</option><option value="auto">Automático (igual ao sistema)</option></select></label>
+            <p class="hint">O backup guarda metas, empréstimos, lançamentos manuais e categorias que você ajustou. Use para levar para outro aparelho.</p>
+            <div class="toolbar">
+              <button class="btn ghost sm" type="button" id="btnBackup">Exportar backup</button>
+              <button class="btn ghost sm" type="button" id="btnRestore">Importar backup</button>
+              <button class="btn ghost sm" type="button" id="btnCsv">Exportar transações (CSV)</button>
+              <input type="file" id="fRestore" accept="application/json,.json" hidden>
+            </div>
+          </div>
+        </details>
+        <div><p class="fld-title">Ajuda</p>
+          <div class="toolbar"><button class="btn ghost sm" type="button" data-action="tutorial">Ver tutorial de configuração</button><button class="btn ghost sm" type="button" data-action="news">Novidades</button></div></div>
+        <div class="dlg-actions">
+          <span class="cfg-left"><button class="link danger" id="btnWipe" type="button">Apagar dados deste navegador</button><button class="link cfg-ver" type="button" data-action="news" id="cfgVer"></button></span>
+          <div class="right">
+            <button class="btn ghost" id="btnCancel" type="button">Desfazer alterações</button>
+            <button class="btn" id="btnSave" type="button">Salvar e atualizar</button>
+          </div>
+        </div>
+      </div>
+    </section>
   </div>
 </div>
 <nav class="tabbar" id="tabbar" aria-label="Menu"></nav>
 
-<dialog id="cfg">
-  <div class="dlg">
-    <h2>Ajustes</h2>
-    <p class="hint" id="cfgHint"></p>
-    <label>Client ID<input id="fClientId" autocomplete="off" spellcheck="false"></label>
-    <label>Client Secret<input id="fClientSecret" type="password" autocomplete="off" spellcheck="false"></label>
-    <label>API key (opcional, se o painel fornecer uma pronta)<input id="fApiKey" type="password" autocomplete="off" spellcheck="false"></label>
-    <div><p class="fld-title">Bancos conectados</p><div id="connBox" class="conn-box"></div></div>
-    <details id="itemsBox"><summary>IDs das conexões (avançado)</summary><div class="fields">
-      <p class="hint">Normalmente você não precisa mexer aqui: o botão "Conectar banco" preenche sozinho.</p>
-      <label>IDs das conexões (um por linha)<textarea id="fItems" spellcheck="false" placeholder="ex.: 6f1b2c3d-..."></textarea></label>
-    </div></details>
-    <div><p class="fld-title">Conta</p><div id="acctBox"></div></div>
-    <div><p class="fld-title">Notificações</p><div id="notifyBox" class="notify-box"></div></div>
-    <details>
-      <summary>Aparência e dados</summary>
-      <div class="fields">
-        <label>Tema<select id="fTheme"><option value="light">Claro</option><option value="dark">Escuro</option><option value="auto">Automático (igual ao sistema)</option></select></label>
-        <p class="hint">O backup guarda metas, empréstimos, lançamentos manuais e categorias que você ajustou. Use para levar para outro aparelho.</p>
-        <div class="toolbar">
-          <button class="btn ghost sm" type="button" id="btnBackup">Exportar backup</button>
-          <button class="btn ghost sm" type="button" id="btnRestore">Importar backup</button>
-          <button class="btn ghost sm" type="button" id="btnCsv">Exportar transações (CSV)</button>
-          <input type="file" id="fRestore" accept="application/json,.json" hidden>
-        </div>
-      </div>
-    </details>
-    <div class="dlg-actions">
-      <span class="cfg-left"><button class="link danger" id="btnWipe" type="button">Apagar dados deste navegador</button><button class="link cfg-ver" type="button" data-action="news" id="cfgVer"></button></span>
-      <div class="right">
-        <button class="btn ghost" id="btnCancel" type="button">Cancelar</button>
-        <button class="btn" id="btnSave" type="button">Salvar e atualizar</button>
-      </div>
-    </div>
-  </div>
-</dialog>
+
 
 <dialog id="modal"></dialog>
 <dialog id="pluggyHost" class="pluggy-host" aria-label="Conectar banco"></dialog>
@@ -803,7 +819,9 @@ const VIEWS = [
   { id:'emprestimos', title:'Empréstimos', short:'Empréstimos', icon:'loan', noData:true },
   { id:'relatorios', title:'Relatórios', short:'Relatórios', icon:'chart', month:true },
   { id:'ano', title:'Visão anual', short:'Ano', icon:'year' },
-  { id:'mais', title:'Mais', short:'Mais', icon:'dots', noData:true, hidden:true }
+  { id:'mais', title:'Mais', short:'Mais', icon:'dots', noData:true, hidden:true },
+  { id:'ajustes', title:'Ajustes', short:'Ajustes', icon:'gear', noData:true, hidden:true },
+  { id:'tutorial', title:'Configurar o Vellum', short:'Tutorial', icon:'flag', noData:true, hidden:true }
 ];
 const MOBILE_MAIN = ['inicio', 'transacoes', 'faturas', 'orcamento'];
 
@@ -1050,13 +1068,14 @@ async function logout(skipConfirm){
   if (canSync() && dirty.size) await pushNow();
   await sb.auth.signOut();
   for (const k of Object.keys(K)) if (k !== 'prefs') store.del(K[k]);
-  store.del(K.meta + '.dirty'); dirty.clear(); store.del(LOCK_KEY); store.del(ONB_KEY); store.del('cartoes.onbSkip');
+  store.del(K.meta + '.dirty'); dirty.clear(); store.del(LOCK_KEY); store.del(ONB_KEY);
   user = null; access = 'unknown'; cfg = null; data = null; db = loadDb(); newIds = new Set(); lastError = ''; locked = false;
-  $('#cfg').open && $('#cfg').close(); render(); toast('Você saiu da conta.');
+  if (cfgOpen()) location.hash = '#/inicio'; render(); toast('Você saiu da conta.');
 }
 async function afterLogin(){
   if (!await checkAccess()) { render(); return; }
   await pullSync();
+  if (cfgOpen()) fillCfg();
   const local = store.get(K.cache, null), cloud = await loadCloudData();
   cloudEmpty = !cloud;
   const t = d => d?.syncedAt ? new Date(d.syncedAt).getTime() : 0;
@@ -1201,13 +1220,13 @@ function onboardingScreen(){
      <p>Agora é só ligar ao Vellum os bancos que você autorizou no passo 1. Toque no botão, entre com a conta do Meu Pluggy e escolha um banco.</p>
      <button class="btn onb-big" type="button" data-action="onbconnect">${ic('plus')}Trazer banco do Meu Pluggy</button>
      <p class="hint">A Pluggy pede <b>uma vez para cada banco</b>: depois do primeiro, traga os outros em Ajustes → Bancos conectados. Se um banco não aparecer na lista, ele ainda não foi autorizado no Meu Pluggy (passo 1).</p>
-     ${nav(true, 'Fazer depois', 'onbskip')}`
+     ${configured() ? nav(true, 'Voltar para o app', 'onbdone') : '<div class="onb-nav"><button class="btn ghost" type="button" data-action="onbback">Voltar</button><span></span></div>'}`
   ][step];
   return `<section class="onb">
     <div class="onb-head"><span class="onb-hi">${name ? `Olá, ${esc(name.split(' ')[0])}!` : 'Bem-vindo!'}</span><h1>Vamos configurar o Vellum</h1><p>Leva uns 5 minutos e você faz só uma vez.</p></div>
     <ol class="onb-steps">${steps.map((s, i) => `<li class="${i < step ? 'done' : i === step ? 'cur' : ''}"><span>${i < step ? '✓' : i + 1}</span><small>${s}</small></li>`).join('')}</ol>
     <div class="panel onb-body">${body}</div>
-    <button class="link onb-skip" type="button" data-action="onbskip">Pular tutorial e abrir os Ajustes</button>
+    <button class="link onb-skip" type="button" data-action="onbskip">Ir para os Ajustes</button>
   </section>`;
 }
 async function submitOnbKeys(f){
@@ -1306,7 +1325,7 @@ async function connectToken(creds, itemId){
   return (await r.json()).accessToken;
 }
 async function openPluggyConnect(updateItem){
-  const inCfg = $('#cfg').open;
+  const inCfg = cfgOpen();
   const base = () => inCfg ? readCfgForm() : { clientId:'', clientSecret:'', apiKey:'', proxyUrl:'', proxyToken:'', ...(cfg || {}), itemIds: [...(cfg?.itemIds || [])] };
   const form = base();
   if (!form.apiKey && !(form.clientId && form.clientSecret)) { toast('Preencha o Client ID e o Client Secret da sua aplicação na Pluggy primeiro.'); if (inCfg) $('#fClientId').focus(); else setOnb(2); return; }
@@ -1326,7 +1345,7 @@ async function openPluggyConnect(updateItem){
         store.del(ONB_KEY);
         saveCfg(next, { close: false });
         toast(updateItem ? 'Conexão renovada.' : 'Banco conectado! Buscando os dados…');
-        if (inCfg) renderConnections();
+        if (inCfg) renderConnections(); else if (ui.view === 'tutorial') location.hash = '#/inicio';
       },
       onError: e => toast('A conexão não foi concluída: ' + (e?.message || 'erro na Pluggy')),
       onClose: () => { const h = $('#pluggyHost'); if (h.open) h.close(); h.innerHTML = ''; }
@@ -1366,7 +1385,7 @@ async function renderConnections(){
   for (const id of ids) if (!connStatus[id]) {
     connStatus[id] = { pending: true };
     api(`/items/${encodeURIComponent(id)}`).then(it => { connStatus[id] = it; }).catch(() => { connStatus[id] = { error: true }; })
-      .finally(() => { if ($('#cfg').open) renderConnections(); });
+      .finally(() => { if (cfgOpen()) renderConnections(); });
   }
 }
 
@@ -1383,7 +1402,6 @@ function renderVersion(){
   const mv = document.querySelector('.mais-ver'); if (mv) mv.textContent = `Vellum ${versionLabel()} · ver novidades`.replace('  ', ' ');
 }
 async function openNews(){
-  $('#cfg').open && $('#cfg').close();
   if (!changelogMd) await loadChangelog();
   const md = changelogMd;
   const blocks = md.split(/\n(?=## )/).filter(b => b.startsWith('## ')).slice(0, 12);
@@ -2807,26 +2825,34 @@ function welcome(){
 }
 
 /* ---------- Render ---------- */
+const configured = () => !!(cfg?.itemIds?.length) || !!data;
 function render(){
   _bankInc = null; chartData = {}; hideTip();
+  // Enquanto não houver banco conectado, só o tutorial e os Ajustes ficam abertos.
+  const setup = cloudOn() && !!user && access === 'ok' && !locked && !configured();
+  if (setup && !['ajustes', 'tutorial'].includes(ui.view)) { ui.view = 'tutorial'; history.replaceState(null, '', '#/tutorial'); }
+  document.body.classList.toggle('setup', setup);
   const v = VIEWS.find(x => x.id === ui.view) || VIEWS[0];
   const navHtml = (cls, short) => VIEWS.filter(x => !x.hidden).map(x => `<a class="${cls}" href="#/${x.id}" ${x.id === v.id ? 'aria-current="page"' : ''}>${ic(x.icon)}<span>${short ? x.short : x.title}</span></a>`).join('');
   $('#nav').innerHTML = navHtml('nav-l', false);
   const inMain = MOBILE_MAIN.includes(v.id);
   $('#tabbar').innerHTML = VIEWS.filter(x => MOBILE_MAIN.includes(x.id) || x.id === 'mais').map(x => `<a href="#/${x.id}" ${x.id === v.id || (x.id === 'mais' && !inMain) ? 'aria-current="page"' : ''}>${ic(x.icon)}<span>${x.short}</span></a>`).join('');
   $('#sideCfg').innerHTML = ic('gear') + '<span>Ajustes</span>';
+  $('#sideCfg').toggleAttribute('aria-current', v.id === 'ajustes');
   renderVersion();
   $('#sideTheme').innerHTML = ic(isDark() ? 'sun' : 'moon') + `<span>${isDark() ? 'Modo claro' : 'Modo escuro'}</span>`;
   document.title = v.title + ' · Vellum';
 
   const gated = cloudOn() && (!user || locked || access === 'denied' || access === 'schema');
   document.body.classList.toggle('gated', gated);
+  $('#cfg').hidden = gated || v.id !== 'ajustes';
+  $('#page').hidden = !gated && v.id === 'ajustes';
   if (gated) { $('#page').innerHTML = user && locked ? lockScreen() : user && (access === 'denied' || access === 'schema') ? deniedScreen() : authReady ? loginScreen() : ''; return; }
   const c = data ? context() : null;
   const showMonth = data && v.month;
   const synced = data?.syncedAt ? 'Atualizado ' + new Date(data.syncedAt).toLocaleString('pt-BR', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }).replace('.', '') : '';
   const filters = (showMonth ? `<div class="mswitch" role="group" aria-label="Mês"><button type="button" data-action="prevm" aria-label="Mês anterior" ${ui.month <= c.minYM ? 'disabled' : ''}>${ic('left')}</button><span>${esc(mLong(ui.month))}</span><button type="button" data-action="nextm" aria-label="Próximo mês" ${ui.month >= curYM() ? 'disabled' : ''}>${ic('right')}</button></div>` : '') +
-    (c && c.multi && !['emprestimos', 'faturas', 'objetivos', 'mais'].includes(v.id) ? `<label class="cardsel"><span class="sr">Cartão ou conta</span><select data-filter="card"><option value="all">${c.banks.length ? 'Todas as contas' : 'Todos os cartões'}</option>${c.accounts.map(k => `<option value="${esc(k.id)}" ${ui.card === k.id ? 'selected' : ''}>${esc(k.name)}</option>`).join('')}${db.manual.length ? `<option value="manual" ${ui.card === 'manual' ? 'selected' : ''}>Fora do cartão</option>` : ''}</select></label>` : '');
+    (c && c.multi && !['emprestimos', 'faturas', 'objetivos', 'mais', 'ajustes', 'tutorial'].includes(v.id) ? `<label class="cardsel"><span class="sr">Cartão ou conta</span><select data-filter="card"><option value="all">${c.banks.length ? 'Todas as contas' : 'Todos os cartões'}</option>${c.accounts.map(k => `<option value="${esc(k.id)}" ${ui.card === k.id ? 'selected' : ''}>${esc(k.name)}</option>`).join('')}${db.manual.length ? `<option value="manual" ${ui.card === 'manual' ? 'selected' : ''}>Fora do cartão</option>` : ''}</select></label>` : '');
   $('#topbar').innerHTML = `<div class="tb-title"><h1>${esc(v.title)}</h1><p>${busy ? 'Atualizando…' : esc(synced)}<span id="syncState"></span></p></div>
     ${filters ? `<div class="tb-filters">${filters}</div>` : ''}
     <div class="tb-actions">
@@ -2835,12 +2861,13 @@ function render(){
       <button class="btn ghost icon only-m" type="button" data-action="cfg" aria-label="Ajustes">${ic('gear')}</button>
     </div>`;
 
+  if (v.id === 'ajustes') { renderSync(); return; }
   let html = '';
   if (lastError) html += `<div class="banner err"><p>${esc(lastError)}</p><button class="link" data-action="cfg" type="button">Abrir ajustes</button></div>`;
   const page = $('#page');
+  if (v.id === 'tutorial') { page.innerHTML = html + onboardingScreen(); return; }
   if (!data && !(v.noData && cfg)) {
-    const firstAccess = cloudOn() && user && !(cfg?.itemIds?.length) && !store.get('cartoes.onbSkip', false);
-    page.innerHTML = html + (busy ? '<section class="panel"><p class="empty">Buscando seus cartões e lançamentos dos últimos meses…</p></section>' : firstAccess ? onboardingScreen() : welcome());
+    page.innerHTML = html + (busy ? '<section class="panel"><p class="empty">Buscando seus cartões e lançamentos dos últimos meses…</p></section>' : welcome());
     return;
   }
   const ctx = c || { cards:[], banks:[], accounts:[], shownCards:[], cardById:{}, T:[], spend:[], minYM:curYM(), multi:false };
@@ -3073,7 +3100,10 @@ async function importBackup(file){
 }
 
 /* ---------- Ajustes ---------- */
-function openCfg(){
+const cfgOpen = () => ui.view === 'ajustes';
+function openCfg(){ if (ui.view !== 'ajustes') location.hash = '#/ajustes'; else fillCfg(); }
+function closeCfg(){ if (ui.view === 'ajustes') location.hash = configured() ? '#/inicio' : '#/tutorial'; }
+function fillCfg(){
   const c = cfg || {};
   $('#fClientId').value = c.clientId || '';
   $('#fClientSecret').value = c.clientSecret || '';
@@ -3085,7 +3115,7 @@ function openCfg(){
   $('#cfgHint').textContent = canSync() ? 'Tudo o que você preencher aqui, e as transações dos cartões, fica salvo na sua conta e vale em qualquer aparelho em que você entrar.' : 'Credenciais e dados ficam salvos só neste navegador. Nada é enviado para outro lugar além da API da Pluggy (ou do seu intermediário).';
   renderSync();
   renderNotify();
-  $('#cfg').showModal();
+  $('#setupNote').innerHTML = configured() ? '' : '<div class="banner"><p>Falta conectar seu primeiro banco. O tutorial mostra o passo a passo.</p><button class="link" type="button" data-action="tutorial">Voltar ao tutorial</button></div>';
 }
 function readCfgForm(){
   return {
@@ -3100,7 +3130,7 @@ function readCfgForm(){
 function saveCfg(next, { close = true } = {}){
   cfg = next; session = { apiKey:null, at:0 };
   store.set(K.cfg, cfg); touch(); schedulePush();
-  if (close) $('#cfg').close();
+  if (close) closeCfg();
   if (!data) data = store.get(K.cache, null);
   sync();
 }
@@ -3114,12 +3144,7 @@ $('#btnSave').addEventListener('click', () => {
 });
 $('#fTheme').addEventListener('change', e => { prefs.theme = e.target.value; store.set(K.prefs, prefs); applyTheme(); render(); });
 matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => { if (themePref() === 'auto') { applyTheme(); render(); } });
-$('#btnCancel').addEventListener('click', () => $('#cfg').close());
-// Fecha ao clicar no fundo escuro (só quando o clique começa e termina fora da janela, para não fechar ao selecionar texto).
-let cfgDownOutside = false;
-const outsideCfg = e => { const r = $('#cfg').getBoundingClientRect(); return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom; };
-$('#cfg').addEventListener('pointerdown', e => { cfgDownOutside = e.target === $('#cfg') && outsideCfg(e); });
-$('#cfg').addEventListener('click', e => { if (cfgDownOutside && e.target === $('#cfg') && outsideCfg(e)) $('#cfg').close(); cfgDownOutside = false; });
+$('#btnCancel').addEventListener('click', () => { fillCfg(); toast('Alterações desfeitas.'); });
 $('#btnBackup').addEventListener('click', exportBackup);
 $('#btnCsv').addEventListener('click', exportCsv);
 $('#btnRestore').addEventListener('click', () => $('#fRestore').click());
@@ -3128,7 +3153,7 @@ $('#btnWipe').addEventListener('click', () => {
   if (!confirm('Apagar credenciais, metas, empréstimos e todos os dados salvos neste navegador? Isso não pode ser desfeito aqui. O que está salvo na sua conta continua lá.')) return;
   Object.values(K).forEach(store.del); store.del(LOCK_KEY); store.del(K.meta + '.dirty'); dirty.clear();
   cfg = null; data = null; db = loadDb(); prefs = {}; applyTheme(); newIds = new Set(); lastError = '';
-  $('#cfg').close(); render(); toast('Dados apagados deste navegador.');
+  closeCfg(); render(); toast('Dados apagados deste navegador.');
 });
 
 /* ---------- Dica dos gráficos ---------- */
@@ -3229,8 +3254,10 @@ document.addEventListener('click', e => {
   else if (a === 'pweye') { const i = b.parentElement.querySelector('input'); i.type = i.type === 'password' ? 'text' : 'password'; b.setAttribute('aria-label', i.type === 'password' ? 'Mostrar senha' : 'Esconder senha'); }
   else if (a === 'onbnext') setOnb(onbStep() + 1);
   else if (a === 'onbback') setOnb(onbStep() - 1);
-  else if (a === 'onbskip') { store.set('cartoes.onbSkip', true); render(); openCfg(); }
+  else if (a === 'onbskip') openCfg();
+  else if (a === 'tutorial') { if (!configured()) store.set(ONB_KEY, Math.min(onbStep(), cfg?.clientId ? 3 : 0)); location.hash = '#/tutorial'; }
   else if (a === 'onbconnect') openPluggyConnect();
+  else if (a === 'onbdone') location.hash = '#/inicio';
   else if (a === 'rank') { ui.rank = b.dataset.rank; render(); }
   else if (a === 'clearf') { ui.cat = 'all'; ui.q = ''; render(); }
   else if (a === 'sync') sync();
@@ -3285,7 +3312,7 @@ document.addEventListener('input', e => {
   if (e.target.id === 'cardName') { previewCard(); return; }
   if (e.target.dataset.filter === 'q') { ui.q = e.target.value; $('#txList').innerHTML = txListHtml(context()); }
 });
-addEventListener('hashchange', () => { ui.view = viewFromHash(); render(); scrollTo(0, 0); });
+addEventListener('hashchange', () => { ui.view = viewFromHash(); if (ui.view === 'ajustes') fillCfg(); render(); scrollTo(0, 0); });
 let rz; addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { if (!document.querySelector('dialog[open]') && document.activeElement?.tagName !== 'INPUT') render(); }, 200); });
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') { hiddenAt = Date.now(); if (pushTimer) pushNow(); return; }
