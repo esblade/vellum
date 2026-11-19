@@ -488,6 +488,21 @@ body.booting #nav,body.booting .tabbar,body.booting .tb-actions{visibility:hidde
 .selpop-dot{width:16px;height:16px;border-radius:50%;flex:none}
 select[aria-expanded="true"]{border-color:var(--accent);box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 16%,transparent)}
 
+/* Visão geral: divisão da renda */
+.hf-bar{display:flex;height:10px;border-radius:99px;background:rgba(255,255,255,.12);overflow:hidden;margin:8px 0 6px;gap:2px}
+.hf-bar span{display:block;height:100%}
+.hf-row{display:grid;grid-template-columns:10px minmax(0,1fr) auto;gap:10px;align-items:center;font-size:.84rem;color:rgba(255,255,255,.8);padding:3px 0}
+.hf-row i{width:10px;height:10px;border-radius:3px}
+.hf-row small{display:block;font-size:.72rem;color:rgba(255,255,255,.55)}
+.hf-row b{color:#fff;font-weight:700}
+.hero-sub b{color:#fff}
+.neg-h{color:#FFB3C0}
+.stack{display:flex;flex-direction:column;gap:18px;min-width:0}
+.legend i.line.dash{background:repeating-linear-gradient(90deg,currentColor 0 4px,transparent 4px 7px) !important}
+.bud-track{position:relative;grid-column:2/-1}
+.bud-track .progress{margin:0}
+.bud-mark{position:absolute;top:-3px;bottom:-3px;width:2px;border-radius:2px;background:var(--ink);opacity:.55;transform:translateX(-1px)}
+
 /* Banner */
 .banner{padding:12px 18px;border-radius:16px;background:var(--accent-soft);display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;font-size:.9rem}
 .banner.err{background:var(--danger-soft)}
@@ -2032,7 +2047,12 @@ function installments(c){
 // Assinaturas: serviços que dá para cancelar. O resto do que se repete todo mês é conta fixa (aluguel, luz, internet…).
 const SUBS_CATS = new Set(['Streaming', 'Serviços digitais', 'Jogos', 'Academia', 'Cursos online', 'TV por assinatura', 'Esportes', 'Bem-estar']);
 const isSubscription = r => SUBS_CATS.has(r.category);
+let _recOf = null, _rec = null;
 function recurring(c){
+  if (_recOf === c && _rec) return _rec;
+  _recOf = c; return (_rec = recurringCalc(c));
+}
+function recurringCalc(c){
   const cur = curYM(), since = addM(cur, -(HISTORY_MONTHS - 1));
   const groups = {};
   for (const t of c.spend) { if (t.instT > 1 || t.cm < since) continue; (groups[t.key] ||= []).push(t); }
@@ -2048,6 +2068,18 @@ function recurring(c){
     r.sub = isSubscription(r); out.push(r);
   }
   return out.sort((a, b) => b.avg - a.avg);
+}
+
+// Contas fixas: o que se repete todo mês (aluguel, contas, assinaturas), parcelas e categorias de moradia e afins.
+// O resto é o "dia a dia": mercado, delivery, transporte, compras… o que dá para controlar.
+const FIXED_CATS = new Set(['Aluguel', 'Moradia', 'Contas da casa', 'Condomínio', 'Telefone e internet', 'Plano de saúde', 'Seguros', 'Escola', 'Faculdade', 'TV por assinatura', 'Financiamento']);
+const isFixed = (t, c) => t.instT > 1 || FIXED_CATS.has(t.category) || recurring(c).some(r => r.last.key === t.key);
+function splitMonth(c, ym){
+  const keys = new Set(recurring(c).map(r => r.last.key));
+  const fixedOf = t => t.instT > 1 || FIXED_CATS.has(t.category) || keys.has(t.key);
+  const list = spendIn(c, ym), fixed = list.filter(fixedOf), variable = list.filter(t => !fixedOf(t));
+  const pending = ym === curYM() ? recurring(c).filter(r => !r.paidThisMonth).map(r => ({ desc: r.desc, category: r.category, amount: r.avg, day: +r.last.date.slice(8, 10), sub: r.sub })) : [];
+  return { list, fixed, variable, fixedTotal: sum(fixed), varTotal: sum(variable), pending, pendingTotal: pending.reduce((s, p) => s + p.amount, 0) };
 }
 
 function loanInfo(l){
@@ -2276,68 +2308,137 @@ function cardTile(card, c){
 function viewInicio(c){
   const ym = ui.month, P = monthPace(c, ym);
   const prevName = mName(P.prev);
+  const S = splitMonth(c, ym), Sp = splitMonth(c, P.prev);
+  const sameP = l => P.isCur ? l.filter(t => P.dayOf(t) <= P.day) : l;
   const cm = commitments(c), nextM = addM(curYM(), 1), nx = cm.by[nextM];
   const nextTotal = nx.inst + nx.bill + nx.rec + nx.loan;
   const bud = Object.entries(db.budgets).filter(([, v]) => v > 0);
-  const catNow = byCat(P.cur), catPrev = byCat(P.isCur ? spendIn(c, P.prev).filter(t => P.dayOf(t) <= P.day) : spendIn(c, P.prev));
+  const catAll = byCat(P.cur);
   const budTotal = bud.reduce((s, [, v]) => s + v, 0);
-  const budSpent = bud.reduce((s, [k]) => s + (catNow[k] || 0), 0);
-
+  const budSpent = bud.reduce((s, [k]) => s + (catAll[k] || 0), 0);
   const I = incomeFor(ym), nextInc = incomeFor(nextM).total;
-  let sobraTile;
-  if (ui.card === 'all' && I.set) {
-    const v = P.isCur ? I.total - P.projection : I.total - P.total;
-    sobraTile = kpi(P.isCur ? 'Sobra prevista' : 'Sobrou no mês', `<span class="${v < 0 ? 'neg' : ''}">${money(v)}</span>`, P.isCur ? 'no fim do mês, no ritmo atual' : `${Math.round(v / I.total * 100)}% da renda`, '', 'wallet', 'k1');
-  } else {
-    const [topCat, topVal] = Object.entries(catNow).sort((a, b) => b[1] - a[1])[0] || [];
-    sobraTile = topCat
-      ? kpi('Maior categoria', money(topVal), `<button class="plain-link" type="button" data-gocat="${esc(topCat)}"><b>${esc(topCat)}</b></button> · ${Math.round(topVal / (P.total || 1) * 100)}% do mês`, '', 'wallet', 'k1')
-      : kpi('Maior categoria', '—', 'nenhum gasto neste mês', '', 'wallet', 'k1');
-  }
-  let h = heroHtml(P, nextTotal) + `<div class="kpis">
-    ${P.isCur ? kpi('Projeção do mês', money(P.projection), P.oneOffTotal ? `inclui ${money0(P.oneOffTotal)} em gastos pontuais que não se repetem` : P.prevTotal ? `${esc(prevName)} fechou em ${money0(P.prevTotal)}` : 'no ritmo atual de gastos', '', 'chart', 'k0')
-              : kpi('Média por dia', money(P.total / dim(ym)), `${P.cur.length} compras no mês`, '', 'chart', 'k0')}
-    ${sobraTile}
+  const useFree = ui.card === 'all' && I.set;
+
+  // Topo: quanto ainda dá para gastar (com renda) ou quanto já foi (sem renda / um cartão só)
+  let h = useFree ? heroFree(P, S, I) : heroHtml(P, nextTotal);
+
+  // Quadros: dia a dia, contas fixas, orçamento (ou previsão) e o próximo mês
+  const varPrev = sum(sameP(Sp.variable)), dVar = varPrev > 0 ? (S.varTotal - varPrev) / varPrev * 100 : null;
+  h += `<div class="kpis">
+    ${kpi('Dia a dia', money(S.varTotal), dVar == null ? 'mercado, delivery, transporte, compras…' : `${deltaHtml(dVar, P.isCur ? `vs mesmo período de ${esc(prevName)}` : `vs ${esc(prevName)}`)}`, '', 'list', 'k0')}
+    ${kpi('Contas fixas e parcelas', money(S.fixedTotal), S.pendingTotal ? `${money0(S.pendingTotal)} ainda ${S.pending.length === 1 ? 'vai' : 'vão'} cair este mês` : P.isCur ? 'nada pendente este mês' : `${plural(S.fixed.length, 'cobrança', 'cobranças')} no mês`, '', 'cal', 'k3')}
     ${budTotal ? kpi('Orçamento', money(budSpent), `de ${money0(budTotal)} planejados`, progress(budSpent / budTotal * 100, 'thin'), 'target', 'k2')
-               : kpi('Orçamento', '—', '<a href="#/orcamento">Definir metas por categoria</a>', '', 'target', 'k2')}
-    ${kpi(`Comprometido em ${esc(mName(nextM))}`, money(nextTotal), ui.card === 'all' && nextInc ? `${Math.round(nextTotal / nextInc * 100)}% da renda · contas fixas, parcelas e assinaturas` : `contas ${money0(nx.bill)} · parcelas ${money0(nx.inst)} · assinaturas ${money0(nx.rec)}`, '', 'cal', 'k3')}
+      : P.isCur ? kpi('Previsão do mês', money(P.projection), P.oneOffTotal ? `inclui ${money0(P.oneOffTotal)} em gastos pontuais` : 'gasto total, no ritmo atual', '', 'chart', 'k2')
+      : kpi('Média por dia', money(P.total / dim(ym)), plural(P.cur.length, 'compra no mês', 'compras no mês'), '', 'chart', 'k2')}
+    ${kpi(`Já comprometido em ${esc(mName(nextM))}`, money(nextTotal), ui.card === 'all' && nextInc ? `${Math.round(nextTotal / nextInc * 100)}% da renda · contas, parcelas e assinaturas` : `contas ${money0(nx.bill)} · parcelas ${money0(nx.inst)} · assinaturas ${money0(nx.rec)}`, '', 'flag', 'k1')}
   </div>`;
 
-
-  // Ritmo de gastos
+  // Ritmo do mês: acumulado, mês anterior, previsão até o fim e a linha da renda
   const n = Math.max(dim(ym), dim(P.prev));
   const cumul = (list, upto, nd) => { const arr = Array(n).fill(null); const per = Array(nd).fill(0); for (const t of list) per[Math.min(nd, P.dayOf(t)) - 1] += t.amount; let s = 0; for (let i = 0; i < nd; i++) { s += per[i]; if (i < upto) arr[i] = s; } return arr; };
   const curSeries = cumul(P.cur, P.day, dim(ym)), prevSeries = cumul(spendIn(c, P.prev), dim(P.prev), dim(P.prev));
-  const chart = lineChart([{ name: cap(mName(ym)), values: curSeries, color:'var(--accent)' }, { name: cap(prevName), values: prevSeries, color:'var(--muted)', dash:true }], n, { label:'Gasto acumulado por dia' });
-  h += panel('Ritmo de gastos', `${chart}<div class="legend" style="margin-top:8px"><span><i class="line" style="background:var(--accent)"></i>${esc(cap(mName(ym)))}</span><span><i class="line" style="background:var(--muted)"></i>${esc(cap(prevName))}</span></div>`,
-    { sub:'Gasto acumulado dia a dia, comparado com o mês anterior' });
+  const series = [{ name: cap(mName(ym)), values: curSeries, color:'var(--accent)' }, { name: cap(prevName), values: prevSeries, color:'var(--muted)', dash:true }];
+  if (P.isCur && P.day < dim(ym)) {
+    const proj = Array(n).fill(null), last = curSeries[P.day - 1] || 0, end = dim(ym);
+    for (let i = P.day - 1; i < end; i++) proj[i] = last + (P.projection - last) * (i - (P.day - 1)) / Math.max(1, end - P.day);
+    series.push({ name:'Previsão', values: proj, color:'var(--accent)', dash:true });
+  }
+  if (useFree) series.push({ name:'Renda', values: Array(n).fill(I.total), color:'var(--ok)', dash:true });
+  const chart = lineChart(series, n, { label:'Gasto acumulado por dia' });
+  h += panel('Ritmo do mês', `${chart}<div class="legend" style="margin-top:8px"><span><i class="line" style="background:var(--accent)"></i>${esc(cap(mName(ym)))}</span>${series.some(s => s.name === 'Previsão') ? '<span><i class="line dash" style="color:var(--accent)"></i>Previsão até o fim do mês</span>' : ''}<span><i class="line dash" style="color:var(--muted)"></i>${esc(cap(prevName))}</span>${useFree ? '<span><i class="line dash" style="color:var(--ok)"></i>Renda</span>' : ''}</div>`,
+    { sub: P.isCur ? `Quanto já saiu, dia a dia. A linha tracejada mostra onde o mês deve fechar${useFree ? ' e a verde, a sua renda' : ''}.` : 'Gasto acumulado dia a dia, comparado com o mês anterior' });
 
-  // Categorias + alertas
-  const cats = Object.entries(catNow).sort((a, b) => b[1] - a[1]).slice(0, 7);
+  // Para onde foi o dia a dia (sem contas fixas e parcelas)
+  const catNow = byCat(S.variable), catPrev = byCat(sameP(Sp.variable));
+  const sorted = Object.entries(catNow).sort((a, b) => b[1] - a[1]);
+  const cats = sorted.slice(0, 6), rest = sorted.slice(6), restTotal = rest.reduce((s, [, v]) => s + v, 0);
   const maxCat = cats[0]?.[1] || 1;
   const catHtml = cats.length ? `<ul class="rows">${cats.map(([k, v]) => {
     const b = db.budgets[k], pv = catPrev[k] || 0, d = pv ? (v - pv) / pv * 100 : null;
     return `<li><button class="crow crow-btn" type="button" data-gocat="${esc(k)}" title="Ver as compras de ${esc(k)}"><span class="dot" style="background:${catColor(k)}"></span><span class="nm">${esc(k)}</span><span class="am">${money(v)} ${ic('right', 'i chev')}</span>
-      ${b ? progress(v / b * 100, 'thin') : `<span class="progress thin"><span style="width:${(v / maxCat * 100).toFixed(1)}%;background:${catColor(k)}"></span></span>`}
-      <span class="ft"><span>${b ? `meta ${money0(b)} · ${Math.round(v / b * 100)}%` : `${Math.round(v / (P.total || 1) * 100)}% do mês`}</span><span>${d == null ? 'novo' : `<span class="delta ${d > 0.5 ? 'bad' : d < -0.5 ? 'good' : ''}">${pctTxt(d)}</span> vs ${esc(mName(P.prev))}`}</span></span></button></li>`;
-  }).join('')}</ul>` : `<p class="empty">Nenhum gasto neste mês.</p>`;
-  const al = alerts(c, P, catNow);
+      ${b ? budBar(v, b, P) : `<span class="progress thin"><span style="width:${(v / maxCat * 100).toFixed(1)}%;background:${catColor(k)}"></span></span>`}
+      <span class="ft"><span>${b ? `meta ${money0(b)} · ${Math.round(v / b * 100)}%` : `${Math.round(v / (S.varTotal || 1) * 100)}% do dia a dia`}</span><span>${d == null ? '' : `<span class="delta ${d > 0.5 ? 'bad' : d < -0.5 ? 'good' : ''}">${pctTxt(d)}</span> vs ${esc(prevName)}`}</span></span></button></li>`;
+  }).join('')}${rest.length ? `<li class="crow"><span class="dot" style="background:var(--line)"></span><span class="nm muted">Outras ${rest.length} categorias</span><span class="am">${money(restTotal)}</span></li>` : ''}</ul>` : `<p class="empty">Nenhum gasto do dia a dia neste mês.</p>`;
+  const al = alerts(c, P, catAll, useFree);
+  const due = upcoming(c, S);
+  const dueHtml = due.length ? `<ul class="rows">${due.map(x => `<li class="crow"><span class="dot" style="background:${x.color}"></span><span class="nm">${esc(x.desc)}</span><span class="am">${x.approx ? '~' : ''}${money(x.amount)}</span>
+      <span class="ft"><span>${esc(x.when)}</span><span>${esc(x.kind)}</span></span></li>`).join('')}</ul>` : '<p class="empty">Nada para vencer nos próximos dias.</p>';
   h += `<div class="grid2">
-    ${panel('Para onde foi o dinheiro', catHtml, { sub: P.isCur ? `Comparado com o mesmo período de ${esc(mName(P.prev))}. Toque para ver as compras.` : `Toque numa categoria para ver as compras de ${esc(mName(ym))}`, action:'<a class="link" href="#/orcamento">Orçamento</a>' })}
-    ${panel('Atenção', al.length ? `<ul class="alerts">${al.map(a => `<li class="${a.level}"><span class="dot" style="background:var(--${a.level === 'info' ? 'accent' : a.level})"></span><span>${a.html}</span></li>`).join('')}</ul>` : '<p class="empty">Tudo em dia. Nenhum alerta por enquanto.</p>')}
+    ${panel('Para onde foi o dinheiro', catHtml, { sub: `Dia a dia, sem contas fixas e parcelas${P.isCur ? ` · comparado com o mesmo período de ${esc(prevName)}` : ''}`, action:'<a class="link" href="#/orcamento">Orçamento</a>' })}
+    <div class="stack">
+      ${al.length ? panel('Atenção', `<ul class="alerts">${al.map(a => `<li class="${a.level}"><span class="dot" style="background:var(--${a.level === 'info' ? 'accent' : a.level})"></span><span>${a.html}</span></li>`).join('')}</ul>`) : ''}
+      ${panel('Próximos vencimentos', dueHtml, { sub:'Contas fixas, faturas e parcelas', action:'<a class="link" href="#/compromissos">Ver todos</a>' })}
+    </div>
   </div>`;
 
-  h += bankPanel(c, ym);
-  if (ui.card === 'all') h += goalsMini();
-
-  // Cartões
-  if (c.shownCards.length) h += panel('Cartões', `<div class="ccards">${c.shownCards.map(card => cardTile(card, c)).join('')}</div>`, { sub:'Toque no cartão para mudar o nome ou o visual' });
-
   // Recentes
-  const recent = c.T.filter(t => t.cm === ym).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 8);
+  const recent = c.T.filter(t => t.cm === ym).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 6);
   h += panel('Últimos lançamentos', recent.length ? `<ul class="rows">${recent.map(t => txRow(t, c)).join('')}</ul>` : '<p class="empty">Nada por aqui neste mês.</p>',
     { action:'<a class="link" href="#/transacoes">Ver todas</a>' });
+  if (ui.card === 'all') h += goalsMini();
+  h += bankPanel(c, ym);
+  if (c.shownCards.length) h += panel('Cartões', `<div class="ccards">${c.shownCards.map(card => cardTile(card, c)).join('')}</div>`, { sub:'Toque no cartão para mudar o nome ou o visual' });
   return h;
+}
+
+// Barra da meta com a marca de "onde deveria estar hoje" (proporcional aos dias do mês).
+function budBar(v, b, P, extra = 'thin'){
+  const mark = P.isCur ? P.day / dim(ui.month) * 100 : null;
+  return `<div class="bud-track">${progress(v / b * 100, extra)}${mark != null && mark < 100 ? `<i class="bud-mark" style="left:${mark.toFixed(1)}%" title="Hoje: ${Math.round(mark)}% do mês"></i>` : ''}</div>`;
+}
+
+// O que ainda vence: contas fixas que não caíram, faturas e parcelas de empréstimo dos próximos 31 dias.
+function upcoming(c, S){
+  if (ui.month !== curYM()) return [];
+  const out = [], td = new Date(), dToday = td.getDate(), ym = curYM();
+  const whenTxt = d => d === 0 ? 'hoje' : d === 1 ? 'amanhã' : d < 0 ? `atrasada ${-d} ${-d === 1 ? 'dia' : 'dias'}` : `em ${d} dias`;
+  for (const p of S.pending) {
+    const day = Math.min(p.day, dim(ym)), d = day - dToday;
+    out.push({ desc: p.desc, amount: p.amount, approx: true, d, when: d < 0 ? `costuma cair dia ${day}` : `dia ${day} · ${whenTxt(d)}`, kind: p.sub ? 'assinatura' : 'conta fixa', color: catColor(p.category) });
+  }
+  for (const card of c.shownCards) if (card.due && card.invoice > 0) {
+    const d = daysUntil(card.due); if (d >= 0 && d <= 31) out.push({ desc: `Fatura ${card.name}`, amount: card.invoice, d, when: `${shortDate(card.due)} · ${whenTxt(d)}`, kind:'fatura', color: card.color });
+  }
+  if (ui.card === 'all') for (const l of db.loans) {
+    const li = loanInfo(l); if (!li.next || li.done) continue; const d = daysUntil(li.next);
+    if (d <= 31) out.push({ desc: l.desc || l.who || 'Empréstimo', amount: li.value, d, when: `${shortDate(li.next)} · ${whenTxt(d)}`, kind: l.dir === 'concedi' ? 'a receber' : 'empréstimo', color:'var(--c3)' });
+  }
+  return out.sort((a, b) => a.d - b.d).slice(0, 6);
+}
+
+// Topo com renda: renda − contas fixas = o que sobra para o dia a dia; quanto disso ainda dá para gastar.
+function heroFree(P, S, I){
+  const ym = ui.month, isCur = P.isCur, end = dim(ym);
+  const fixedAll = S.fixedTotal + S.pendingTotal;
+  const left = I.total - fixedAll - S.varTotal;
+  const daysLeft = Math.max(1, end - P.day + 1);
+  const endLeft = I.total - (isCur ? P.projection : P.total);
+  const base = Math.max(I.total, fixedAll + S.varTotal) || 1, w = v => Math.max(0, v / base * 100).toFixed(1);
+  const d = P.delta;
+  const pill = isCur
+    ? `<span class="pill ${endLeft >= 0 ? 'down' : 'up'}">${endLeft >= 0 ? `No ritmo atual, sobram ${money0(endLeft)} no fim do mês` : `No ritmo atual, o mês fecha ${money0(-endLeft)} acima da renda`}</span>`
+    : d == null ? '' : `<span class="pill ${d > 0.5 ? 'up' : d < -0.5 ? 'down' : ''}">${d > 0 ? '▲' : d < 0 ? '▼' : '='} ${Math.abs(Math.round(d))}% de gastos vs ${esc(mName(P.prev))}</span>`;
+  const main = isCur
+    ? `<span class="hero-lbl">Ainda dá para gastar em ${esc(mName(ym))}</span>
+       <span class="hero-val num${left < 0 ? ' neg-h' : ''}">${left < 0 ? '−' : ''}${money(Math.abs(left))}</span>
+       ${pill}
+       <span class="hero-sub">${left > 0 ? `Dá cerca de <b>${money0(left / daysLeft)} por dia</b> até o dia ${end}, já separando as contas fixas. Até agora, o dia a dia foi de ${money0(S.varTotal / Math.max(1, P.day))} por dia.` : 'O dia a dia já passou do que sobra da renda depois das contas fixas.'}</span>`
+    : `<span class="hero-lbl">${endLeft >= 0 ? 'Sobrou' : 'Faltou'} em ${esc(mName(ym))}</span>
+       <span class="hero-val num${endLeft < 0 ? ' neg-h' : ''}">${money(Math.abs(endLeft))}</span>
+       ${pill}
+       <span class="hero-sub">${Math.round(Math.abs(endLeft) / I.total * 100)}% da renda · gastos de ${money0(P.total)}</span>`;
+  const row = (color, name, val, sub = '') => `<div class="hf-row"><i style="background:${color}"></i><span>${name}${sub ? `<small>${sub}</small>` : ''}</span><b class="num">${val}</b></div>`;
+  return `<section class="hero">
+    <div class="hero-main">${main}</div>
+    <div class="hero-inc">
+      <div class="hero-row"><span>Renda de ${esc(mName(ym))}</span><button class="hero-link" type="button" data-action="income">${ic('edit')}Editar</button></div>
+      <b class="hero-inc-val num">${money(I.total)}</b>
+      <div class="hf-bar" role="img" aria-label="Divisão da renda"><span style="width:${w(fixedAll)}%;background:rgba(255,255,255,.5)"></span><span style="width:${w(S.varTotal)}%;background:#B7A8FF"></span><span style="width:${w(Math.max(0, left))}%;background:var(--lime)"></span></div>
+      ${row('rgba(255,255,255,.5)', 'Contas fixas e parcelas', money(fixedAll), S.pendingTotal && isCur ? `${money0(S.pendingTotal)} ainda vão cair` : '')}
+      ${row('#B7A8FF', 'Dia a dia', money(S.varTotal))}
+      ${row(left >= 0 ? 'var(--lime)' : '#FF6F86', left >= 0 ? (isCur ? 'Livre' : 'Sobrou') : 'Passou da renda', money(Math.abs(left)))}
+    </div>
+  </section>`;
 }
 
 function heroHtml(P, nextTotal){
@@ -2412,10 +2513,10 @@ function openIncome(){
   });
 }
 
-function alerts(c, P, catNow){
+function alerts(c, P, catNow, heroSaysIt = false){
   const out = [];
   const I = incomeFor(ui.month);
-  if (ui.card === 'all' && I.set) {
+  if (ui.card === 'all' && I.set && !heroSaysIt) {
     if (P.total > I.total) out.push({ level:'danger', html:`Os gastos de ${esc(mName(ui.month))} já passaram a renda em <b>${money(P.total - I.total)}</b>.` });
     else if (P.total / I.total * 100 >= notifyPrefs().threshold) out.push({ level:'warn', html:`Você já gastou <b>${Math.floor(P.total / I.total * 100)}% da renda</b> de ${esc(mName(ui.month))}: restam ${money(I.total - P.total)}.` });
     else if (P.isCur && P.day >= 5 && P.projection > I.total) out.push({ level:'warn', html:`No ritmo atual, os gastos do mês passam a renda em <b>${money0(P.projection - I.total)}</b>.` });
@@ -2431,13 +2532,13 @@ function alerts(c, P, catNow){
   }
   for (const card of c.shownCards) {
     if (card.limit && card.available != null) { const p = (card.limit - card.available) / card.limit * 100; if (p >= 80) out.push({ level:'warn', html:`<b>${esc(card.name)}</b> está com ${Math.round(p)}% do limite usado.` }); }
-    if (card.due) { const d = daysUntil(card.due); if (d >= 0 && d <= 5 && card.invoice > 0) out.push({ level:'info', html:`Fatura do <b>${esc(card.name)}</b> vence ${d === 0 ? 'hoje' : d === 1 ? 'amanhã' : `em ${d} dias`}: ${money(card.invoice)}.` }); }
+    if (card.due && !heroSaysIt) { const d = daysUntil(card.due); if (d >= 0 && d <= 5 && card.invoice > 0) out.push({ level:'info', html:`Fatura do <b>${esc(card.name)}</b> vence ${d === 0 ? 'hoje' : d === 1 ? 'amanhã' : `em ${d} dias`}: ${money(card.invoice)}.` }); }
   }
   if (ui.card === 'all') for (const l of db.loans) {
     const li = loanInfo(l); if (!li.next || li.done) continue; const d = daysUntil(li.next);
     const who = esc(l.desc || l.who);
     if (d < 0) out.push({ level:'danger', html:`Parcela de <b>${who}</b> atrasada desde ${shortDate(li.next)} (${money(li.value)}).` });
-    else if (d <= 7) out.push({ level:'info', html:`Parcela de <b>${who}</b> ${l.dir === 'concedi' ? 'a receber' : 'vence'} ${d === 0 ? 'hoje' : `em ${d} dias`}: ${money(li.value)}.` });
+    else if (d <= 7 && !heroSaysIt) out.push({ level:'info', html:`Parcela de <b>${who}</b> ${l.dir === 'concedi' ? 'a receber' : 'vence'} ${d === 0 ? 'hoje' : `em ${d} dias`}: ${money(li.value)}.` });
   }
   const nNew = c.T.filter(t => newIds.has(t.id)).length;
   if (nNew) out.push({ level:'info', html:`${nNew} ${nNew === 1 ? 'lançamento novo' : 'lançamentos novos'} desde a última visita. <a href="#/transacoes">Ver</a>` });

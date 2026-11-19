@@ -2,6 +2,13 @@
 
 Para lançar uma versão nova, escreva um item no topo desta lista: o número que estiver aqui em cima é a versão que o app mostra. As versões seguem o formato MAIOR.MENOR.CORREÇÃO: muda o MENOR quando chega algo novo e a CORREÇÃO quando é ajuste ou conserto.
 
+## 1.15.0 — 19/11/2026
+- Gastos separados em contas fixas (aluguel, contas, assinaturas, parcelas) e dia a dia (mercado, delivery, transporte, compras).
+- Visão geral nova: o topo mostra quanto ainda dá para gastar no mês e por dia, já separando as contas fixas, e como a renda está dividida.
+- Ritmo do mês com a previsão até o fim do mês e a linha da renda.
+- "Para onde foi o dinheiro" mostra só o dia a dia, com a marca de onde a meta deveria estar hoje.
+- Novo quadro "Próximos vencimentos": contas fixas que ainda não caíram, faturas e parcelas.
+
 ## 1.14.2 — 19/11/2026
 - Comparações do mês em andamento usam o mesmo período do mês anterior (Visão geral e Relatórios), e a fatura aberta é comparada com o mesmo ponto da fatura anterior. Antes, o mês incompleto parecia uma economia.
 - Contas fixas (aluguel, luz, internet) separadas das assinaturas (streaming, apps, academia).
