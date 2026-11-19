@@ -2,6 +2,10 @@
 
 Para lançar uma versão nova, escreva um item no topo desta lista: o número que estiver aqui em cima é a versão que o app mostra. As versões seguem o formato MAIOR.MENOR.CORREÇÃO: muda o MENOR quando chega algo novo e a CORREÇÃO quando é ajuste ou conserto.
 
+## 1.14.1 — 19/11/2026
+- Transações mostram o nome da categoria por extenso, discreto, com um pontinho na cor dela, no lugar da sigla.
+- As janelas fecham ao clicar fora delas.
+
 ## 1.14.0 — 19/11/2026
 - Logo novo: um V caligráfico, com um traço cheio e outro mais leve (o que entra e o que sai). Também nos ícones do celular e na aba do navegador.
 - Nome com o subtítulo "finanças pessoais".
