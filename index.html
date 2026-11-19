@@ -1804,6 +1804,7 @@ function markNew(){
   if (seen) {
     const s = new Set(seen);
     for (const t of data.tx) if (!s.has(t.id)) newIds.add(t.id);
+    if (newIds.size > Math.max(40, data.tx.length * 0.4)) newIds.clear();
   }
   store.set(K.seen, data.tx.map(t => t.id));
 }
@@ -2028,6 +2029,9 @@ function installments(c){
   }).filter(p => p.future.length).sort((a, b) => b.left - a.left);
 }
 
+// Assinaturas: serviços que dá para cancelar. O resto do que se repete todo mês é conta fixa (aluguel, luz, internet…).
+const SUBS_CATS = new Set(['Streaming', 'Serviços digitais', 'Jogos', 'Academia', 'Cursos online', 'TV por assinatura', 'Esportes', 'Bem-estar']);
+const isSubscription = r => SUBS_CATS.has(r.category);
 function recurring(c){
   const cur = curYM(), since = addM(cur, -(HISTORY_MONTHS - 1));
   const groups = {};
@@ -2040,7 +2044,8 @@ function recurring(c){
     if (mn <= 0 || mx / mn > 1.3) continue;
     const last = list.reduce((a, b) => a.date > b.date ? a : b);
     if (diffM(last.cm, cur) > 1) continue;
-    out.push({ desc: last.desc, category: last.category, cardId: last.cardId, avg: sum(list) / list.length, last, months: months.size, paidThisMonth: months.has(cur) });
+    const r = { desc: last.desc, category: last.category, cardId: last.cardId, avg: sum(list) / list.length, last, months: months.size, paidThisMonth: months.has(cur) };
+    r.sub = isSubscription(r); out.push(r);
   }
   return out.sort((a, b) => b.avg - a.avg);
 }
@@ -2060,19 +2065,20 @@ function loanInfo(l){
 }
 
 function commitments(c){
-  const inst = installments(c), rec = recurring(c), cur = curYM();
+  const inst = installments(c), all = recurring(c), cur = curYM();
+  const rec = all.filter(r => r.sub), bills = all.filter(r => !r.sub);
   const months = Array.from({ length: 12 }, (_, i) => addM(cur, i + 1));
-  const by = Object.fromEntries(months.map(m => [m, { inst:0, rec:0, loan:0 }]));
+  const by = Object.fromEntries(months.map(m => [m, { inst:0, bill:0, rec:0, loan:0 }]));
   for (const p of inst) for (const m of p.future) if (by[m]) by[m].inst += p.value;
-  const recMonthly = rec.reduce((s, r) => s + r.avg, 0);
-  for (const m of months) by[m].rec = recMonthly;
+  const recMonthly = rec.reduce((s, r) => s + r.avg, 0), billMonthly = bills.reduce((s, r) => s + r.avg, 0);
+  for (const m of months) { by[m].rec = recMonthly; by[m].bill = billMonthly; }
   if (ui.card === 'all') for (const l of db.loans) { if (l.dir !== 'tomei') continue; const li = loanInfo(l); for (const m of li.schedule) if (by[m]) by[m].loan += li.value; }
-  return { inst, rec, recMonthly, months, by };
+  return { inst, rec, bills, recMonthly, billMonthly, months, by };
 }
 
 /* ---------- Gráficos ---------- */
 function niceMax(v){ if (v <= 0) return 1; const p = 10 ** Math.floor(Math.log10(v)); const f = v / p; return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * p; }
-function chartWidth(){ const w = ($('#page')?.clientWidth || 800) - (innerWidth <= 860 ? 32 : 56) - 42; return Math.max(280, Math.min(1080, w)); }
+function chartWidth(){ const w = ($('#page')?.clientWidth || Math.min(1200, innerWidth - (innerWidth > 860 ? 250 : 0))) - (innerWidth <= 860 ? 32 : 56) - 42; return Math.max(280, Math.min(1080, w)); }
 
 // Dados de cada gráfico desenhado, para a dica ao passar o mouse (ou o dedo).
 let chartData = {}, chartSeq = 0;
@@ -2271,9 +2277,9 @@ function viewInicio(c){
   const ym = ui.month, P = monthPace(c, ym);
   const prevName = mName(P.prev);
   const cm = commitments(c), nextM = addM(curYM(), 1), nx = cm.by[nextM];
-  const nextTotal = nx.inst + nx.rec + nx.loan;
+  const nextTotal = nx.inst + nx.bill + nx.rec + nx.loan;
   const bud = Object.entries(db.budgets).filter(([, v]) => v > 0);
-  const catNow = byCat(P.cur), catPrev = byCat(spendIn(c, P.prev));
+  const catNow = byCat(P.cur), catPrev = byCat(P.isCur ? spendIn(c, P.prev).filter(t => P.dayOf(t) <= P.day) : spendIn(c, P.prev));
   const budTotal = bud.reduce((s, [, v]) => s + v, 0);
   const budSpent = bud.reduce((s, [k]) => s + (catNow[k] || 0), 0);
 
@@ -2294,7 +2300,7 @@ function viewInicio(c){
     ${sobraTile}
     ${budTotal ? kpi('Orçamento', money(budSpent), `de ${money0(budTotal)} planejados`, progress(budSpent / budTotal * 100, 'thin'), 'target', 'k2')
                : kpi('Orçamento', '—', '<a href="#/orcamento">Definir metas por categoria</a>', '', 'target', 'k2')}
-    ${kpi(`Comprometido em ${esc(mName(nextM))}`, money(nextTotal), ui.card === 'all' && nextInc ? `${Math.round(nextTotal / nextInc * 100)}% da renda · parcelas e assinaturas` : `parcelas ${money0(nx.inst)} · assinaturas ${money0(nx.rec)}`, '', 'cal', 'k3')}
+    ${kpi(`Comprometido em ${esc(mName(nextM))}`, money(nextTotal), ui.card === 'all' && nextInc ? `${Math.round(nextTotal / nextInc * 100)}% da renda · contas fixas, parcelas e assinaturas` : `contas ${money0(nx.bill)} · parcelas ${money0(nx.inst)} · assinaturas ${money0(nx.rec)}`, '', 'cal', 'k3')}
   </div>`;
 
 
@@ -2313,11 +2319,11 @@ function viewInicio(c){
     const b = db.budgets[k], pv = catPrev[k] || 0, d = pv ? (v - pv) / pv * 100 : null;
     return `<li><button class="crow crow-btn" type="button" data-gocat="${esc(k)}" title="Ver as compras de ${esc(k)}"><span class="dot" style="background:${catColor(k)}"></span><span class="nm">${esc(k)}</span><span class="am">${money(v)} ${ic('right', 'i chev')}</span>
       ${b ? progress(v / b * 100, 'thin') : `<span class="progress thin"><span style="width:${(v / maxCat * 100).toFixed(1)}%;background:${catColor(k)}"></span></span>`}
-      <span class="ft"><span>${b ? `meta ${money0(b)} · ${Math.round(v / b * 100)}%` : `${Math.round(v / (P.total || 1) * 100)}% do mês`}</span><span>${d == null ? 'novo' : `<span class="delta ${d > 0.5 ? 'bad' : d < -0.5 ? 'good' : ''}">${pctTxt(d)}</span> vs ${esc(mName(P.prev).slice(0, 3))}`}</span></span></button></li>`;
+      <span class="ft"><span>${b ? `meta ${money0(b)} · ${Math.round(v / b * 100)}%` : `${Math.round(v / (P.total || 1) * 100)}% do mês`}</span><span>${d == null ? 'novo' : `<span class="delta ${d > 0.5 ? 'bad' : d < -0.5 ? 'good' : ''}">${pctTxt(d)}</span> vs ${esc(mName(P.prev))}`}</span></span></button></li>`;
   }).join('')}</ul>` : `<p class="empty">Nenhum gasto neste mês.</p>`;
   const al = alerts(c, P, catNow);
   h += `<div class="grid2">
-    ${panel('Para onde foi o dinheiro', catHtml, { sub:`Toque numa categoria para ver as compras de ${esc(mName(ym))}`, action:'<a class="link" href="#/orcamento">Orçamento</a>' })}
+    ${panel('Para onde foi o dinheiro', catHtml, { sub: P.isCur ? `Comparado com o mesmo período de ${esc(mName(P.prev))}. Toque para ver as compras.` : `Toque numa categoria para ver as compras de ${esc(mName(ym))}`, action:'<a class="link" href="#/orcamento">Orçamento</a>' })}
     ${panel('Atenção', al.length ? `<ul class="alerts">${al.map(a => `<li class="${a.level}"><span class="dot" style="background:var(--${a.level === 'info' ? 'accent' : a.level})"></span><span>${a.html}</span></li>`).join('')}</ul>` : '<p class="empty">Tudo em dia. Nenhum alerta por enquanto.</p>')}
   </div>`;
 
@@ -2348,7 +2354,7 @@ function heroHtml(P, nextTotal){
       <b class="hero-inc-val num">${money(I.total)}</b>
       <span class="hero-sub">${I.auto ? plural(fontes, 'entrada recebida', 'entradas recebidas') + (I.expected ? ` + ${money0(I.expected)} previstos` : '') : plural(fontes, 'fonte de renda', 'fontes de renda')}</span>
       <div class="hero-bar" role="img" aria-label="${Math.round(pct)}% da renda gasto"><span style="width:${Math.min(100, pct).toFixed(1)}%"${pct >= 100 ? ' class="over"' : ''}></span></div>
-      <div class="hero-row"><span>${Math.round(pct)}% gasto</span><span class="${left < 0 ? 'neg' : ''}">${left < 0 ? 'Faltam' : 'Sobram'} <b class="num">${money(Math.abs(left))}</b></span></div>
+      <div class="hero-row"><span>${Math.round(pct)}% gasto</span><span class="${left < 0 ? 'neg' : ''}">${left < 0 ? 'Passou' : P.isCur ? 'Sobram até agora' : 'Sobraram'} <b class="num">${money(Math.abs(left))}</b></span></div>
     </div>`;
   } else if (showInc) {
     right = `<div class="hero-inc empty-inc"><b>Quanto você ganha por mês?</b><span class="hero-sub">Cadastre salário, freelas, aluguel recebido e outras rendas para ver quanto sobra.</span>
@@ -2567,12 +2573,13 @@ function viewOrcamento(c){
 function viewCompromissos(c){
   const cm = commitments(c), nx = cm.by[cm.months[0]];
   const leftTotal = cm.inst.reduce((s, p) => s + p.left, 0);
-  const keys = [{ k:'inst', label:'Parcelas', color:'var(--c1)' }, { k:'rec', label:'Assinaturas', color:'var(--c2)' }, { k:'loan', label:'Empréstimos', color:'var(--c3)' }];
+  const keys = [{ k:'bill', label:'Contas fixas', color:'var(--c5)' }, { k:'inst', label:'Parcelas', color:'var(--c1)' }, { k:'rec', label:'Assinaturas', color:'var(--c2)' }, { k:'loan', label:'Empréstimos', color:'var(--c3)' }];
+  const nxTotal = nx.inst + nx.bill + nx.rec + nx.loan;
   let h = `<div class="kpis">
+    ${kpi(`Total em ${esc(mName(cm.months[0]))}`, money(nxTotal), [nx.bill && 'contas ' + money0(nx.bill), nx.inst && 'parcelas ' + money0(nx.inst), nx.rec && 'assinaturas ' + money0(nx.rec), nx.loan && 'empréstimos ' + money0(nx.loan)].filter(Boolean).join(' · ') || 'nada previsto')}
+    ${kpi('Contas fixas por mês', money(cm.billMonthly), plural(cm.bills.length, 'conta que se repete', 'contas que se repetem'))}
+    ${kpi('Assinaturas por mês', money(cm.recMonthly), `${plural(cm.rec.length, 'assinatura', 'assinaturas')} · ${money0(cm.recMonthly * 12)} por ano`)}
     ${kpi('Parcelado a pagar', money(leftTotal), `${cm.inst.length} ${cm.inst.length === 1 ? 'compra parcelada ativa' : 'compras parceladas ativas'}`)}
-    ${kpi(`Parcelas em ${esc(mName(cm.months[0]))}`, money(nx.inst), 'já comprometido nas próximas faturas')}
-    ${kpi('Assinaturas por mês', money(cm.recMonthly), `${cm.rec.length} recorrentes · ${money0(cm.recMonthly * 12)} por ano`)}
-    ${kpi(`Total em ${esc(mName(cm.months[0]))}`, money(nx.inst + nx.rec + nx.loan), nx.loan ? `inclui ${money0(nx.loan)} de empréstimos` : 'parcelas + assinaturas')}
   </div>`;
   const items = cm.months.map(m => ({ label: mShort(m), title: mLong(m), v: cm.by[m], top: true }));
   const usedKeys = keys.filter(k => cm.months.some(m => cm.by[m][k.k] > 0));
@@ -2590,10 +2597,12 @@ function viewCompromissos(c){
     <tfoot><tr><td colspan="2">Total</td><td class="r">${money(cm.inst.reduce((s, p) => s + p.value, 0))}</td><td class="r">${money(leftTotal)}</td><td></td></tr></tfoot></table></div>` : '<p class="empty">Nenhuma compra parcelada em andamento.</p>',
     { sub:'Calculado a partir das parcelas que aparecem nas faturas' });
 
-  const recRows = cm.rec.map(r => `<tr><td><div class="nm"><span class="cat-ico" style="--k:${catColor(r.category)};width:28px;height:28px;font-size:.72rem">${esc(initials(r.category))}</span><div><div>${esc(r.desc)}</div><div class="muted" style="font-size:.76rem">${esc(r.category)} · visto em ${r.months} meses</div></div></div></td>
-    <td class="r">${money(r.avg)}</td><td class="r">${money0(r.avg * 12)}</td><td class="r">${r.paidThisMonth ? '<span class="badge ok">pago no mês</span>' : '<span class="badge">a cobrar</span>'}</td></tr>`).join('');
-  h += panel('Assinaturas e gastos recorrentes', cm.rec.length ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Serviço</th><th class="r">Por mês</th><th class="r">Por ano</th><th class="r">Este mês</th></tr></thead><tbody>${recRows}</tbody></table></div>` : '<p class="empty">Nenhum gasto recorrente identificado ainda. Ele aparece depois de 3 meses de cobranças parecidas.</p>',
-    { sub:'Identificados por cobranças de valor parecido em meses seguidos' });
+  const recTable = (list, what) => `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>${what}</th><th class="r">Por mês</th><th class="r">Este mês</th></tr></thead><tbody>${list.map(r => `<tr><td><div><div>${esc(r.desc)}</div><div class="tx-meta">${txCat(r.category)} · ${money0(r.avg * 12)} por ano</div></div></td>
+    <td class="r">${money(r.avg)}</td><td class="r">${r.paidThisMonth ? '<span class="badge ok">pago</span>' : '<span class="badge">a cobrar</span>'}</td></tr>`).join('')}</tbody>
+    <tfoot><tr><td>Total <span class="muted" style="font-weight:500">· ${money0(sum(list.map(r => ({ amount: r.avg * 12 }))))} por ano</span></td><td class="r">${money(sum(list.map(r => ({ amount: r.avg }))))}</td><td></td></tr></tfoot></table></div>`;
+  const noRec = '<p class="empty">Nada identificado ainda. Aparece depois de 3 meses de cobranças parecidas.</p>';
+  h += `<div class="grid2 even">${panel('Contas fixas', cm.bills.length ? recTable(cm.bills, 'Conta') : noRec, { sub:'Aluguel, contas da casa, internet e outras cobranças que se repetem' })}
+    ${panel('Assinaturas', cm.rec.length ? recTable(cm.rec, 'Serviço') : noRec, { sub:'Streaming, apps, academia: o que dá para cancelar' })}</div>`;
   return h;
 }
 
@@ -2648,10 +2657,10 @@ function viewRelatorios(c){
   const totals = months.map(m => sum(spendIn(c, m)));
   const full = months.filter(m => m !== curYM()), avg = full.length ? full.reduce((s, m) => s + sum(spendIn(c, m)), 0) / full.length : 0;
   const showInc = ui.card === 'all' && months.some(m => incomeFor(m).set);
-  const items = months.map((m, i) => ({ label: mShort(m), title: mLong(m), v:{ s: totals[i] }, top:true, bold: m === ym, dim: m !== ym, mark: showInc ? incomeFor(m).total : 0 }));
+  const items = months.map((m, i) => ({ label: mShort(m), title: mLong(m), v:{ s: totals[i], p: m === curYM() ? Math.max(0, monthPace(c, m).projection - totals[i]) : 0 }, top:true, bold: m === ym, dim: m !== ym, mark: showInc ? incomeFor(m).total : 0 }));
   let h = `<div class="print-head">Vellum · Relatório de ${esc(mName(ym))} de ${ym.slice(0, 4)} · gerado em ${fullDate(today())}</div>
-  <div class="year-bar"><span></span><button class="btn ghost" type="button" data-action="print">${ic('print')}Baixar relatório em PDF</button></div>` + panel('Evolução dos gastos', barChart(items, [{ k:'s', label:'Gasto', color:'var(--accent)' }], { avg, label:'Gasto por mês' }) +
-    `<div class="legend" style="margin-top:8px"><span><i style="background:var(--accent)"></i>Gasto no mês</span>${showInc ? '<span><i class="line" style="background:var(--ok)"></i>Renda</span>' : ''}${avg ? `<span><i class="line" style="background:var(--muted)"></i>Média dos meses fechados: ${money0(avg)}</span>` : ''}</div>`,
+  <div class="year-bar"><span></span><button class="btn ghost" type="button" data-action="print">${ic('print')}Baixar relatório em PDF</button></div>` + panel('Evolução dos gastos', barChart(items, [{ k:'s', label:'Gasto', color:'var(--accent)' }, { k:'p', label:'Previsto até o fim do mês', color:'color-mix(in srgb,var(--accent) 30%,transparent)' }], { avg, label:'Gasto por mês' }) +
+    `<div class="legend" style="margin-top:8px"><span><i style="background:var(--accent)"></i>Gasto no mês</span>${items.some(it => it.v.p > 0) ? '<span><i style="background:color-mix(in srgb,var(--accent) 30%,transparent)"></i>Previsto até o fim do mês</span>' : ''}${showInc ? '<span><i class="line" style="background:var(--ok)"></i>Renda</span>' : ''}${avg ? `<span><i class="line" style="background:var(--muted)"></i>Média dos meses fechados: ${money0(avg)}</span>` : ''}</div>`,
     { sub:`Últimos ${months.length} meses` });
 
   if (showInc) {
@@ -2661,20 +2670,22 @@ function viewRelatorios(c){
       { sub:'Quanto sobrou de cada mês', action:`<button class="btn ghost sm" type="button" data-action="income">${ic('edit')}Editar renda</button>` });
   }
 
-  const a = byCat(spendIn(c, prev)), b = byCat(spendIn(c, ym));
+  const PR = monthPace(c, ym), partial = PR.isCur;
+  const prevList = partial ? spendIn(c, prev).filter(t => PR.dayOf(t) <= PR.day) : spendIn(c, prev);
+  const a = byCat(prevList), b = byCat(spendIn(c, ym));
   const keys = [...new Set([...Object.keys(a), ...Object.keys(b)])].sort((x, y) => Math.abs((b[y] || 0) - (a[y] || 0)) - Math.abs((b[x] || 0) - (a[x] || 0)));
-  const ta = sum(spendIn(c, prev)), tb = sum(spendIn(c, ym));
+  const ta = sum(prevList), tb = sum(spendIn(c, ym));
   const row = (name, x, y, color, cat) => { const d = y - x; const p = x ? d / x * 100 : null;
     return `<tr><td><div class="nm">${color ? `<span class="dot" style="background:${color}"></span>` : ''}${cat ? `<button class="plain-link" type="button" data-gocat="${esc(name)}">${esc(name)}</button>` : esc(name)}</div></td><td class="r">${money(x)}</td><td class="r">${money(y)}</td>
       <td class="r"><span class="delta ${d > 0.5 ? 'bad' : d < -0.5 ? 'good' : ''}">${d > 0 ? '+' : d < 0 ? '−' : ''}${money(Math.abs(d))}</span></td><td class="r">${p == null ? '<span class="muted">novo</span>' : `<span class="delta ${p > 0.5 ? 'bad' : p < -0.5 ? 'good' : ''}">${pctTxt(p)}</span>`}</td></tr>`; };
-  const head = `<thead><tr><th>Categoria</th><th class="r">${esc(cap(mName(prev)))}</th><th class="r">${esc(cap(mName(ym)))}</th><th class="r">Diferença</th><th class="r">%</th></tr></thead>`;
+  const head = `<thead><tr><th>Categoria</th><th class="r">${esc(cap(mName(prev)))}${partial ? ` até dia ${PR.day}` : ''}</th><th class="r">${esc(cap(mName(ym)))}${partial ? ' até agora' : ''}</th><th class="r">Diferença</th><th class="r">%</th></tr></thead>`;
   h += panel('Comparativo com o mês anterior', keys.length ? `<div class="tbl-wrap"><table class="tbl">${head}<tbody>${keys.map(k => row(k, a[k] || 0, b[k] || 0, catColor(k), true)).join('')}</tbody>
     <tfoot>${row('Total', ta, tb)}</tfoot></table></div>` : '<p class="empty">Sem gastos nestes dois meses.</p>',
-    { sub:`${cap(mName(ym))} contra ${mName(prev)}, ordenado pelas maiores variações` });
+    { sub: partial ? `O mês ainda não acabou: compara com os mesmos ${PR.day} dias de ${mName(prev)}. Ordenado pelas maiores variações.` : `${cap(mName(ym))} contra ${mName(prev)}, ordenado pelas maiores variações` });
 
   const parts = []; let cardPanel = '';
   if (c.accounts.length > 1 && ui.card === 'all') {
-    const rows = [...c.accounts, ...(db.manual.length ? [c.cardById.manual] : [])].map(card => row(card.name, sum(spendIn(c, prev).filter(t => t.cardId === card.id)), sum(spendIn(c, ym).filter(t => t.cardId === card.id)), card.color)).join('');
+    const rows = [...c.accounts, ...(db.manual.length ? [c.cardById.manual] : [])].map(card => row(card.name, sum(prevList.filter(t => t.cardId === card.id)), sum(spendIn(c, ym).filter(t => t.cardId === card.id)), card.color)).join('');
     cardPanel = (panel(c.banks.length ? 'Por cartão e conta' : 'Por cartão', `<div class="tbl-wrap"><table class="tbl">${head.replace('Categoria', 'Cartão')}<tbody>${rows}</tbody></table></div>`));
   }
   const monthSpend = spendIn(c, ym);
@@ -2776,6 +2787,17 @@ function viewFaturas(c){
   const { close, due } = billDates(key, card);
   const status = key === open ? ['Fatura aberta', 'ok'] : key > open ? ['Fatura futura', ''] : ['Fatura fechada', 'warn'];
   const total = totalOf(key), prevTotal = totalOf(addM(key, -1));
+  // Fatura aberta: compara com a anterior no mesmo ponto do ciclo (mesmo número de dias desde o fechamento).
+  const dayAfter = d => { const [y, m, dd] = d.split('-').map(Number); return iso(new Date(y, m - 1, dd + 1)); };
+  const plusDays = (d, n) => { const [y, m, dd] = d.split('-').map(Number); return iso(new Date(y, m - 1, dd + n)); };
+  let cmpPrev = prevTotal, cmpCur = total, cmpTxt = `vs fatura de ${esc(mName(addM(key, -1)))}`;
+  if (key === open) {
+    const start = dayAfter(billDates(addM(key, -1), card).close), prevStart = dayAfter(billDates(addM(key, -2), card).close);
+    const elapsed = Math.max(0, -daysUntil(start));
+    const net = l => sum(l.filter(t => t.kind === 'out')) - sum(l.filter(t => t.kind === 'in'));
+    cmpCur = net(list); cmpPrev = net(inBill(addM(key, -1)).filter(t => t.date <= plusDays(prevStart, elapsed)));
+    cmpTxt = `vs o mesmo ponto da fatura de ${esc(mName(addM(key, -1)))}`;
+  }
   const official = (data?.bills?.[card.id] || []).find(b => ymOf(b.due) === key);
   const aVista = sum(list.filter(t => t.kind === 'out' && !(t.instT > 1)));
   const parcelas = sum(list.filter(t => t.kind === 'out' && t.instT > 1)) + proj.reduce((s, p) => s + p.value, 0);
@@ -2792,7 +2814,7 @@ function viewFaturas(c){
     <span class="hero-lbl">${esc(card.name)}${card.number ? ' · final ' + esc(card.number) : ''}</span>
     <span class="hero-val num">${money(total)}</span>
     <span class="hero-sub">${key > open ? 'Previsto até agora · ' : ''}Fecha em ${fullDate(close)} · vence em ${fullDate(due)}${official ? ` · valor do banco: ${money(official.total)}` : ''}</span>
-    ${prevTotal > 0 ? `<span class="pill ${total > prevTotal ? 'up' : 'down'}">${total > prevTotal ? '▲' : '▼'} ${Math.abs(Math.round((total - prevTotal) / prevTotal * 100))}% vs fatura de ${esc(mName(addM(key, -1)))}</span>` : ''}
+    ${key <= open && cmpPrev > 0 ? `<span class="pill ${cmpCur > cmpPrev ? 'up' : 'down'}">${cmpCur > cmpPrev ? '▲' : '▼'} ${Math.abs(Math.round((cmpCur - cmpPrev) / cmpPrev * 100))}% ${cmpTxt}</span>` : ''}
     ${key === open && used != null ? `<div class="hero-bar"><span style="width:${Math.min(100, used / card.limit * 100).toFixed(1)}%"></span></div><span class="hero-sub">Limite: ${money(used)} usados de ${money(card.limit)} · disponível ${money(card.available)}</span>` : ''}
     </div></div>
   </section>`;
@@ -2811,16 +2833,16 @@ function viewFaturas(c){
       (proj.length ? `<p class="day"><span>Parcelas que vão entrar</span></p><ul class="rows">${projRows}</ul>` : '')
     : '<p class="empty">Nenhum lançamento nesta fatura.</p>';
   const next = Array.from({ length: 6 }, (_, i) => addM(open, i + 1)), maxNext = Math.max(1, ...next.map(totalOf));
-  const past = Array.from({ length: 6 }, (_, i) => addM(open, -(i + 1))).filter(k => k >= minKey);
-  const billRow = k => { const v = totalOf(k), off = (data?.bills?.[card.id] || []).find(b => ymOf(b.due) === k);
+  const past = Array.from({ length: 6 }, (_, i) => addM(open, -(i + 1))).filter(k => k >= minKey), maxPast = Math.max(1, ...past.map(totalOf));
+  const billRow = (k, max = maxNext) => { const v = totalOf(k), off = (data?.bills?.[card.id] || []).find(b => ymOf(b.due) === k);
     return `<li><button class="crow crow-btn" type="button" data-action="gobill" data-key="${k}"><span class="dot" style="background:${card.color}"></span><span class="nm">${esc(cap(mName(k)))} ${k.slice(0, 4)}</span><span class="am">${money(v)}</span>
-      <span class="progress thin"><span style="width:${(v / maxNext * 100).toFixed(1)}%;background:${card.color}"></span></span>
+      <span class="progress thin"><span style="width:${Math.min(100, v / max * 100).toFixed(1)}%;background:${card.color}"></span></span>
       <span class="ft"><span>vence ${shortDate(billDates(k, card).due)}</span><span>${off ? 'banco: ' + money(off.total) : k > open ? 'previsto' : ''}</span></span></button></li>`; };
   h += `<div class="grid2">
     ${panel('Lançamentos da fatura', listHtml, { sub:`${plural(list.length, 'lançamento', 'lançamentos')}${proj.length ? ` + ${plural(proj.length, 'parcela prevista', 'parcelas previstas')}` : ''}` })}
     <div style="display:flex;flex-direction:column;gap:18px">
       ${panel('Próximas faturas', `<ul class="rows">${next.map(billRow).join('')}</ul>`, { sub:'O que já está lançado mais as parcelas futuras' })}
-      ${past.length ? panel('Faturas anteriores', `<ul class="rows">${past.map(billRow).join('')}</ul>`) : ''}
+      ${past.length ? panel('Faturas anteriores', `<ul class="rows">${past.map(k => billRow(k, maxPast)).join('')}</ul>`) : ''}
     </div>
   </div>`;
   return h;
@@ -2942,9 +2964,9 @@ function viewAno(c){
     ${showInc ? kpi(`Renda em ${y}`, money(tInc), tInc ? 'informada ou da conta corrente' : '<button class="plain-link" type="button" data-action="income">Informe sua renda</button>', '', 'wallet', 'k1') : ''}
     ${showInc ? kpi('Sobrou no ano', `<span class="${tInc - tSp < 0 ? 'neg' : 'pos'}">${money(tInc - tSp)}</span>`, tInc ? `${Math.round((tInc - tSp) / tInc * 100)}% da renda guardada` : 'sem renda informada', '', 'flag', 'k2') : ''}
   </div>`;
-  const items = rows.map(r => ({ label: mShort(r.m).replace(/\/\d+$/, ''), title: mLong(r.m), v:{ s: r.sp }, top: r.sp > 0, mark: showInc ? r.inc : 0 }));
-  h += panel('Mês a mês', barChart(items, [{ k:'s', label:'Gasto', color:'var(--accent)' }], { label:`Gasto por mês em ${y}` }) +
-    `<div class="legend" style="margin-top:8px"><span><i style="background:var(--accent)"></i>Gasto</span>${showInc && tInc ? '<span><i class="line" style="background:var(--ok)"></i>Renda</span>' : ''}</div>
+  const items = rows.map(r => ({ label: mShort(r.m).replace(/\/\d+$/, ''), title: mLong(r.m), v:{ s: r.sp, p: r.m === curYM() ? Math.max(0, monthPace(c, r.m).projection - r.sp) : 0 }, top: r.sp > 0, mark: showInc ? r.inc : 0 }));
+  h += panel('Mês a mês', barChart(items, [{ k:'s', label:'Gasto', color:'var(--accent)' }, { k:'p', label:'Previsto até o fim do mês', color:'color-mix(in srgb,var(--accent) 30%,transparent)' }], { label:`Gasto por mês em ${y}` }) +
+    `<div class="legend" style="margin-top:8px"><span><i style="background:var(--accent)"></i>Gasto</span>${items.some(it => it.v.p > 0) ? '<span><i style="background:color-mix(in srgb,var(--accent) 30%,transparent)"></i>Previsto até o fim do mês</span>' : ''}${showInc && tInc ? '<span><i class="line" style="background:var(--ok)"></i>Renda</span>' : ''}</div>
     <div class="tbl-wrap" style="margin-top:14px"><table class="tbl"><thead><tr><th>Mês</th>${showInc ? '<th class="r">Renda</th>' : ''}<th class="r">Gastos</th>${showInc ? '<th class="r">Sobra</th><th class="r">% da renda</th>' : ''}</tr></thead>
     <tbody>${rows.map(r => `<tr><td>${esc(cap(mName(r.m)))}</td>${showInc ? `<td class="r">${r.inc ? money(r.inc) : '—'}</td>` : ''}<td class="r">${money(r.sp)}</td>${showInc ? `<td class="r"><span class="${r.left < 0 ? 'neg' : 'pos'}">${r.inc ? money(r.left) : '—'}</span></td><td class="r">${r.inc ? Math.round(r.sp / r.inc * 100) + '%' : '—'}</td>` : ''}</tr>`).join('')}</tbody>
     <tfoot><tr><td>Total</td>${showInc ? `<td class="r">${money(tInc)}</td>` : ''}<td class="r">${money(tSp)}</td>${showInc ? `<td class="r">${money(tInc - tSp)}</td><td class="r">${tInc ? Math.round(tSp / tInc * 100) + '%' : '—'}</td>` : ''}</tr></tfoot></table></div>`,
