@@ -403,10 +403,50 @@ dialog.pluggy-host::backdrop{background:transparent}
 
 /* Ajustes como página e modo configuração */
 .settings{max-width:820px;margin:0 auto;padding:12px 32px 72px}
-.settings-in{background:var(--surface);border:1px solid var(--panel-border);border-radius:var(--radius);box-shadow:var(--shadow);padding:24px 26px}
-.settings-in>div:first-child:empty{display:none}
+.settings{max-width:1040px}
+#setupNote:empty{display:none}
+#setupNote{margin-bottom:16px}
+.aj-layout{display:grid;grid-template-columns:200px minmax(0,1fr);gap:24px;align-items:start}
+.aj-nav{position:sticky;top:96px;display:flex;flex-direction:column;gap:2px}
+.aj-nav button{display:flex;align-items:center;gap:10px;border:0;background:none;padding:9px 12px;border-radius:12px;font:inherit;font-size:.9rem;font-weight:600;color:var(--ink-2);cursor:pointer;text-align:left}
+.aj-nav button:hover{background:var(--surface);color:var(--ink)}
+.aj-nav svg.i{width:17px;height:17px;color:var(--muted)}
+.aj-cards{padding:0 !important;gap:16px !important}
+.aj-card{background:var(--surface);border:1px solid var(--panel-border);border-radius:var(--radius);box-shadow:var(--shadow);padding:22px 24px;display:flex;flex-direction:column;gap:14px;scroll-margin-top:96px}
+.aj-head{display:flex;gap:14px;align-items:flex-start}
+.aj-head h2{font-size:1.08rem;font-weight:700}
+.aj-head p{font-size:.84rem;color:var(--muted);margin-top:2px;line-height:1.45}
+.aj-ico{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);flex:none}
+.aj-ico svg.i{width:19px;height:19px}
+.aj-more{border-top:1px solid var(--line-2) !important;padding-top:12px !important}
+.aj-more summary{font-size:.86rem;color:var(--ink-2)}
+.aj-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}
+.aj-danger{border-color:color-mix(in srgb,var(--danger) 30%,transparent)}
+.aj-danger .aj-ico{background:var(--danger-soft);color:var(--danger)}
+.danger-btn{background:var(--danger-soft);color:var(--danger)}
+.danger-btn:hover{background:var(--danger);color:#fff;filter:none}
+.cfg-ver{align-self:flex-start}
+#aj-aparencia label{max-width:340px}
+@media (max-width:1100px){.aj-layout{grid-template-columns:minmax(0,1fr)}.aj-nav{display:none}}
+@media (max-width:860px){.aj-card{padding:18px 16px;border-radius:18px}.aj-actions .btn{flex:1;justify-content:center}}
 #sideCfg[aria-current]{background:var(--lime);color:var(--lime-ink);font-weight:700}
-body.setup #nav,body.setup .tabbar{display:none}
+body.setup .tabbar{grid-template-columns:repeat(2,1fr)}
+.setup-nav{display:flex;flex-direction:column;gap:3px}
+.setup-t{font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--side-ink);opacity:.7;padding:4px 12px}
+.setup-bar{height:6px;border-radius:99px;background:rgba(255,255,255,.12);margin:2px 12px 0;overflow:hidden}
+.setup-bar span{display:block;height:100%;background:var(--lime);border-radius:99px}
+.setup-sub{font-size:.76rem;color:var(--side-ink);padding:4px 12px 8px}
+.setup-step{border:0;background:none;width:100%;text-align:left;cursor:pointer;font:inherit;font-weight:500}
+.setup-n{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:.72rem;font-weight:700;border:1.5px solid currentColor;flex:none}
+.setup-step.done .setup-n{background:var(--ok);border-color:var(--ok);color:#fff}
+.setup-step.cur{color:#fff}
+.setup-step.cur .setup-n{background:var(--lime);border-color:var(--lime);color:var(--lime-ink)}
+.locked-t{margin-top:16px}
+.nav-l.locked{opacity:.38;cursor:not-allowed;padding:6px 12px;font-size:.85rem}
+.nav-l.locked svg.i{width:16px;height:16px}
+.side{overflow-y:auto;scrollbar-width:thin}
+.nav-l.locked:hover{background:none;color:var(--side-ink)}
+.nav-l .lk{width:14px;height:14px;margin-left:auto}
 @media (max-width:860px){
   .settings{padding:8px 14px calc(110px + env(safe-area-inset-bottom,0px))}
   .settings-in{padding:18px 16px;border-radius:18px}
@@ -684,40 +724,73 @@ dialog::backdrop{background:rgba(13,12,19,.6);backdrop-filter:blur(3px)}
     <header class="topbar"><div class="topbar-in" id="topbar"></div></header>
     <main class="page" id="page"></main>
     <section id="cfg" class="settings" hidden>
-      <div class="dlg settings-in">
-        <div id="setupNote"></div>
-        <p class="hint" id="cfgHint"></p>
-        <label>Client ID<input id="fClientId" autocomplete="off" spellcheck="false"></label>
-        <label>Client Secret<input id="fClientSecret" type="password" autocomplete="off" spellcheck="false"></label>
-        <label>API key (opcional, se o painel fornecer uma pronta)<input id="fApiKey" type="password" autocomplete="off" spellcheck="false"></label>
-        <div><p class="fld-title">Bancos conectados</p><div id="connBox" class="conn-box"></div></div>
-        <details id="itemsBox"><summary>IDs das conexões (avançado)</summary><div class="fields">
-          <p class="hint">Normalmente você não precisa mexer aqui: o botão "Conectar banco" preenche sozinho.</p>
-          <label>IDs das conexões (um por linha)<textarea id="fItems" spellcheck="false" placeholder="ex.: 6f1b2c3d-..."></textarea></label>
-        </div></details>
-        <div><p class="fld-title">Conta</p><div id="acctBox"></div></div>
-        <div><p class="fld-title">Notificações</p><div id="notifyBox" class="notify-box"></div></div>
-        <details>
-          <summary>Aparência e dados</summary>
-          <div class="fields">
-            <label>Tema<select id="fTheme"><option value="light">Claro</option><option value="dark">Escuro</option><option value="auto">Automático (igual ao sistema)</option></select></label>
-            <p class="hint">O backup guarda metas, empréstimos, lançamentos manuais e categorias que você ajustou. Use para levar para outro aparelho.</p>
-            <div class="toolbar">
-              <button class="btn ghost sm" type="button" id="btnBackup">Exportar backup</button>
-              <button class="btn ghost sm" type="button" id="btnRestore">Importar backup</button>
-              <button class="btn ghost sm" type="button" id="btnCsv">Exportar transações (CSV)</button>
-              <input type="file" id="fRestore" accept="application/json,.json" hidden>
-            </div>
+      <div id="setupNote"></div>
+      <div class="aj-layout">
+        <nav class="aj-nav" aria-label="Seções dos ajustes">
+          <button type="button" data-action="ajgo" data-target="aj-pluggy"><span data-ic="key"></span>Pluggy</button>
+          <button type="button" data-action="ajgo" data-target="aj-bancos"><span data-ic="card"></span>Bancos</button>
+          <button type="button" data-action="ajgo" data-target="aj-conta"><span data-ic="user"></span>Conta</button>
+          <button type="button" data-action="ajgo" data-target="aj-avisos"><span data-ic="bell"></span>Notificações</button>
+          <button type="button" data-action="ajgo" data-target="aj-aparencia"><span data-ic="sun"></span>Aparência</button>
+          <button type="button" data-action="ajgo" data-target="aj-dados"><span data-ic="down"></span>Seus dados</button>
+          <button type="button" data-action="ajgo" data-target="aj-ajuda"><span data-ic="help"></span>Ajuda</button>
+          <button type="button" data-action="ajgo" data-target="aj-perigo"><span data-ic="trash"></span>Apagar dados</button>
+        </nav>
+        <div class="aj-cards dlg">
+        <section class="aj-card" id="aj-pluggy">
+          <header class="aj-head"><span class="aj-ico" data-ic="key"></span><div><h2>Conexão com a Pluggy</h2><p><span id="cfgHint"></span></p></div></header>
+          
+          <div class="cols">
+            <label>Client ID<input id="fClientId" autocomplete="off" spellcheck="false" placeholder="ex.: 1a2b3c4d-..."></label>
+            <label>Client Secret<input id="fClientSecret" type="password" autocomplete="off" spellcheck="false" placeholder="cole o secret"></label>
           </div>
-        </details>
-        <div><p class="fld-title">Ajuda</p>
-          <div class="toolbar"><button class="btn ghost sm" type="button" data-action="tutorial">Ver tutorial de configuração</button><button class="btn ghost sm" type="button" data-action="news">Novidades</button></div></div>
-        <div class="dlg-actions">
-          <span class="cfg-left"><button class="link danger" id="btnWipe" type="button">Apagar dados deste navegador</button><button class="link cfg-ver" type="button" data-action="news" id="cfgVer"></button></span>
-          <div class="right">
-            <button class="btn ghost" id="btnCancel" type="button">Desfazer alterações</button>
-            <button class="btn" id="btnSave" type="button">Salvar e atualizar</button>
+          <details class="aj-more"><summary>Tenho uma API key pronta (opcional)</summary>
+            <label>API key<input id="fApiKey" type="password" autocomplete="off" spellcheck="false"></label></details>
+          <div class="aj-actions"><button class="btn ghost" id="btnCancel" type="button">Desfazer</button><button class="btn" id="btnSave" type="button">Salvar e atualizar</button></div>
+        </section>
+        <section class="aj-card" id="aj-bancos">
+          <header class="aj-head"><span class="aj-ico" data-ic="card"></span><div><h2>Bancos conectados</h2><p>Os bancos e cartões que o Vellum acompanha.</p></div></header>
+          
+          <div id="connBox" class="conn-box"></div>
+          <details id="itemsBox" class="aj-more"><summary>IDs das conexões (avançado)</summary><div class="fields">
+            <p class="hint">Normalmente você não precisa mexer aqui: o botão "Trazer banco do Meu Pluggy" preenche sozinho. Depois de mudar, toque em Salvar e atualizar.</p>
+            <label>IDs das conexões (um por linha)<textarea id="fItems" spellcheck="false" placeholder="ex.: 6f1b2c3d-..."></textarea></label>
+          </div></details>
+        </section>
+        <section class="aj-card" id="aj-conta">
+          <header class="aj-head"><span class="aj-ico" data-ic="user"></span><div><h2>Conta</h2><p>Sua conta do Vellum e a trava com biometria.</p></div></header>
+          <div id="acctBox"></div>
+        </section>
+        <section class="aj-card" id="aj-avisos">
+          <header class="aj-head"><span class="aj-ico" data-ic="bell"></span><div><h2>Notificações</h2><p>Avisos no celular quando o gasto chega perto da renda ou das metas.</p></div></header>
+          <div id="notifyBox" class="notify-box"></div>
+        </section>
+        <section class="aj-card" id="aj-aparencia">
+          <header class="aj-head"><span class="aj-ico" data-ic="sun"></span><div><h2>Aparência</h2></div></header>
+          
+          <label>Tema<select id="fTheme"><option value="light">Claro</option><option value="dark">Escuro</option><option value="auto">Automático (igual ao sistema)</option></select></label>
+        </section>
+        <section class="aj-card" id="aj-dados">
+          <header class="aj-head"><span class="aj-ico" data-ic="down"></span><div><h2>Seus dados</h2><p>O backup guarda metas, empréstimos, lançamentos manuais e categorias ajustadas.</p></div></header>
+          
+          <div class="toolbar">
+            <button class="btn ghost sm" type="button" id="btnBackup">Exportar backup</button>
+            <button class="btn ghost sm" type="button" id="btnRestore">Importar backup</button>
+            <button class="btn ghost sm" type="button" id="btnCsv">Exportar transações (CSV)</button>
+            <input type="file" id="fRestore" accept="application/json,.json" hidden>
           </div>
+        </section>
+        <section class="aj-card" id="aj-ajuda">
+          <header class="aj-head"><span class="aj-ico" data-ic="help"></span><div><h2>Ajuda</h2></div></header>
+          
+          <div class="toolbar"><button class="btn ghost sm" type="button" data-action="tutorial">Ver tutorial de configuração</button><button class="btn ghost sm" type="button" data-action="news">Novidades</button></div>
+          <button class="link cfg-ver" type="button" data-action="news" id="cfgVer"></button>
+        </section>
+        <section class="aj-card aj-danger" id="aj-perigo">
+          <header class="aj-head"><span class="aj-ico" data-ic="trash"></span><div><h2>Apagar dados deste navegador</h2><p>Tira as credenciais e os dados guardados neste aparelho. O que está salvo na sua conta continua lá.</p></div></header>
+          
+          <div><button class="btn sm danger-btn" id="btnWipe" type="button">Apagar dados deste navegador</button></div>
+        </section>
         </div>
       </div>
     </section>
@@ -802,6 +875,12 @@ const ICON = {
   dots:'<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>',
   print:'<path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M6 14h12v7H6z"/>',
   eye:'<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+  key:'<circle cx="7.5" cy="15.5" r="4.5"/><path d="M10.7 12.3 20 3M16 7l3 3M14 9l2 2"/>',
+  user:'<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+  bell:'<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/>',
+  help:'<circle cx="12" cy="12" r="9"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01"/>',
+  trash:'<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/>',
+  lock:'<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
   sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
   moon:'<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>',
   wallet:'<path d="M3 7a2 2 0 0 1 2-2h13v4"/><path d="M3 7v11a2 2 0 0 0 2 2h15V9H5a2 2 0 0 1-2-2z"/><path d="M16 14.5h.01"/>',
@@ -2834,9 +2913,21 @@ function render(){
   document.body.classList.toggle('setup', setup);
   const v = VIEWS.find(x => x.id === ui.view) || VIEWS[0];
   const navHtml = (cls, short) => VIEWS.filter(x => !x.hidden).map(x => `<a class="${cls}" href="#/${x.id}" ${x.id === v.id ? 'aria-current="page"' : ''}>${ic(x.icon)}<span>${short ? x.short : x.title}</span></a>`).join('');
-  $('#nav').innerHTML = navHtml('nav-l', false);
+  const setupSteps = ['Autorizar bancos', 'Criar aplicação', 'Colar as chaves', 'Trazer ao Vellum'];
+  if (setup) {
+    const st = onbStep();
+    $('#nav').innerHTML = `<div class="setup-nav">
+      <p class="setup-t">Primeiros passos</p>
+      <div class="setup-bar"><span style="width:${st / 4 * 100}%"></span></div>
+      <p class="setup-sub">Passo ${st + 1} de 4</p>
+      ${setupSteps.map((t, i) => `<button type="button" class="nav-l setup-step ${i < st ? 'done' : i === st ? 'cur' : ''}" data-action="onbgo" data-step="${i}" ${v.id === 'tutorial' && i === st ? 'aria-current="page"' : ''}><span class="setup-n">${i < st ? '✓' : i + 1}</span>${t}</button>`).join('')}
+      <p class="setup-t locked-t">Depois de conectar um banco</p>
+      ${VIEWS.filter(x => !x.hidden).map(x => `<span class="nav-l locked" aria-disabled="true" title="Disponível depois de conectar um banco">${ic(x.icon)}<span>${x.title}</span>${ic('lock', 'i lk')}</span>`).join('')}
+    </div>`;
+    $('#tabbar').innerHTML = `<a href="#/tutorial" ${v.id === 'tutorial' ? 'aria-current="page"' : ''}>${ic('flag')}<span>Configurar</span></a><a href="#/ajustes" ${v.id === 'ajustes' ? 'aria-current="page"' : ''}>${ic('gear')}<span>Ajustes</span></a>`;
+  } else $('#nav').innerHTML = navHtml('nav-l', false);
   const inMain = MOBILE_MAIN.includes(v.id);
-  $('#tabbar').innerHTML = VIEWS.filter(x => MOBILE_MAIN.includes(x.id) || x.id === 'mais').map(x => `<a href="#/${x.id}" ${x.id === v.id || (x.id === 'mais' && !inMain) ? 'aria-current="page"' : ''}>${ic(x.icon)}<span>${x.short}</span></a>`).join('');
+  if (!setup) $('#tabbar').innerHTML = VIEWS.filter(x => MOBILE_MAIN.includes(x.id) || x.id === 'mais').map(x => `<a href="#/${x.id}" ${x.id === v.id || (x.id === 'mais' && !inMain) ? 'aria-current="page"' : ''}>${ic(x.icon)}<span>${x.short}</span></a>`).join('');
   $('#sideCfg').innerHTML = ic('gear') + '<span>Ajustes</span>';
   $('#sideCfg').toggleAttribute('aria-current', v.id === 'ajustes');
   renderVersion();
@@ -3258,6 +3349,8 @@ document.addEventListener('click', e => {
   else if (a === 'tutorial') { if (!configured()) store.set(ONB_KEY, Math.min(onbStep(), cfg?.clientId ? 3 : 0)); location.hash = '#/tutorial'; }
   else if (a === 'onbconnect') openPluggyConnect();
   else if (a === 'onbdone') location.hash = '#/inicio';
+  else if (a === 'ajgo') { const el = document.getElementById(b.dataset.target); if (el) scrollTo({ top: el.getBoundingClientRect().top + scrollY - 90, behavior: 'smooth' }); }
+  else if (a === 'onbgo') { setOnb(+b.dataset.step); if (ui.view !== 'tutorial') location.hash = '#/tutorial'; }
   else if (a === 'rank') { ui.rank = b.dataset.rank; render(); }
   else if (a === 'clearf') { ui.cat = 'all'; ui.q = ''; render(); }
   else if (a === 'sync') sync();
@@ -3325,6 +3418,7 @@ document.addEventListener('visibilitychange', () => {
 /* ---------- Início ---------- */
 applyTheme();
 ui.month = curYM();
+document.querySelectorAll('[data-ic]').forEach(e => { e.innerHTML = ic(e.dataset.ic); });
 loadChangelog();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 addEventListener('online', () => { if (cfg && !busy) { lastError = ''; sync(); } });
