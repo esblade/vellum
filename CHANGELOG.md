@@ -2,6 +2,13 @@
 
 Para lançar uma versão nova, escreva um item no topo desta lista: o número que estiver aqui em cima é a versão que o app mostra. As versões seguem o formato MAIOR.MENOR.CORREÇÃO: muda o MENOR quando chega algo novo e a CORREÇÃO quando é ajuste ou conserto.
 
+## 1.14.2 — 19/11/2026
+- Comparações do mês em andamento usam o mesmo período do mês anterior (Visão geral e Relatórios), e a fatura aberta é comparada com o mesmo ponto da fatura anterior. Antes, o mês incompleto parecia uma economia.
+- Contas fixas (aluguel, luz, internet) separadas das assinaturas (streaming, apps, academia).
+- Relatórios e Visão anual mostram, em tom claro, quanto ainda deve entrar no mês atual.
+- As barras das faturas anteriores agora usam a escala certa.
+- Ao reconectar um banco, os lançamentos não aparecem mais todos como "Nova".
+
 ## 1.14.1 — 19/11/2026
 - Transações mostram o nome da categoria por extenso, discreto, com um pontinho na cor dela, no lugar da sigla.
 - As janelas fecham ao clicar fora delas.
