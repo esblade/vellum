@@ -27,18 +27,19 @@ const inRoundRect = (x, y, x0, y0, x1, y1, r) => {
   const cx = Math.min(Math.max(x, x0 + r), x1 - r), cy = Math.min(Math.max(y, y0 + r), y1 - r);
   return (x - cx) ** 2 + (y - cy) ** 2 <= r * r;
 };
-const distSeg = (px, py, ax, ay, bx, by) => {
-  const dx = bx - ax, dy = by - ay, t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy)));
-  return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
-};
-// Desenha em coordenadas 0..1: fundo escuro em tudo, quadrado lima central e o "V".
+// Desenha em coordenadas 0..1: fundo escuro em tudo, quadrado lima central e o "V" caligráfico
+// (mesmo desenho do index.html: traço da esquerda cheio, o da direita com 50% de opacidade).
+const ARM1 = [[4.4, 5.6], [9.1, 5.6], [13.7, 18.7], [10.8, 18.7]];
+const ARM2 = [[15.1, 5.6], [19.6, 5.6], [13.6, 18.7], [11.0, 18.7]];
+const inPoly = (x, y, p) => { let c = false; for (let i = 0, j = p.length - 1; i < p.length; j = i++) { const [xi, yi] = p[i], [xj, yj] = p[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; };
+const MIX = LIME.map((c, i) => Math.round((c + INK[i]) / 2));
 function sample(u, v, { mark = 0.62 }){
   const m0 = (1 - mark) / 2, m1 = 1 - m0;
-  if (!inRoundRect(u, v, m0, m0, m1, m1, mark * 0.28)) return BG;
-  const s = mark / 24, X = a => m0 + a * s, Y = a => m0 + a * s;
-  const w = 3.2 * s / 2;
-  const d = Math.min(distSeg(u, v, X(6.5), Y(7.5), X(12), Y(17.5)), distSeg(u, v, X(12), Y(17.5), X(17.5), Y(7.5)));
-  return d <= w ? INK : LIME;
+  if (!inRoundRect(u, v, m0, m0, m1, m1, mark * 0.3)) return BG;
+  const gx = (u - m0) / mark * 24, gy = (v - m0) / mark * 24;
+  if (inPoly(gx, gy, ARM1)) return INK;
+  if (inPoly(gx, gy, ARM2)) return MIX;
+  return LIME;
 }
 function render(size, opts){
   const ss = 4, buf = Buffer.alloc(size * size * 4);

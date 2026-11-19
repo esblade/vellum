@@ -2,7 +2,7 @@
 // A página (index.html) vem sempre da rede quando há conexão, então atualizações publicadas chegam sozinhas.
 // Não precisa mudar a cada versão: o que muda (index.html, CHANGELOG.md) é buscado na rede primeiro
 // e os outros arquivos se atualizam sozinhos em segundo plano.
-const CACHE = 'vellum-v3';
+const CACHE = 'vellum-v4';
 const SHELL = [
   './', './index.html', './manifest.webmanifest', './CHANGELOG.md',
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png',
