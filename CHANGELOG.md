@@ -2,6 +2,9 @@
 
 Para lançar uma versão nova, escreva um item no topo desta lista: o número que estiver aqui em cima é a versão que o app mostra. As versões seguem o formato MAIOR.MENOR.CORREÇÃO: muda o MENOR quando chega algo novo e a CORREÇÃO quando é ajuste ou conserto.
 
+## 1.13.4 — 19/11/2026
+- Ao abrir o link de confirmação, o app avisa que o e-mail foi confirmado (também quando o link abre em outro navegador) ou que o link expirou ou já foi usado.
+
 ## 1.13.3 — 19/11/2026
 - Botão para reenviar o e-mail de confirmação, depois de criar a conta ou ao tentar entrar sem ter confirmado (um pedido por minuto).
 

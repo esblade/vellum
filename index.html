@@ -1128,11 +1128,42 @@ function renderSync(){
   renderLockBtn();
 }
 
+// O que o link do e-mail trouxe de volta: ?code=… quando deu certo, ?error=… quando expirou ou já foi usado.
+function readAuthReturn(){
+  const q = new URLSearchParams(location.search);
+  const h = new URLSearchParams(/^#[^/]/.test(location.hash) ? location.hash.slice(1) : '');
+  const get = k => q.get(k) || h.get(k);
+  const r = { code: q.get('code'), error: get('error_code') || get('error'), desc: get('error_description') || '' };
+  if (!r.code && !r.error) return null;
+  // O navegador que pediu o link guarda uma chave; sem ela, o link foi aberto em outro navegador.
+  let keys = []; try { keys = Object.keys(localStorage).filter(k => k.endsWith('-code-verifier')).map(k => String(localStorage.getItem(k))); } catch {}
+  r.sameBrowser = keys.length > 0; r.recovery = keys.some(v => v.includes('PASSWORD_RECOVERY'));
+  return r;
+}
+function handleAuthReturn(r){
+  history.replaceState(null, '', location.origin + location.pathname + (location.hash.startsWith('#/') ? location.hash : ''));
+  ui.view = viewFromHash();
+  if (r.error) {
+    authMsg = { text: /expired|invalid|otp/i.test(r.error + ' ' + r.desc)
+      ? 'Este link expirou ou já foi usado. Entre com seu e-mail e senha; se o e-mail ainda não estiver confirmado, peça um link novo.'
+      : 'Não foi possível abrir o link: ' + (r.desc || r.error) };
+    return;
+  }
+  if (r.recovery) return;   // o link de senha nova segue o fluxo dele
+  if (user) {
+    const fresh = user.app_metadata?.provider === 'email' && Date.now() - new Date(user.email_confirmed_at || 0).getTime() < 30 * 60 * 1000;
+    if (fresh) setTimeout(() => toast('E-mail confirmado! Bem-vindo ao Vellum.'), 500);
+  } else authMsg = r.sameBrowser
+    ? { text: 'O link foi aberto, mas não deu para entrar automaticamente. Entre com seu e-mail e senha.' }
+    : { ok: true, text: 'E-mail confirmado! Agora é só entrar com seu e-mail e senha.' };
+}
 async function initCloud(){
   if (!cloudOn()) { authReady = true; return; }
+  const authReturn = readAuthReturn();
   sb = window.supabase.createClient(SUPABASE.url, SUPABASE.anonKey, { auth:{ persistSession:true, autoRefreshToken:true, detectSessionInUrl:true, flowType:'pkce' } });
   const { data: { session: s } } = await sb.auth.getSession();
   user = s?.user || null; authReady = true;
+  if (authReturn) handleAuthReturn(authReturn);
   sb.auth.onAuthStateChange((event, s2) => {
     const before = user?.id; user = s2?.user || null;
     if (event === 'SIGNED_IN' && user && user.id !== before) afterLogin();
