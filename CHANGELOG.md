@@ -5,6 +5,7 @@ Para lançar uma versão nova, escreva um item no topo desta lista: o número qu
 ## 1.13.1 — 19/11/2026
 - Ajustes organizado em cartões (Pluggy, Bancos, Conta, Notificações, Aparência, Seus dados, Ajuda, Apagar dados), com índice ao lado em telas grandes.
 - Durante a configuração, o menu mostra os passos do tutorial com o progresso e as telas que liberam depois de conectar um banco.
+- Ao recarregar a página antes de conectar um banco, o menu completo não pisca mais antes do menu do tutorial.
 
 ## 1.13.0 — 19/11/2026
 - Ajustes virou uma página normal (#/ajustes), sem janela por cima; o que você digita não se perde quando os dados atualizam.
