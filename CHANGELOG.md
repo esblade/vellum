@@ -2,6 +2,10 @@
 
 Para lançar uma versão nova, escreva um item no topo desta lista: o número que estiver aqui em cima é a versão que o app mostra. As versões seguem o formato MAIOR.MENOR.CORREÇÃO: muda o MENOR quando chega algo novo e a CORREÇÃO quando é ajuste ou conserto.
 
+## 1.13.5 — 19/11/2026
+- Barra do topo mais compacta: título, mês, filtro de conta e botões na mesma linha; nomes de conta longos não esticam mais o filtro.
+- No computador, as listas de opções abrem no visual do app (claro e escuro), com busca por letra e navegação pelo teclado. No celular continua o seletor do sistema.
+
 ## 1.13.4 — 19/11/2026
 - Ao abrir o link de confirmação, o app avisa que o e-mail foi confirmado (também quando o link abre em outro navegador) ou que o link expirou ou já foi usado.
 

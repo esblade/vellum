@@ -92,6 +92,11 @@ svg.i{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-widt
 .sync.ok{color:var(--ok)}
 .sync.error,.sync.nokv,.sync.old{color:var(--warn)}
 .tb-actions,.tb-filters{display:flex;align-items:center;gap:8px}
+.tb-filters{margin-left:auto;min-width:0}
+.tb-filters .cardsel{min-width:0;display:flex}
+.tb-filters select{max-width:230px;text-overflow:ellipsis;white-space:nowrap;overflow:hidden}
+.tb-actions .btn.ghost{height:42px}
+@media (min-width:861px) and (max-width:1180px){ .tb-actions .hide-m{display:none} .tb-actions .btn.ghost{padding:9px 11px} }
 .page{max-width:1200px;margin:0 auto;padding:12px 32px 72px;display:flex;flex-direction:column;gap:18px}
 
 /* Controls */
@@ -455,6 +460,20 @@ body.booting #nav,body.booting .tabbar,body.booting .tb-actions{visibility:hidde
   body.setup .page,body.setup .settings{padding-bottom:calc(28px + env(safe-area-inset-bottom,0px))}
 }
 
+/* Lista aberta dos selects (desenhada pelo app no lugar da lista do sistema) */
+.selpop{position:fixed;inset:auto;margin:0;z-index:1000;box-sizing:border-box;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 44px rgba(10,8,25,.22);padding:6px;overflow-y:auto;overscroll-behavior:contain;font-size:.9rem;animation:selin .12s ease-out;scrollbar-width:thin}
+.selpop:not(.open){display:none}
+@keyframes selin{from{opacity:0;transform:translateY(-4px)}}
+.selpop-o{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:9px;cursor:pointer;font-weight:500;white-space:nowrap}
+.selpop-o>span{overflow:hidden;text-overflow:ellipsis;flex:1}
+.selpop-o.act{background:var(--surface-2)}
+.selpop-o[aria-selected="true"]{color:var(--accent);font-weight:700}
+.selpop-o[aria-disabled]{opacity:.4;cursor:default}
+.selpop-ck{width:16px;height:16px;flex:none;stroke-width:2.6}
+.selpop-g{padding:8px 12px 4px;font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.selpop-dot{width:16px;height:16px;border-radius:50%;flex:none}
+select[aria-expanded="true"]{border-color:var(--accent);box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 16%,transparent)}
+
 /* Banner */
 .banner{padding:12px 18px;border-radius:16px;background:var(--accent-soft);display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;font-size:.9rem}
 .banner.err{background:var(--danger-soft)}
@@ -682,7 +701,8 @@ dialog::backdrop{background:rgba(13,12,19,.6);backdrop-filter:blur(3px)}
   .tb-filters .mswitch{flex:1 1 55%;justify-content:space-between}
   .mswitch span{min-width:0;flex:1}
   .tb-filters .cardsel{flex:1 1 45%;min-width:0}
-  .tb-filters .cardsel select{width:100%}
+  .tb-filters .cardsel select{width:100%;max-width:none}
+  .tb-filters{margin-left:0}
   .page{padding:8px 14px calc(110px + env(safe-area-inset-bottom,0px));gap:14px}
   .tabbar{display:grid;grid-template-columns:repeat(5,1fr);gap:2px;position:fixed;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:7;background:var(--side);border-radius:22px;padding:7px;box-shadow:0 12px 32px rgba(10,8,25,.3)}
   .tabbar a{display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 0 6px;border-radius:15px;font-size:.6rem;color:var(--side-ink);text-decoration:none;font-weight:600;letter-spacing:-.01em}
@@ -882,6 +902,7 @@ const ICON = {
   bell:'<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/>',
   help:'<circle cx="12" cy="12" r="9"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01"/>',
   trash:'<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/>',
+  check:'<path d="M5 12.5l4.5 4.5L19 7.5"/>',
   lock:'<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
   sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
   moon:'<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>',
@@ -3468,6 +3489,107 @@ document.addEventListener('visibilitychange', () => {
   pullSync();
   if (cfg && !busy && (!data || Date.now() - new Date(data.syncedAt).getTime() > 15 * 60 * 1000)) sync();
 });
+
+/* ---------- Lista dos selects ----------
+   No computador, a lista que abre ao clicar num select é desenhada pelo app (a do sistema não aceita estilo).
+   O <select> continua sendo o campo de verdade: valor, formulários e o evento 'change' seguem iguais.
+   No celular fica o seletor nativo, que é melhor para o toque. */
+const selUI = { pop: null, sel: null, act: -1, items: [], typed: '', typedAt: 0 };
+const nativeSel = s => s.disabled || s.multiple || s.size > 1 || matchMedia('(pointer:coarse)').matches;
+function selPop(){
+  if (selUI.pop) return selUI.pop;
+  const p = document.createElement('div');
+  p.className = 'selpop'; p.setAttribute('role', 'listbox'); p.id = 'selpop';
+  if ('popover' in HTMLElement.prototype) p.popover = 'manual';   // fica por cima até de janelas abertas
+  p.addEventListener('mousedown', e => e.preventDefault());       // o foco fica no select
+  p.addEventListener('click', e => { const o = e.target.closest('[data-i]'); if (o && !o.hasAttribute('aria-disabled')) pickSel(+o.dataset.i); });
+  p.addEventListener('mousemove', e => { const o = e.target.closest('[data-i]'); if (o && !o.hasAttribute('aria-disabled') && +o.dataset.i !== selUI.act) activeSel(+o.dataset.i, false); });
+  document.body.appendChild(p);
+  return selUI.pop = p;
+}
+function openSel(s){
+  const p = selPop(), opts = [...s.options];
+  selUI.sel = s;
+  selUI.items = opts.map((o, i) => i).filter(i => !opts[i].disabled && !opts[i].hidden);
+  let html = '', group = null;
+  opts.forEach((o, i) => {
+    const g = o.parentElement.tagName === 'OPTGROUP' ? o.parentElement : null;
+    if (g !== group) { group = g; if (g) html += `<div class="selpop-g">${esc(g.label)}</div>`; }
+    if (o.hidden) return;
+    const dot = s.classList.contains('swatch') ? `<span class="selpop-dot" style="background:var(--k${esc(o.value)})"></span>` : '';
+    html += `<div class="selpop-o" role="option" id="selo${i}" data-i="${i}" aria-selected="${o.selected}"${o.disabled ? ' aria-disabled="true"' : ''}>${dot}<span>${esc(o.text)}</span>${o.selected ? ic('check', 'i selpop-ck') : ''}</div>`;
+  });
+  p.innerHTML = html;
+  p.classList.add('open'); if (p.showPopover && !p.matches(':popover-open')) p.showPopover();
+  const r = s.getBoundingClientRect(), vw = innerWidth, vh = innerHeight;
+  p.style.minWidth = r.width + 'px'; p.style.maxWidth = Math.max(r.width, Math.min(380, vw - 16)) + 'px';
+  p.style.maxHeight = 'none';
+  const below = vh - r.bottom - 14, above = r.top - 14, need = Math.min(p.scrollHeight, 320);
+  const up = below < need && above > below;
+  p.style.maxHeight = Math.min(320, up ? above : below) + 'px';
+  p.style.left = Math.max(8, Math.min(r.left, vw - p.offsetWidth - 8)) + 'px';
+  p.style.top = (up ? r.top - 6 - p.offsetHeight : r.bottom + 6) + 'px';
+  s.setAttribute('aria-expanded', 'true'); s.setAttribute('aria-controls', 'selpop');
+  activeSel(selUI.items.includes(s.selectedIndex) ? s.selectedIndex : selUI.items[0], true);
+}
+function closeSel(){
+  const s = selUI.sel; if (!s) return null;
+  selUI.sel = null;
+  s.removeAttribute('aria-expanded'); s.removeAttribute('aria-activedescendant');
+  const p = selUI.pop; p.classList.remove('open'); if (p.hidePopover && p.matches(':popover-open')) p.hidePopover();
+  return s;
+}
+function activeSel(i, scroll){
+  selUI.act = i;
+  selUI.pop.querySelectorAll('.selpop-o.act').forEach(e => e.classList.remove('act'));
+  const el = selUI.pop.querySelector(`[data-i="${i}"]`); if (!el) return;
+  el.classList.add('act'); selUI.sel?.setAttribute('aria-activedescendant', el.id);
+  if (scroll) el.scrollIntoView({ block: 'nearest' });
+}
+function pickSel(i){
+  const s = closeSel(); if (!s) return;
+  s.focus();
+  if (s.selectedIndex !== i) { s.selectedIndex = i; s.dispatchEvent(new Event('input', { bubbles: true })); s.dispatchEvent(new Event('change', { bubbles: true })); }
+}
+document.addEventListener('mousedown', e => {
+  if (selUI.sel && !e.target.closest?.('.selpop')) {
+    const same = e.target === selUI.sel; closeSel();
+    if (same) { e.preventDefault(); return; }
+  }
+  const s = e.target.closest?.('select');
+  if (!s || e.button !== 0 || nativeSel(s)) return;
+  e.preventDefault(); s.focus(); openSel(s);
+}, true);
+const normSel = t => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+document.addEventListener('keydown', e => {
+  if (selUI.sel) {
+    const k = e.key, it = selUI.items, pos = it.indexOf(selUI.act);
+    const move = n => { e.preventDefault(); activeSel(it[Math.max(0, Math.min(it.length - 1, n))], true); };
+    if (k === 'Escape') { e.preventDefault(); e.stopPropagation(); closeSel()?.focus(); }
+    else if (k === 'Tab') closeSel();
+    else if (k === 'ArrowDown') move(pos + 1);
+    else if (k === 'ArrowUp') move(pos - 1);
+    else if (k === 'PageDown') move(pos + 8);
+    else if (k === 'PageUp') move(pos - 8);
+    else if (k === 'Home') move(0);
+    else if (k === 'End') move(it.length - 1);
+    else if (k === 'Enter' || k === ' ') { e.preventDefault(); pickSel(selUI.act); }
+    else if (k.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {   // digitar pula para a opção
+      e.preventDefault();
+      selUI.typed = (Date.now() - selUI.typedAt < 700 ? selUI.typed : '') + k.toLowerCase(); selUI.typedAt = Date.now();
+      const opts = selUI.sel.options, q = normSel(selUI.typed);
+      const hit = [...it.slice(pos + 1), ...it.slice(0, pos + 1)].find(i => normSel(opts[i].text).startsWith(q));
+      if (hit != null) activeSel(hit, true);
+    }
+    return;
+  }
+  const s = e.target;
+  if (s.tagName !== 'SELECT' || nativeSel(s)) return;
+  if ([' ', 'Enter', 'ArrowDown', 'ArrowUp', 'F4'].includes(e.key)) { e.preventDefault(); openSel(s); }
+}, true);
+addEventListener('scroll', e => { if (selUI.sel && !(e.target instanceof Element && e.target.closest('.selpop'))) closeSel(); }, true);
+addEventListener('resize', () => closeSel());
+addEventListener('hashchange', () => closeSel());
 
 /* ---------- Início ---------- */
 applyTheme();
