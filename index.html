@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#F3F2F8" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0D0C13" media="(prefers-color-scheme: dark)">
 <title>Vellum</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%2317142B'/><path d='M9 10l7 13 7-13' stroke='%23C8F25A' stroke-width='3.2' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><rect width='24' height='24' rx='6' fill='%23C8F25A'/><g fill='%2317142B'><path d='M4.4 5.6h4.7l4.6 13.1h-2.9z'/><path d='M15.1 5.6h4.5l-6 13.1h-2.6z' opacity='.5'/></g></svg>">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -73,12 +73,27 @@ svg.i{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-widt
 /* Shell */
 .shell{display:grid;grid-template-columns:244px minmax(0,1fr);min-height:100vh}
 .side{position:sticky;top:0;height:100vh;background:var(--side);padding:22px 14px;display:flex;flex-direction:column;gap:3px}
-.brand{display:flex;align-items:center;gap:10px;padding:2px 10px 26px;font-family:var(--display);font-weight:700;font-size:1.3rem;color:#fff;letter-spacing:-.02em}
-.brand-mark{width:32px;height:32px;border-radius:10px;background:var(--lime);display:grid;place-items:center}
-.brand-mark svg{width:17px;height:17px;stroke:var(--lime-ink);stroke-width:3.2;fill:none;stroke-linecap:round;stroke-linejoin:round}
-.nav-l{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;color:var(--side-ink);text-decoration:none;font-weight:500;font-size:.93rem;transition:background .15s,color .15s}
+.brand{display:flex;align-items:center;gap:11px;padding:2px 8px 22px;color:#fff}
+.brand-txt{display:flex;flex-direction:column;line-height:1.05}
+.brand-txt b{font-family:var(--display);font-weight:700;font-size:1.32rem;letter-spacing:-.035em}
+.brand-txt small{font-size:.68rem;font-weight:600;color:var(--side-ink);opacity:.75;letter-spacing:.02em;margin-top:3px}
+.brand-mark{width:34px;height:34px;border-radius:11px;background:var(--lime);display:grid;place-items:center;flex:none;box-shadow:0 6px 18px rgba(200,242,90,.18),inset 0 -2px 0 rgba(23,20,43,.12)}
+.brand-mark svg{width:20px;height:20px;fill:var(--lime-ink);stroke:none}
+.brand-mark svg .m2{opacity:.5}
+.nav-l{position:relative;display:flex;align-items:center;gap:12px;padding:9px 12px;border-radius:12px;color:var(--side-ink);text-decoration:none;font-weight:500;font-size:.92rem;transition:background .15s,color .15s}
 .nav-l:hover{background:var(--side-hover);color:#fff}
-.nav-l[aria-current="page"]{background:var(--lime);color:var(--lime-ink);font-weight:700}
+.nav-l[aria-current="page"],#sideCfg[aria-current]{background:rgba(200,242,90,.11);color:#fff;font-weight:650}
+.nav-l[aria-current="page"] svg.i,#sideCfg[aria-current] svg.i{color:var(--lime)}
+.nav-l[aria-current="page"]::before{content:"";position:absolute;left:-14px;top:10px;bottom:10px;width:3px;border-radius:0 3px 3px 0;background:var(--lime)}
+.nav-g{font-size:.66rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--side-ink);opacity:.5;padding:18px 12px 6px}
+#nav{display:flex;flex-direction:column;gap:2px}
+.side-user{display:flex;align-items:center;gap:10px;min-width:0}
+.side-av{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--lime),#8FD14F);color:var(--lime-ink);display:grid;place-items:center;font-weight:800;font-size:.8rem;flex:none}
+.side-user>span:last-child{display:flex;flex-direction:column;min-width:0;line-height:1.2}
+.side-user b{color:#fff;font-size:.86rem;font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.side-user small{font-size:.72rem;color:var(--side-ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#sideCfg.has-user{padding:8px 10px}
+#sideCfg.has-user .side-gear{margin-left:auto;width:16px;height:16px;opacity:.6}
 .side-foot{margin-top:auto;display:flex;flex-direction:column;gap:3px;border-top:1px solid rgba(255,255,255,.08);padding-top:12px}
 .side-foot button{border:0;background:none;text-align:left;cursor:pointer;width:100%}
 .tabbar{display:none}
@@ -279,7 +294,7 @@ body.gated .page{max-width:none;min-height:100vh;padding:24px 16px;justify-conte
 .gate-card h2{font-size:1.5rem;font-weight:700;letter-spacing:-.025em}
 .gate-card p{color:var(--muted);font-size:.92rem;margin-bottom:6px}
 .brand-mark.big{width:56px;height:56px;border-radius:18px;margin-bottom:4px}
-.brand-mark.big svg{width:28px;height:28px}
+.brand-mark.big svg{width:32px;height:32px}
 .gbtn{width:100%;justify-content:center;padding:13px 16px;font-size:.95rem;background:var(--surface);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line),var(--shadow)}
 .gbtn svg{width:20px;height:20px}
 .gate-card .btn:not(.gbtn){width:100%;justify-content:center;padding:13px 16px}
@@ -435,7 +450,6 @@ dialog.pluggy-host::backdrop{background:transparent}
 #aj-aparencia label{max-width:340px}
 @media (max-width:1100px){.aj-layout{grid-template-columns:minmax(0,1fr)}.aj-nav{display:none}}
 @media (max-width:860px){.aj-card{padding:18px 16px;border-radius:18px}.aj-actions .btn{flex:1;justify-content:center}}
-#sideCfg[aria-current]{background:var(--lime);color:var(--lime-ink);font-weight:700}
 body.setup .tabbar{grid-template-columns:repeat(2,1fr)}
 body.booting #nav,body.booting .tabbar,body.booting .tb-actions{visibility:hidden}
 .setup-nav{display:flex;flex-direction:column;gap:3px}
@@ -734,7 +748,7 @@ dialog::backdrop{background:rgba(13,12,19,.6);backdrop-filter:blur(3px)}
 <body>
 <div class="shell">
   <aside class="side" aria-label="Menu">
-    <div class="brand"><span class="brand-mark"><svg viewBox="0 0 24 24"><path d="M6 7l6 11 6-11"/></svg></span>Vellum</div>
+    <div class="brand"><span class="brand-mark"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.4 5.6h4.7l4.6 13.1h-2.9z"/><path class="m2" d="M15.1 5.6h4.5l-6 13.1h-2.6z"/></svg></span><span class="brand-txt"><b>Vellum</b><small>finanças pessoais</small></span></div>
     <nav id="nav"></nav>
     <div class="side-foot">
       <button class="nav-l" type="button" data-action="theme" id="sideTheme"></button>
@@ -926,6 +940,12 @@ const VIEWS = [
   { id:'tutorial', title:'Configurar o Vellum', short:'Tutorial', icon:'flag', noData:true, hidden:true }
 ];
 const MOBILE_MAIN = ['inicio', 'transacoes', 'faturas', 'orcamento'];
+// Grupos do menu lateral (no celular a barra de baixo segue a mesma ordem).
+const NAV_GROUPS = [
+  { t:'', ids:['inicio', 'transacoes', 'faturas'] },
+  { t:'Planejar', ids:['orcamento', 'compromissos', 'objetivos', 'emprestimos'] },
+  { t:'Acompanhar', ids:['relatorios', 'ano'] }
+];
 
 class AppError extends Error {}
 let cfg = store.get(K.cfg, null);
@@ -1224,7 +1244,7 @@ async function afterLogin(){
 function deniedScreen(){
   const schema = access === 'schema';
   return `<section class="gate"><div class="gate-card">
-    <span class="brand-mark big"><svg viewBox="0 0 24 24"><path d="M6 7l6 11 6-11"/></svg></span>
+    <span class="brand-mark big"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.4 5.6h4.7l4.6 13.1h-2.9z"/><path class="m2" d="M15.1 5.6h4.5l-6 13.1h-2.6z"/></svg></span>
     <h2>${schema ? 'Falta atualizar o banco' : 'Acesso ainda não liberado'}</h2>
     <p>${schema ? 'Rode o arquivo supabase.sql atualizado no SQL Editor do Supabase e entre de novo.'
       : `O acesso de <b>${esc(user?.email || '')}</b> é liberado quando o e-mail é confirmado. Abra o link que enviamos no cadastro (confira o spam) e toque em <b>Tentar de novo</b>. Se já confirmou, fale com quem administra o app.`}</p>
@@ -1269,7 +1289,7 @@ function loginScreen(){
       </form>`;
   return `<section class="auth">
     <div class="auth-hero">
-      <span class="brand-mark big"><svg viewBox="0 0 24 24"><path d="M6 7l6 11 6-11"/></svg></span>
+      <span class="brand-mark big"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.4 5.6h4.7l4.6 13.1h-2.9z"/><path class="m2" d="M15.1 5.6h4.5l-6 13.1h-2.6z"/></svg></span>
       <h1>Suas finanças num lugar só</h1>
       <p>Cartões, conta, renda, metas e empréstimos, salvos na sua conta e em qualquer aparelho.</p>
       <ul class="auth-feats"><li>${ic('card')}Faturas e parcelas de todos os cartões</li><li>${ic('target')}Metas por categoria com avisos</li><li>${ic('chart')}Para onde foi o dinheiro, mês a mês</li></ul>
@@ -1611,7 +1631,7 @@ function renderLockBtn(){
 }
 function lockScreen(){
   return `<section class="gate"><div class="gate-card">
-    <span class="brand-mark big"><svg viewBox="0 0 24 24"><path d="M6 7l6 11 6-11"/></svg></span>
+    <span class="brand-mark big"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.4 5.6h4.7l4.6 13.1h-2.9z"/><path class="m2" d="M15.1 5.6h4.5l-6 13.1h-2.6z"/></svg></span>
     <h2>Vellum está bloqueado</h2>
     <p>Confirme que é você para ver seus dados.</p>
     <button class="btn" type="button" data-action="unlock">Desbloquear com ${bioName()}</button>
@@ -2998,10 +3018,15 @@ function render(){
       ${VIEWS.filter(x => !x.hidden).map(x => `<span class="nav-l locked" aria-disabled="true" title="Disponível depois de conectar um banco">${ic(x.icon)}<span>${x.title}</span>${ic('lock', 'i lk')}</span>`).join('')}
     </div>`;
     $('#tabbar').innerHTML = `<a href="#/tutorial" ${v.id === 'tutorial' ? 'aria-current="page"' : ''}>${ic('flag')}<span>Configurar</span></a><a href="#/ajustes" ${v.id === 'ajustes' ? 'aria-current="page"' : ''}>${ic('gear')}<span>Ajustes</span></a>`;
-  } else $('#nav').innerHTML = navHtml('nav-l', false);
+  } else $('#nav').innerHTML = NAV_GROUPS.map(g => (g.t ? `<p class="nav-g">${g.t}</p>` : '') + g.ids.map(id => VIEWS.find(x => x.id === id)).filter(Boolean).map(x => `<a class="nav-l" href="#/${x.id}" ${x.id === v.id ? 'aria-current="page"' : ''}>${ic(x.icon)}<span>${x.title}</span></a>`).join('')).join('');
   const inMain = MOBILE_MAIN.includes(v.id);
   if (!setup) $('#tabbar').innerHTML = VIEWS.filter(x => MOBILE_MAIN.includes(x.id) || x.id === 'mais').map(x => `<a href="#/${x.id}" ${x.id === v.id || (x.id === 'mais' && !inMain) ? 'aria-current="page"' : ''}>${ic(x.icon)}<span>${x.short}</span></a>`).join('');
-  $('#sideCfg').innerHTML = ic('gear') + '<span>Ajustes</span>';
+  const uName = user?.user_metadata?.name || user?.user_metadata?.full_name || '', uMail = user?.email || '';
+  $('#sideCfg').classList.toggle('has-user', !!user);
+  $('#sideCfg').innerHTML = user
+    ? `<span class="side-user"><span class="side-av">${esc(((uName || uMail).trim()[0] || '?').toUpperCase())}</span><span><b>${esc(uName.split(' ')[0] || uMail.split('@')[0])}</b><small>Conta e ajustes</small></span></span>${ic('gear', 'i side-gear')}`
+    : ic('gear') + '<span>Ajustes</span>';
+  $('#sideCfg').title = user ? uMail : '';
   $('#sideCfg').toggleAttribute('aria-current', v.id === 'ajustes');
   renderVersion();
   $('#sideTheme').innerHTML = ic(isDark() ? 'sun' : 'moon') + `<span>${isDark() ? 'Modo claro' : 'Modo escuro'}</span>`;
