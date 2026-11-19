@@ -1,6 +1,6 @@
 // Service worker do Vellum: abre o app na hora e funciona sem internet com os últimos dados salvos.
 // A página (index.html) vem sempre da rede quando há conexão, então atualizações publicadas chegam sozinhas.
-const CACHE = 'vellum-v2';
+const CACHE = 'vellum-1.11.0';   // igual ao APP_VERSION do index.html
 const SHELL = [
   './', './index.html', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png',
