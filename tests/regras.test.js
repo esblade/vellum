@@ -414,3 +414,18 @@ test('financiamento de fatura (Itaú) não entra na fatura, nos gastos nem nas p
   assert.equal(app.run(`sum(spendIn(context(), curYM()))`), 1276.94);
   assert.equal(app.run(`installments(context()).length`), 0);       // não vira "compra parcelada"
 });
+
+test('empréstimo com só mês e ano: vence no fim do mês e não atrasa antes dele acabar', () => {
+  const now = app.run('curYM()');
+  const info = l => plain(app.run(`(() => { const i = loanInfo(${JSON.stringify(l)}); return { next: i.next, overdue: i.overdue, schedule: i.schedule, label: loanDueLabel(${JSON.stringify(l)}, i.next) }; })()`));
+  const a = info({ dir: 'tomei', principal: 1000, n: 3, value: 400, first: now, payments: [] });
+  assert.equal(a.next.slice(0, 7), now);
+  assert.equal(a.overdue, false);                                     // ainda estamos no mês
+  assert.deepEqual(a.schedule, [now, app.run(`addM(curYM(), 1)`), app.run(`addM(curYM(), 2)`)]);
+  assert.match(a.label, /de \d{4}$/);                                  // "dezembro de 2026"
+  const b = info({ dir: 'tomei', principal: 1000, n: 3, value: 400, first: app.run(`addM(curYM(), -1)`), payments: [] });
+  assert.equal(b.overdue, true);                                      // a do mês passado já atrasou
+  // empréstimos antigos, com data completa, continuam funcionando
+  const c = info({ dir: 'tomei', principal: 1000, n: 2, value: 600, first: '2030-01-15', payments: [] });
+  assert.equal(c.next, '2030-01-15');
+});
