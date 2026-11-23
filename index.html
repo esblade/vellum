@@ -923,6 +923,11 @@ const cmp = new Intl.NumberFormat('pt-BR', { notation:'compact', maximumFraction
 const PAYMENT = 'Pagamento de fatura';
 const INTERNAL = 'Movimentação entre contas';
 const LOAN_IN = 'Empréstimo recebido';
+// Financiamento (parcelamento) de uma fatura antiga: é pagamento de dívida, não compra nova. As compras daquela
+// fatura já contaram quando foram feitas; e o banco não cobra essas linhas na fatura atual.
+const BILL_FIN = 'Financiamento de fatura';
+const looksBillFinancing = t => t.kind === 'out' && t.acct !== 'bank' && /\b(financiamento|financ|parcelamento|parcel|parc)\s*(de\s*|da\s*)?fatu/.test(t.key || '');
+const NOT_SPEND = [PAYMENT, INTERNAL, LOAN_IN, BILL_FIN];
 const CAT = {
   'Groceries':'Mercado','Food and drinks':'Alimentação','Eating out':'Restaurantes','Food delivery':'Delivery',
   'Transportation':'Transporte','Taxi and ride-hailing':'Transporte por app','Ride hailing':'Transporte por app','Public transportation':'Transporte público',
@@ -1945,15 +1950,16 @@ function allTx(){
       else if (looksInternal(t)) t.category = INTERNAL;
     }
     else if (!t.isPayment && (looksLikeBillPayment(t) || paysABill(t))) t.category = PAYMENT;
+    else if (!t.isPayment && looksBillFinancing(t)) t.category = BILL_FIN;
     if (!t.isPayment) { const fc = refineFood(t); if (fc && fc !== t.category) { t.autoFrom = t.category; t.category = fc; } }
     if (db.rules[t.key]) t.category = db.rules[t.key];
     const o = db.overrides[t.id];
     if (o) { if (o.category) t.category = o.category; t.note = o.note || ''; t.ignored = !!o.ignored; }
     t.category = renamedCat(t.category);
-    t.isPayment = !!t.isPayment || t.category === PAYMENT || t.category === INTERNAL || t.category === LOAN_IN;
+    t.isPayment = !!t.isPayment || NOT_SPEND.includes(t.category);
     // Compra dividida entre categorias: vira uma linha por parte, com o mesmo id de origem.
     if (o?.split?.length > 1) return o.split.map((p, i) => ({ ...t, id: t.id + '#' + (i + 1), origId: t.id, amount: +p.amount || 0,
-      category: renamedCat(p.category), splitInfo: `${i + 1}/${o.split.length}`, isPayment: !!t0.isPayment || [PAYMENT, INTERNAL].includes(renamedCat(p.category)) }));
+      category: renamedCat(p.category), splitInfo: `${i + 1}/${o.split.length}`, isPayment: !!t0.isPayment || NOT_SPEND.includes(renamedCat(p.category)) }));
     return [t];
   });
 }
@@ -2050,7 +2056,7 @@ function byCat(list){ const o = {}; for (const t of list) o[t.category] = (o[t.c
 function allCategories(){
   const s = new Set([...BASE_CATS, ...Object.values(CAT), ...(db.cats?.custom || []), ...Object.keys(db.budgets), ...Object.values(db.rules)].map(renamedCat));
   for (const t of allTx()) s.add(t.category);
-  s.delete(PAYMENT); s.delete(INTERNAL); s.delete(LOAN_IN);
+  s.delete(PAYMENT); s.delete(INTERNAL); s.delete(LOAN_IN); s.delete(BILL_FIN);
   return [...s].sort((a, b) => a.localeCompare(b, 'pt-BR'));
 }
 
@@ -2095,7 +2101,7 @@ function monthPace(c, ym){
 function installments(c){
   const groups = {};
   for (const t of c.T) {
-    if (!(t.instT > 1) || t.kind !== 'out' || t.ignored) continue;
+    if (!(t.instT > 1) || t.kind !== 'out' || t.ignored || t.isPayment) continue;
     const k = [t.key, t.cardId, t.instT, Math.round(t.amount)].join('|');
     const g = groups[k];
     if (!g || t.instN > g.instN) groups[k] = t;
@@ -3145,6 +3151,8 @@ function billCheck(card, key, close, due, list, proj){
       ${proj.length ? row(`Parcelas previstas pelo app (${proj.length})`, money(proj.reduce((a, p) => a + p.value, 0))) : ''}
       ${est.length ? row(`Estornos e créditos (${est.length})`, '− ' + money(sum(est))) : ''}
       ${ign ? row('Marcadas para ignorar', `${ign} (continuam na fatura)`) : ''}
+      ${(() => { const fin = allTx().filter(t => t.cardId === card.id && t.category === BILL_FIN && txBill(t, card) === key);
+        return fin.length ? row(`Financiamento de fatura (${fin.length})`, `fora: ${money(sum(fin))}<br><small>o banco não cobra na fatura e não é gasto novo</small>`) : ''; })()}
     </dl>
     ${(() => {
       // Qual fatura o cartão da Visão geral mostra e por quê; pagamentos e créditos dos últimos 45 dias.

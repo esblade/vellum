@@ -35,6 +35,8 @@ export const CAT = {
 export const PAYMENT = 'Pagamento de fatura';
 export const INTERNAL = 'Movimentação entre contas';
 export const LOAN_IN = 'Empréstimo recebido';
+export const BILL_FIN = 'Financiamento de fatura';
+const looksBillFinancing = t => t.kind === 'out' && t.acct !== 'bank' && /\b(financiamento|financ|parcelamento|parcel|parc)\s*(de\s*|da\s*)?fatu/.test(t.key || '');
 
 /* ---------- Regras (iguais às do index.html) ---------- */
 export const normDesc = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
@@ -118,14 +120,15 @@ export function classify(raw, s){
       else if (t.kind === 'in' && looksLoan(t)) t.category = LOAN_IN;
       else if (looksInternal(t)) t.category = INTERNAL;
     } else if (t.acct !== 'bank' && !t.isPayment && looksLikeBillPayment(t)) t.category = PAYMENT;
+    else if (t.acct !== 'bank' && !t.isPayment && looksBillFinancing(t)) t.category = BILL_FIN;
     if (!t.isPayment) { const fc = refineFood(t); if (fc) t.category = fc; }
     if (rules[t.key]) t.category = rules[t.key];
     const o = overrides[t.id];
     if (o) { if (o.category) t.category = o.category; t.ignored = !!o.ignored; }
     t.category = ren(t.category);
-    t.isPayment = !!t.isPayment || [PAYMENT, INTERNAL, LOAN_IN].includes(t.category);
+    t.isPayment = !!t.isPayment || [PAYMENT, INTERNAL, LOAN_IN, BILL_FIN].includes(t.category);
     if (o?.split?.length > 1) return o.split.map((p, i) => ({ ...t, id: t.id + '#' + (i + 1), amount: +p.amount || 0, category: ren(p.category),
-      isPayment: !!t0.isPayment || [PAYMENT, INTERNAL, LOAN_IN].includes(ren(p.category)) }));
+      isPayment: !!t0.isPayment || [PAYMENT, INTERNAL, LOAN_IN, BILL_FIN].includes(ren(p.category)) }));
     return [t];
   });
 }
