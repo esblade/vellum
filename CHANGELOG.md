@@ -2,6 +2,10 @@
 
 Para lançar uma versão nova, escreva um item no topo desta lista: o número que estiver aqui em cima é a versão que o app mostra. As versões seguem o formato MAIOR.MENOR.CORREÇÃO: muda o MENOR quando chega algo novo e a CORREÇÃO quando é ajuste ou conserto.
 
+## 1.16.7 — 23/11/2026
+- Visão geral: "Ver o que entrou" nos quadros Dia a dia e Contas fixas e parcelas abre a lista desses lançamentos.
+- Transações: novos filtros "Dia a dia" e "Contas fixas e parcelas".
+
 ## 1.16.6 — 23/11/2026
 - Visão geral, Orçamento e Relatórios contam as parcelas de empréstimo do mês nas contas fixas. Só entram empréstimos com parcelas e vencimento; os sem prazo ficam de fora.
 - Se a parcela já foi debitada na conta ou no cartão, ela não é contada duas vezes. Se você pagou por fora e registrou em Empréstimos, ela conta como paga.

@@ -2435,8 +2435,8 @@ function viewInicio(c){
   // Quadros: dia a dia, contas fixas, orçamento (ou previsão) e o próximo mês
   const varPrev = sum(sameP(Sp.variable)), dVar = varPrev > 0 ? (S.varTotal - varPrev) / varPrev * 100 : null;
   h += `<div class="kpis">
-    ${kpi('Dia a dia', money(S.varTotal), dVar == null ? 'mercado, delivery, transporte, compras…' : `${deltaHtml(dVar, P.isCur ? `vs mesmo período de ${esc(prevName)}` : `vs ${esc(prevName)}`)}`, '', 'list', 'k0')}
-    ${kpi('Contas fixas e parcelas', money(S.fixedTotal), S.pendingTotal ? `${money0(S.pendingTotal)} ainda ${S.pending.length === 1 ? 'vai' : 'vão'} cair este mês` : P.isCur ? 'nada pendente este mês' : `${plural(S.fixed.length, 'cobrança', 'cobranças')} no mês`, '', 'cal', 'k3')}
+    ${kpi('Dia a dia', money(S.varTotal), (dVar == null ? 'mercado, delivery, transporte, compras…' : `${deltaHtml(dVar, P.isCur ? `vs mesmo período de ${esc(prevName)}` : `vs ${esc(prevName)}`)}`) + '<br><button class="plain-link" type="button" data-gokind="day">Ver o que entrou</button>', '', 'list', 'k0')}
+    ${kpi('Contas fixas e parcelas', money(S.fixedTotal), (S.pendingTotal ? `${money0(S.pendingTotal)} ainda ${S.pending.length === 1 ? 'vai' : 'vão'} cair este mês` : P.isCur ? 'nada pendente este mês' : `${plural(S.fixed.length, 'cobrança', 'cobranças')} no mês`) + '<br><button class="plain-link" type="button" data-gokind="fixed">Ver o que entrou</button>', '', 'cal', 'k3')}
     ${budTotal ? kpi('Orçamento', money(budSpent), `de ${money0(budTotal)} planejados`, progress(budSpent / budTotal * 100, 'thin'), 'target', 'k2')
       : P.isCur ? kpi('Previsão do mês', money(P.projection), P.oneOffTotal ? `inclui ${money0(P.oneOffTotal)} em gastos pontuais` : 'gasto total, no ritmo atual', '', 'chart', 'k2')
       : kpi('Média por dia', money(P.total / dim(ym)), plural(P.cur.filter(t => !t.refund).length, 'compra no mês', 'compras no mês'), '', 'chart', 'k2')}
@@ -2659,10 +2659,11 @@ function alerts(c, P, catNow, heroSaysIt = false){
 }
 
 function filteredTx(c){
-  const q = normDesc(ui.q);
+  const q = normDesc(ui.q), fx = fixedOf(c);
   return c.T.filter(t => t.cm === ui.month)
     .filter(t => ui.cat === 'all' || t.category === ui.cat)
-    .filter(t => ui.kind === 'all' ? true : ui.kind === 'spend' ? (t.kind === 'out' && !t.isPayment) : ui.kind === 'in' ? (t.kind === 'in' && !t.isPayment) : ui.kind === 'inst' ? t.instT > 1 : t.isPayment)
+    .filter(t => ui.kind === 'all' ? true : ui.kind === 'spend' ? (t.kind === 'out' && !t.isPayment) :
+      ui.kind === 'day' ? ((isSpend(t) || isRefund(t)) && !fx(t)) : ui.kind === 'fixed' ? ((isSpend(t) || isRefund(t)) && fx(t)) : ui.kind === 'in' ? (t.kind === 'in' && !t.isPayment) : ui.kind === 'inst' ? t.instT > 1 : t.isPayment)
     .filter(t => !q || t.key.includes(q) || normDesc(t.category).includes(q) || normDesc(t.note).includes(q))
     .sort((a, b) => b.date.localeCompare(a.date) || b.amount - a.amount);
 }
@@ -2681,7 +2682,7 @@ function txListHtml(c){
 function viewTransacoes(c){
   const cats = [...new Set(c.T.filter(t => t.cm === ui.month).map(t => t.category))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
   if (ui.cat !== 'all' && !cats.includes(ui.cat)) cats.push(ui.cat);
-  const kinds = [['spend','Gastos'],['in','Estornos e créditos'],['inst','Parceladas'],['pay','Pagamentos de fatura'],['all','Tudo']];
+  const kinds = [['spend','Gastos'],['day','Dia a dia'],['fixed','Contas fixas e parcelas'],['in','Estornos e créditos'],['inst','Parceladas'],['pay','Pagamentos de fatura'],['all','Tudo']];
   return `<section class="panel">
     <div class="toolbar" style="margin-bottom:14px">
       <label class="search grow">${ic('search')}<span class="sr">Buscar</span><input type="search" data-filter="q" placeholder="Buscar por descrição, categoria ou nota" value="${esc(ui.q)}"></label>
@@ -3778,6 +3779,8 @@ addEventListener('scroll', () => { if (matchMedia('(hover: hover)').matches) hid
 
 /* ---------- Eventos ---------- */
 document.addEventListener('click', e => {
+  const gk = e.target.closest('[data-gokind]');
+  if (gk) { ui.kind = gk.dataset.gokind; ui.cat = 'all'; ui.q = ''; location.hash = '#/transacoes'; return; }
   const go = e.target.closest('[data-gocat],[data-goq]');
   if (go) { ui.cat = go.dataset.gocat || 'all'; ui.q = go.dataset.goq || ''; ui.kind = 'spend'; if (ui.view === 'transacoes') { render(); scrollTo(0, 0); } else location.hash = '#/transacoes'; return; }
   const tx = e.target.closest('[data-tx]');
