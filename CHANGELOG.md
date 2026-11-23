@@ -2,6 +2,12 @@
 
 Para lançar uma versão nova, escreva um item no topo desta lista: o número que estiver aqui em cima é a versão que o app mostra. As versões seguem o formato MAIOR.MENOR.CORREÇÃO: muda o MENOR quando chega algo novo e a CORREÇÃO quando é ajuste ou conserto.
 
+## 1.16.3 — 23/11/2026
+- Fatura: quando o banco manda todas as parcelas de uma compra com a data da compra (como o Itaú), cada parcela agora vai para a sua fatura. Antes, todas caíam na fatura atual.
+- Final do cartão pelo cartão usado nas compras (o banco às vezes informa outro na conta). Dá para corrigir em Personalizar cartão.
+- A fatura fechada que o banco informa e ainda vai vencer aparece primeiro, pelo valor do banco; o vencimento segue o da última fatura do banco.
+- Novo "Conferir com o banco" na tela Faturas: o que o banco mandou e como o app chegou no valor.
+
 ## 1.16.2 — 23/11/2026
 - Fatura: compras feitas no dia do fechamento entram na fatura seguinte, como nos bancos.
 - Compras marcadas para "ignorar nos totais" continuam na fatura, porque o banco cobra; só saem da análise dos gastos.

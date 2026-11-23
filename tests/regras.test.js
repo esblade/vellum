@@ -350,3 +350,42 @@ test('data com horário é lida no fuso de Brasília', () => {
   assert.equal(txDate('2026-11-23T01:30:00.000Z'), '2026-11-22');   // 22h30 em Brasília
   assert.equal(txDate('2026-11-22T15:00:00.000Z'), '2026-11-22');
 });
+
+test('Itaú: parcelas que chegam todas com a data da compra vão cada uma para a sua fatura', () => {
+  // compra de hoje em 3x de 451,56, as três com a data de hoje (como o Itaú manda)
+  const p = n => ({ id: 'i' + n, cardId: 'c1', date: shift(0), desc: 'LOJA X', category: 'Compras', amount: 451.56, kind: 'out', instN: n, instT: 3 });
+  setCard({ close: shift(10), due: shift(17) }, [
+    { id: 'a', cardId: 'c1', date: shift(0), desc: 'Mercado', category: 'Mercado', amount: 825.38, kind: 'out' },
+    p(1), p(2), p(3)
+  ]);
+  const b = billNow();
+  assert.equal(Math.round(b.amount * 100) / 100, 1276.94);    // 825,38 + só a 1ª parcela, e não as três
+  const r = plain(app.run(`(() => { const c = context().cards[0], B = cardBills(c); return [B.totalOf(B.open), B.totalOf(addM(B.open, 1)), B.totalOf(addM(B.open, 2))]; })()`));
+  assert.deepEqual(r.map(v => Math.round(v * 100) / 100), [1276.94, 451.56, 451.56]);
+});
+
+test('parcelas com datas diferentes (cada uma na data do seu mês) não são deslocadas', () => {
+  const d = n => { const x = new Date(); x.setMonth(x.getMonth() - (3 - n)); x.setDate(5); return isoOf(x); };
+  setCard({ close: shift(10), due: shift(17) }, [1, 2, 3].map(n => ({ id: 'q' + n, cardId: 'c1', date: d(n), desc: 'LOJA Y', category: 'Compras', amount: 100, kind: 'out', instN: n, instT: 3 })));
+  assert.equal(app.run(`allTx().filter(t => t.instShift).length`), 0);
+});
+
+test('final do cartão: o que você informar > o mais usado nas compras > o da conta', () => {
+  const tx = [7519, 7519, 4174].map((f, i) => ({ id: 'f' + i, cardId: 'c1', date: shift(0), desc: 'X', category: 'Compras', amount: 10, kind: 'out', cardNumber: String(f) }));
+  setCard({ close: shift(10), due: shift(17), number: '4174' }, tx);
+  assert.equal(app.run(`context().cards[0].number`), '7519');
+  app.run(`db.cardPrefs = { c1: { number: '1234' } }`);
+  assert.equal(app.run(`context().cards[0].number`), '1234');
+  setCard({ close: shift(10), due: shift(17), number: '4174' }, []);
+  assert.equal(app.run(`context().cards[0].number`), '4174');
+});
+
+test('fatura fechada que o banco informou e ainda vai vencer vem primeiro, pelo valor do banco', () => {
+  setCard({ close: shift(10), due: shift(17) }, [
+    { id: 'a', cardId: 'c1', date: shift(0), desc: 'Mercado', category: 'Mercado', amount: 300, kind: 'out' }
+  ], [{ id: 'b1', due: shift(2), total: 1276.94, min: 100 }]);
+  const b = billNow();
+  assert.equal(b.closed, true);
+  assert.equal(b.amount, 1276.94);
+  assert.equal(b.due, shift(2));
+});
