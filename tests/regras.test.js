@@ -258,3 +258,76 @@ test('alimentação: mercado, restaurante e delivery pelo MCC e pelo nome', () =
   app.run(`db.rules[normDesc('ASSAI ATACADISTA LJ 22')] = 'Casa'`);
   assert.equal(cat('a'), 'Casa');
 });
+
+// ---- Fatura do cartão e estornos ----
+const isoOf = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const shift = n => { const d = new Date(); d.setDate(d.getDate() + n); return isoOf(d); };
+function setCard(card, tx, bills = []){
+  app.set('data', { cards: [{ id: 'c1', name: 'Cartão', limit: 10000, available: 163, outstanding: 9837, ...card }], banks: [], tx, bills: { c1: bills }, syncedAt: new Date().toISOString() });
+  app.set('db', app.run('loadDbDefaults()'));
+}
+const billNow = () => plain(app.run(`(() => { const b = billNow(context().cards[0]); return { key: b.key, closed: b.closed, amount: b.amount, due: b.due }; })()`));
+
+test('fatura atual vem dos lançamentos da fatura, não do saldo em aberto do cartão', () => {
+  // fecha daqui a 10 dias e vence 7 dias depois: tudo de hoje cai na fatura aberta
+  setCard({ close: shift(10), due: shift(17) }, [
+    { id: 'a', cardId: 'c1', date: shift(0), desc: 'Mercado', category: 'Mercado', amount: 300, kind: 'out' },
+    { id: 'b', cardId: 'c1', date: shift(-1), desc: 'Farmácia', category: 'Farmácia', amount: 80, kind: 'out' },
+    { id: 'e', cardId: 'c1', date: shift(0), desc: 'Estorno Loja', category: 'Compras', amount: 30, kind: 'in' }
+  ]);
+  const b = billNow();
+  assert.equal(b.closed, false);
+  assert.equal(Math.round(b.amount * 100) / 100, 350);          // 300 + 80 − 30, e não os 9.837 do saldo
+  assert.equal(app.run('daysUntil')(b.due) >= 0, true);          // vencimento nunca no passado
+});
+
+test('fatura fechada e ainda não vencida aparece primeiro; paga, sai da frente', () => {
+  // fechou há 3 dias e vence daqui a 4: a fatura a pagar é a fechada
+  const tx = [
+    { id: 'old', cardId: 'c1', date: shift(-8), desc: 'Compra antes do fechamento', category: 'Compras', amount: 500, kind: 'out' },
+    { id: 'new', cardId: 'c1', date: shift(-1), desc: 'Compra depois do fechamento', category: 'Compras', amount: 120, kind: 'out' }
+  ];
+  setCard({ close: shift(-3), due: shift(4) }, tx);
+  let b = billNow();
+  assert.equal(b.closed, true);
+  assert.equal(b.amount, 500);
+  assert.equal(b.due, shift(4));
+  // valor oficial do banco tem prioridade sobre a soma
+  setCard({ close: shift(-3), due: shift(4) }, tx, [{ id: 'bill1', due: shift(4), total: 512.4, min: 50 }]);
+  assert.equal(billNow().amount, 512.4);
+  // depois do pagamento, a fatura da vez é a aberta (só a compra depois do fechamento)
+  setCard({ close: shift(-3), due: shift(4) }, [...tx, { id: 'pay', cardId: 'c1', date: shift(-1), desc: 'Pagamento recebido', category: 'Pix', amount: 500, kind: 'in' }]);
+  b = billNow();
+  assert.equal(b.closed, false);
+  assert.equal(b.amount, 120);
+});
+
+test('lançamento com billId vai para a fatura que o banco informou', () => {
+  const due = shift(4);
+  setCard({ close: shift(-3), due }, [
+    // pela data cairia na fatura aberta, mas o banco diz que é da fatura que vence em `due`
+    { id: 'x', cardId: 'c1', date: shift(-1), desc: 'Compra', category: 'Compras', amount: 90, kind: 'out', billId: 'bill1' }
+  ], [{ id: 'bill1', due, total: 90, min: 10 }]);
+  const key = app.run(`txBill(allTx().find(t => t.id === 'x'), context().cards[0])`);
+  assert.equal(key, due.slice(0, 7));
+});
+
+test('estorno do cartão desconta do gasto do mês e da categoria', () => {
+  setCard({ close: shift(10), due: shift(17) }, [
+    { id: 'r1', cardId: 'c1', date: shift(0), desc: 'Loja Roupa', category: 'Roupas', amount: 200, kind: 'out' },
+    { id: 'r2', cardId: 'c1', date: shift(0), desc: 'Estorno Loja Roupa', category: 'Roupas', amount: 50, kind: 'in' }
+  ]);
+  const r = plain(app.run(`(() => { const c = context(), l = spendIn(c, curYM()); return { total: sum(l), roupas: byCat(l)['Roupas'], compras: l.filter(t => !t.refund).length }; })()`));
+  assert.equal(r.total, 150);
+  assert.equal(r.roupas, 150);
+  assert.equal(r.compras, 1);
+});
+
+test('parcela com a data da compra conta no mês da fatura em que entrou', () => {
+  const d0 = new Date(); d0.setMonth(d0.getMonth() - 2); d0.setDate(5);
+  const buy = isoOf(d0), due = shift(4);
+  setCard({ close: shift(-3), due }, [
+    { id: 'p1', cardId: 'c1', date: buy, desc: 'TV', category: 'Eletrônicos', amount: 100, kind: 'out', instN: 3, instT: 10, billId: 'bill1' }
+  ], [{ id: 'bill1', due, total: 100, min: 10 }]);
+  assert.equal(app.run(`allTx().find(t => t.id === 'p1').cm`), due.slice(0, 7));
+});
