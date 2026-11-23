@@ -429,3 +429,27 @@ test('empréstimo com só mês e ano: vence no fim do mês e não atrasa antes d
   const c = info({ dir: 'tomei', principal: 1000, n: 2, value: 600, first: '2030-01-15', payments: [] });
   assert.equal(c.next, '2030-01-15');
 });
+
+test('Visão geral: parcela de empréstimo com vencimento entra nas contas fixas, sem contar duas vezes', () => {
+  const now = app.run('curYM()');
+  const loan = (id, extra) => ({ id, dir: 'tomei', desc: 'Empréstimo ' + id, who: 'Banco', principal: 5000, n: 10, value: 600, first: now, payments: [], ...extra });
+  const split = () => plain(app.run(`(() => { const S = splitMonth(context(), curYM()); return { fixed: S.fixedTotal, pending: S.pendingTotal, loans: S.loans.map(x => x.state) }; })()`));
+  const setLoans = (loans, tx = []) => { setCard({ close: shift(10), due: shift(17) }, tx); app.run(`db.loans = ${JSON.stringify(loans)}`); };
+
+  // ainda não pago: entra como "ainda vai cair"
+  setLoans([loan('a')]);
+  assert.deepEqual(split(), { fixed: 0, pending: 600, loans: ['pending'] });
+  // já debitado na conta: o gasto já está contado, não soma de novo
+  setLoans([loan('a')], [{ id: 'd', cardId: 'b1', acct: 'bank', date: shift(0), desc: 'DEB PARCELA EMPRESTIMO', category: 'Outros', amount: 600, kind: 'out' }]);
+  assert.deepEqual(split().loans, ['counted']);
+  assert.equal(split().pending, 0);
+  // pago por fora (registrado em Empréstimos, sem aparecer nas contas): entra como conta fixa paga
+  setLoans([loan('a', { payments: [{ id: 'p', date: now, amount: 600 }] })]);
+  assert.deepEqual(split(), { fixed: 600, pending: 0, loans: ['paidOut'] });
+  // sem vencimento ou sem parcelas: não conta
+  setLoans([loan('a', { first: '' }), loan('b', { n: 0 }), { id: 'c', dir: 'concedi', n: 5, value: 100, first: now, payments: [] }]);
+  assert.deepEqual(split(), { fixed: 0, pending: 0, loans: [] });
+  // fora do prazo do contrato: não conta
+  setLoans([loan('a', { first: app.run(`addM(curYM(), 1)`) })]);
+  assert.deepEqual(split().loans, []);
+});
