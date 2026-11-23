@@ -2153,18 +2153,22 @@ function splitMonth(c, ym){
   return { list, fixed, variable, fixedTotal: sum(fixed), varTotal: sum(variable), pending, pendingTotal: pending.reduce((s, p) => s + p.amount, 0) };
 }
 
+// Vencimento da parcela k. Com só mês e ano ("2026-12"), vale o último dia do mês: só fica atrasada depois que o mês acaba.
+const loanDue = (first, k) => /^\d{4}-\d{2}$/.test(first) ? `${addM(first, k)}-${pad(dim(addM(first, k)))}` : addMonthsDate(first, k);
+// Como mostrar o vencimento: o mês ("dezembro de 2026") quando foi informado só mês e ano.
+const loanDueLabel = (l, d, short) => /^\d{4}-\d{2}$/.test(l.first || '') ? (short ? cap(mName(ymOf(d))).slice(0, 3) + '/' + d.slice(2, 4) : `${mName(ymOf(d))} de ${d.slice(0, 4)}`) : (short ? shortDate(d) : fullDate(d));
 function loanInfo(l){
   const n = Math.max(0, Math.round(l.n || 0)), value = l.value || 0;
   const total = n > 0 && value > 0 ? n * value : (l.principal || 0);
   const paid = (l.payments || []).reduce((s, p) => s + (p.amount || 0), 0);
   const left = Math.max(0, total - paid);
   const paidCount = value > 0 ? Math.min(n, Math.floor(paid / value + 0.001)) : 0;
-  const next = n > 0 && paidCount < n && l.first ? addMonthsDate(l.first, paidCount) : null;
+  const next = n > 0 && paidCount < n && l.first ? loanDue(l.first, paidCount) : null;
   const schedule = [];
-  if (n > 0 && l.first) for (let k = paidCount; k < n; k++) schedule.push(ymOf(addMonthsDate(l.first, k)));
+  if (n > 0 && l.first) for (let k = paidCount; k < n; k++) schedule.push(ymOf(loanDue(l.first, k)));
   const interest = total > (l.principal || 0) && l.principal ? total - l.principal : 0;
   return { n, value, total, paid, left, paidCount, next, schedule, interest, done: left <= 0.005,
-    overdue: next ? daysUntil(next) < 0 : false };
+    overdue: next ? daysUntil(next) < 0 : false, monthOnly: /^\d{4}-\d{2}$/.test(l.first || '') };
 }
 
 function commitments(c){
@@ -2485,7 +2489,7 @@ function upcoming(c, S){
   }
   if (ui.card === 'all') for (const l of db.loans) {
     const li = loanInfo(l); if (!li.next || li.done) continue; const d = daysUntil(li.next);
-    if (d <= 31) out.push({ desc: l.desc || l.who || 'Empréstimo', amount: li.value, d, when: `${shortDate(li.next)} · ${whenTxt(d)}`, kind: l.dir === 'concedi' ? 'a receber' : 'empréstimo', color:'var(--c3)' });
+    if (d <= 31) out.push({ desc: l.desc || l.who || 'Empréstimo', amount: li.value, d, when: li.monthOnly ? (d < 0 ? `atrasada desde ${mName(ymOf(li.next))}` : `vence em ${mName(ymOf(li.next))}`) : `${shortDate(li.next)} · ${whenTxt(d)}`, kind: l.dir === 'concedi' ? 'a receber' : 'empréstimo', color:'var(--c3)' });
   }
   return out.sort((a, b) => a.d - b.d).slice(0, 6);
 }
@@ -2621,7 +2625,7 @@ function alerts(c, P, catNow, heroSaysIt = false){
   if (ui.card === 'all') for (const l of db.loans) {
     const li = loanInfo(l); if (!li.next || li.done) continue; const d = daysUntil(li.next);
     const who = esc(l.desc || l.who);
-    if (d < 0) out.push({ level:'danger', html:`Parcela de <b>${who}</b> atrasada desde ${shortDate(li.next)} (${money(li.value)}).` });
+    if (d < 0) out.push({ level:'danger', html:`Parcela de <b>${who}</b> atrasada desde ${loanDueLabel(l, li.next, true)} (${money(li.value)}).` });
     else if (d <= 7 && !heroSaysIt) out.push({ level:'info', html:`Parcela de <b>${who}</b> ${l.dir === 'concedi' ? 'a receber' : 'vence'} ${d === 0 ? 'hoje' : `em ${d} dias`}: ${money(li.value)}.` });
   }
   const nNew = c.T.filter(t => newIds.has(t.id)).length;
@@ -2830,7 +2834,7 @@ function viewEmprestimos(){
         <div><dt>Valor ${l.dir === 'tomei' ? 'recebido' : 'emprestado'}</dt><dd>${money(l.principal)}</dd></div>
         <div><dt>Restante</dt><dd>${money(i.left)}</dd></div>
         <div><dt>Parcelas</dt><dd>${i.n ? `${i.paidCount}/${i.n} de ${money(i.value)}` : 'sem parcelas'}</dd></div>
-        <div><dt>Próximo vencimento</dt><dd${i.overdue ? ' style="color:var(--danger)"' : ''}>${i.next ? fullDate(i.next) : '—'}</dd></div>
+        <div><dt>Próximo vencimento</dt><dd${i.overdue ? ' style="color:var(--danger)"' : ''}>${i.next ? loanDueLabel(l, i.next) : '—'}</dd></div>
         ${i.interest ? `<div><dt>Juros no total</dt><dd>${money(i.interest)} (${Math.round(i.interest / l.principal * 100)}%)</dd></div>` : ''}
         ${l.rate ? `<div><dt>Taxa informada</dt><dd>${esc(String(l.rate).replace('.', ','))}% ao mês</dd></div>` : ''}
       </dl>
@@ -3565,16 +3569,16 @@ function newTx(){
 }
 
 function openLoan(id){
-  const l = db.loans.find(x => x.id === id) || { dir:'tomei', first: addMonthsDate(today(), 1) };
+  const l = db.loans.find(x => x.id === id) || { dir:'tomei', first: addM(curYM(), 1) };
   modal(`<h2>${id ? 'Editar empréstimo' : 'Novo empréstimo'}</h2>
     <label>Tipo<select name="dir"><option value="tomei" ${l.dir === 'tomei' ? 'selected' : ''}>Peguei emprestado (eu devo)</option><option value="concedi" ${l.dir === 'concedi' ? 'selected' : ''}>Emprestei para alguém (me devem)</option></select></label>
     <label>Descrição<input name="desc" value="${esc(l.desc || '')}" placeholder="Ex.: Empréstimo pessoal, Financiamento do carro" autofocus></label>
     <label>Banco ou pessoa<input name="who" value="${esc(l.who || '')}" required placeholder="Ex.: Banco X, Maria"></label>
     <div class="cols"><label>Valor ${'recebido/emprestado'} (R$)<input name="principal" type="number" step="0.01" min="0" inputmode="decimal" required value="${l.principal || ''}"></label>
-    <label>Data do contrato<input name="start" type="date" value="${esc(l.start || today())}"></label></div>
+    <label>Mês do contrato<input name="start" type="month" value="${esc((l.start || today()).slice(0, 7))}"></label></div>
     <div class="cols"><label>Número de parcelas<input name="n" type="number" min="0" step="1" inputmode="numeric" value="${l.n || ''}" placeholder="0 se não houver"></label>
     <label>Valor da parcela (R$)<input name="value" type="number" step="0.01" min="0" inputmode="decimal" value="${l.value || ''}"></label></div>
-    <div class="cols"><label>1º vencimento<input name="first" type="date" value="${esc(l.first || '')}"></label>
+    <div class="cols"><label>Mês do 1º vencimento<input name="first" type="month" value="${esc((l.first || '').slice(0, 7))}"></label>
     <label>Taxa de juros (% ao mês, opcional)<input name="rate" type="number" step="0.01" min="0" inputmode="decimal" value="${l.rate || ''}"></label></div>
     <label>Observações<textarea name="note">${esc(l.note || '')}</textarea></label>
     ${!id ? '<label>Já pagas/recebidas (parcelas)<input name="already" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></label>' : ''}
@@ -3588,11 +3592,11 @@ function openLoan(id){
     const next = { ...l, dir: f.get('dir'), desc: String(f.get('desc')).trim(), who: String(f.get('who')).trim(), principal: num(f.get('principal')),
       start: f.get('start'), n: Math.round(num(f.get('n'))), value: num(f.get('value')), first: f.get('first') || '', rate: num(f.get('rate')) || 0, note: String(f.get('note')).trim() };
     if (next.n > 0 && !(next.value > 0)) { toast('Informe o valor da parcela.'); return false; }
-    if (next.n > 0 && !next.first) { toast('Informe a data do 1º vencimento.'); return false; }
+    if (next.n > 0 && !next.first) { toast('Informe o mês do 1º vencimento.'); return false; }
     if (!id) {
       next.id = 'l-' + uid(); next.payments = [];
       const already = Math.min(next.n, Math.round(num(f.get('already'))));
-      for (let k = 0; k < already; k++) next.payments.push({ id: uid(), date: addMonthsDate(next.first, k), amount: next.value });
+      for (let k = 0; k < already; k++) next.payments.push({ id: uid(), date: loanDue(next.first, k), amount: next.value });
       db.loans.push(next);
     } else Object.assign(l, next);
     saveDb('loans'); render(); toast('Empréstimo salvo.');
