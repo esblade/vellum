@@ -401,3 +401,16 @@ test('crédito no cartão com o valor da fatura do banco é pagamento, qualquer 
   assert.equal(b.closed, false);                                   // a fechada já foi paga
   assert.equal(Math.round(b.amount * 100) / 100, 1276.94);
 });
+
+test('financiamento de fatura (Itaú) não entra na fatura, nos gastos nem nas parcelas futuras', () => {
+  const fin = n => ({ id: 'fin' + n, cardId: 'c1', date: shift(0), desc: `FINANCIAMENTO FATU0${n}/12`, category: 'Outros', amount: 301.04, kind: 'out', instN: n, instT: 12 });
+  setCard({ close: shift(10), due: shift(17) }, [
+    { id: 'm', cardId: 'c1', date: shift(0), desc: 'Mercado', category: 'Mercado', amount: 1276.94, kind: 'out' },
+    fin(1), fin(2), fin(3)
+  ]);
+  assert.equal(cls('fin1')[0].category, 'Financiamento de fatura');
+  assert.equal(cls('fin1')[0].isPayment, true);
+  assert.equal(Math.round(billNow().amount * 100) / 100, 1276.94);   // e não 1.276,94 + 903,12
+  assert.equal(app.run(`sum(spendIn(context(), curYM()))`), 1276.94);
+  assert.equal(app.run(`installments(context()).length`), 0);       // não vira "compra parcelada"
+});

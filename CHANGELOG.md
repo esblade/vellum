@@ -3,6 +3,7 @@
 Para lançar uma versão nova, escreva um item no topo desta lista: o número que estiver aqui em cima é a versão que o app mostra. As versões seguem o formato MAIOR.MENOR.CORREÇÃO: muda o MENOR quando chega algo novo e a CORREÇÃO quando é ajuste ou conserto.
 
 ## 1.16.4 — 23/11/2026
+- Financiamento de fatura (ex.: "FINANCIAMENTO FATU01/12" do Itaú) não entra mais na fatura nem nos gastos: é pagamento de uma fatura antiga, e as compras dela já contaram.
 - Corrigido o campo "Final do cartão", que recusava qualquer número.
 - Crédito no cartão com o valor de uma fatura informada pelo banco conta como pagamento dela, qualquer que seja a descrição (ex.: débito automático). Antes podia virar estorno e a fatura paga continuava aparecendo.
 - "Conferir com o banco" mostra qual fatura aparece no cartão e por quê, os pagamentos reconhecidos e os créditos tratados como estorno.

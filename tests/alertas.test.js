@@ -74,3 +74,13 @@ test('a função desconta os estornos do cartão, igual ao app', async () => {
   assert.equal(sum.total, 150);
   assert.equal(sum.byCat.Roupas, 150);
 });
+
+test('a função não conta financiamento de fatura como gasto, igual ao app', async () => {
+  const fn = await load();
+  const raw = [
+    { id: 'm', cardId: 'c', acct: 'card', date: '2026-11-10', desc: 'Mercado', category: 'Mercado', amount: 500, kind: 'out' },
+    { id: 'f', cardId: 'c', acct: 'card', date: '2026-11-10', desc: 'FINANCIAMENTO FATU01/12', category: 'Outros', amount: 301.04, kind: 'out' }
+  ];
+  const sum = fn.monthSummary(fn.classify(raw, {}), {}, '2026-11', false);
+  assert.equal(sum.total, 500);
+});
