@@ -92,11 +92,11 @@ test('assinatura recorrente é identificada; mercado semanal não', () => {
   assert.deepEqual(plain(rec), ['Streaming Plus']);
 });
 
-test('fatura: compra depois do fechamento vai para a fatura seguinte', () => {
+test('fatura: compra no dia do fechamento ou depois vai para a fatura seguinte', () => {
   const card = { close: '2026-11-03', due: '2026-11-10' };
   const key = app.run('billKeyFor');
   assert.equal(key('2026-11-02', card), '2026-11');
-  assert.equal(key('2026-11-03', card), '2026-11');
+  assert.equal(key('2026-11-03', card), '2026-12');   // no dia do fechamento já vai para a próxima
   assert.equal(key('2026-11-04', card), '2026-12');
   const late = { close: '2026-11-28', due: '2026-12-05' };
   assert.equal(key('2026-11-20', late), '2026-12');
@@ -330,4 +330,23 @@ test('parcela com a data da compra conta no mês da fatura em que entrou', () =>
     { id: 'p1', cardId: 'c1', date: buy, desc: 'TV', category: 'Eletrônicos', amount: 100, kind: 'out', instN: 3, instT: 10, billId: 'bill1' }
   ], [{ id: 'bill1', due, total: 100, min: 10 }]);
   assert.equal(app.run(`allTx().find(t => t.id === 'p1').cm`), due.slice(0, 7));
+});
+
+test('compra marcada para ignorar nos totais continua na fatura (o banco cobra)', () => {
+  setCard({ close: shift(10), due: shift(17) }, [
+    { id: 'a', cardId: 'c1', date: shift(0), desc: 'Mercado', category: 'Mercado', amount: 300, kind: 'out' },
+    { id: 'g', cardId: 'c1', date: shift(0), desc: 'Presente pra mãe', category: 'Compras', amount: 36.18, kind: 'out' }
+  ]);
+  app.run(`db.overrides.g = { ignored: true }`);
+  assert.equal(Math.round(billNow().amount * 100) / 100, 336.18);
+  const spent = app.run(`sum(spendIn(context(), curYM()))`);
+  assert.equal(spent, 300);                                   // mas não entra na análise dos gastos
+});
+
+test('data com horário é lida no fuso de Brasília', () => {
+  const txDate = app.run('txDate');
+  assert.equal(txDate('2026-11-22T00:00:00.000Z'), '2026-11-22');   // só a data: fica como veio
+  assert.equal(txDate('2026-11-22'), '2026-11-22');
+  assert.equal(txDate('2026-11-23T01:30:00.000Z'), '2026-11-22');   // 22h30 em Brasília
+  assert.equal(txDate('2026-11-22T15:00:00.000Z'), '2026-11-22');
 });

@@ -1757,12 +1757,20 @@ async function fetchBills(accountId){
   } catch { return []; }
 }
 
+// Data da transação no fuso de Brasília. Data sem horário (meia-noite em UTC) fica como veio;
+// com horário, converte (uma compra às 22h de Brasília chega como o dia seguinte em UTC).
+function txDate(v){
+  const str = String(v || '');
+  if (!/T\d\d:\d\d/.test(str) || /T00:00(:00(\.0+)?)?(Z|[+-]00:?00)?$/.test(str)) return str.slice(0, 10);
+  const d = new Date(str); if (isNaN(d)) return str.slice(0, 10);
+  return d.toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
+}
 function normTx(x, cardId, acct = 'card'){
   const m = x.creditCardMetadata || {};
   const inst = m.totalInstallments > 1;
   return {
     id: x.id, cardId, acct, catRaw: x.category || '',
-    date: String(x.date || '').slice(0, 10),
+    date: txDate(x.date),
     desc: x.description || x.merchant?.name || 'Sem descrição',
     category: CAT[x.category] || x.category || CAT[x.merchant?.category] || 'Outros',
     amount: Math.abs(x.amountInAccountCurrency ?? x.amount ?? 0),
@@ -1788,10 +1796,11 @@ async function sync(){
     const prev = data?.tx || [];
     const cards = [], banks = [], tx = [], found = [], bills = {}, changed = [], stale = [];
     for (const itemId of cfg.itemIds) {
-      let bank = '', status = '';
+      let bank = '', status = '', bankAt = '';
       try {
         const it = await api(`/items/${encodeURIComponent(itemId)}`);
         bank = it.connector?.name || '';
+        bankAt = it.lastUpdatedAt || it.updatedAt || '';
         status = [it.status, it.executionStatus].filter(Boolean).join('/');
       } catch { status = 'conexão não encontrada'; }
       const acc = await api(`/accounts?itemId=${encodeURIComponent(itemId)}`);
@@ -1809,7 +1818,7 @@ async function sync(){
           due: cd.balanceDueDate ? String(cd.balanceDueDate).slice(0, 10) : null,
           close: cd.balanceCloseDate ? String(cd.balanceCloseDate).slice(0, 10) : null,
           // O saldo do cartão no Open Finance é tudo o que está em aberto (fatura + parcelas futuras), não a fatura.
-          outstanding: Math.abs(a.balance ?? 0), itemId
+          outstanding: Math.abs(a.balance ?? 0), itemId, bankAt
         };
         if (isBank) banks.push({ id: a.id, itemId, type:'bank', name: a.marketingName || a.name || 'Conta', bank, number: String(a.number || '').slice(-4), subtype: a.subtype || '', balance: a.balance ?? null });
         else cards.push(card);
@@ -2328,7 +2337,7 @@ function cardTile(card, c){
         <p class="sub num">${money(used)} de ${money(card.limit)}</p>` : ''}
       <dl>
         <div><dt>Disponível</dt><dd>${card.available != null ? money0(card.available) : '—'}</dd></div>
-        <div><dt>${bn.closed ? 'Fatura fechada' : 'Fatura atual'}</dt><dd>${money0(bn.amount)}</dd></div>
+        <div><dt>${bn.closed ? 'Fatura fechada' : 'Fatura atual'}</dt><dd>${money(bn.amount)}</dd></div>
         <div><dt>Vence</dt><dd>${shortDate(bn.due)}</dd></div>
       </dl>
       <p class="sub">${bn.closed ? `Próxima fatura, ainda aberta: <b class="num">${money(bn.B.totalOf(bn.B.open))}</b>` : `Fecha em ${shortDate(bn.close)} · ainda pode mudar`}</p>
@@ -2951,7 +2960,8 @@ function closeDayOf(card){
 // Uma fatura é identificada pelo mês de vencimento ("fatura de dezembro" vence em dezembro).
 function billKeyFor(date, card){
   const cd = closeDayOf(card), dd = dueDayOf(card), ym = ymOf(date), day = +date.slice(8, 10);
-  const closeYM = day <= Math.min(cd, dim(ym)) ? ym : addM(ym, 1);
+  // Compras feitas no dia do fechamento já entram na fatura seguinte (o "melhor dia de compra").
+  const closeYM = day < Math.min(cd, dim(ym)) ? ym : addM(ym, 1);
   return dd > cd ? closeYM : addM(closeYM, 1);
 }
 function billDates(key, card){
@@ -2962,7 +2972,8 @@ const billOfId = (t, card) => { if (!t.billId) return ''; const b = (data?.bills
 const txBill = (t, card) => billOfId(t, card) || t.billMonth || billKeyFor(t.date, card);
 // Faturas de um cartão montadas pelos lançamentos.
 function cardBills(card){
-  const all = allTx().filter(t => t.cardId === card.id && !t.ignored && !t.isPayment);
+  // "Ignorar nos totais" vale para a análise dos gastos; na fatura a compra continua, porque o banco cobra.
+  const all = allTx().filter(t => t.cardId === card.id && !t.isPayment);
   const open = billKeyFor(today(), card);
   const inBill = k => all.filter(t => txBill(t, card) === k);
   const instAll = installments({ T: all });
@@ -3025,6 +3036,7 @@ function viewFaturas(c){
     <span class="hero-lbl">${esc(card.name)}${card.number ? ' · final ' + esc(card.number) : ''}</span>
     <span class="hero-val num">${money(total)}</span>
     <span class="hero-sub">${key > open ? 'Previsto até agora · ' : ''}Fecha em ${fullDate(close)} · vence em ${fullDate(due)}${official ? ` · valor do banco: ${money(official.total)}` : ''}</span>
+    ${key === open && card.bankAt ? `<span class="hero-sub">Dados do banco de ${new Date(card.bankAt).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })}. Compras feitas depois disso entram na próxima atualização do Meu Pluggy.</span>` : ''}
     ${projClose != null && projClose > total + 1 ? `<span class="hero-sub">No ritmo deste ciclo, deve fechar em torno de <b>${money0(projClose)}</b>.</span>` : ''}
     ${key <= open && cmpPrev > 0 ? `<span class="pill ${cmpCur > cmpPrev ? 'up' : 'down'}">${cmpCur > cmpPrev ? '▲' : '▼'} ${Math.abs(Math.round((cmpCur - cmpPrev) / cmpPrev * 100))}% ${cmpTxt}</span>` : ''}
     ${key === open && used != null ? `<div class="hero-bar"><span style="width:${Math.min(100, used / card.limit * 100).toFixed(1)}%"></span></div><span class="hero-sub">Limite: ${money(used)} usados de ${money(card.limit)} · disponível ${money(card.available)}</span>` : ''}
