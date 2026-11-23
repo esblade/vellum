@@ -78,11 +78,13 @@ export function classify(raw, s){
   });
 }
 const isSpend = t => t.kind === 'out' && !t.isPayment && !t.ignored;
+const isRefund = t => t.kind === 'in' && !t.isPayment && !t.ignored && t.cardId !== 'manual' && t.acct !== 'bank';
 const isBankIncome = t => t.acct === 'bank' && t.kind === 'in' && !t.isPayment && !t.ignored;
 
 // Gasto do mês, por categoria, e renda (automática pela conta corrente ou a informada).
 export function monthSummary(tx, s, ym, hasBank){
-  const spend = tx.filter(t => isSpend(t) && t.cm === ym);
+  // Compras do mês menos os estornos do cartão.
+  const spend = [...tx.filter(t => isSpend(t) && t.cm === ym), ...tx.filter(t => isRefund(t) && t.cm === ym).map(t => ({ ...t, amount: -t.amount }))];
   const byCat = {};
   for (const t of spend) byCat[t.category] = (byCat[t.category] || 0) + t.amount;
   const inc = s.income || {};

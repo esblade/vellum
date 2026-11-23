@@ -63,3 +63,14 @@ test('a função corrige mercado/restaurante igual ao app', async () => {
   const sum = fn.monthSummary(fn.classify(raw, {}), {}, '2026-11', false);
   assert.deepEqual({ ...sum.byCat }, { Mercado: 300, Restaurantes: 80, 'Compras online': 120 });
 });
+
+test('a função desconta os estornos do cartão, igual ao app', async () => {
+  const fn = await load();
+  const raw = [
+    { id: 'r1', cardId: 'c', acct: 'card', date: '2026-11-10', desc: 'Loja Roupa', category: 'Roupas', amount: 200, kind: 'out' },
+    { id: 'r2', cardId: 'c', acct: 'card', date: '2026-11-12', desc: 'Estorno Loja Roupa', category: 'Roupas', amount: 50, kind: 'in' }
+  ];
+  const sum = fn.monthSummary(fn.classify(raw, {}), {}, '2026-11', false);
+  assert.equal(sum.total, 150);
+  assert.equal(sum.byCat.Roupas, 150);
+});

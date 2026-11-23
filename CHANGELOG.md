@@ -2,6 +2,12 @@
 
 Para lançar uma versão nova, escreva um item no topo desta lista: o número que estiver aqui em cima é a versão que o app mostra. As versões seguem o formato MAIOR.MENOR.CORREÇÃO: muda o MENOR quando chega algo novo e a CORREÇÃO quando é ajuste ou conserto.
 
+## 1.16.1 — 23/11/2026
+- Cartão: o valor da fatura agora vem dos lançamentos da fatura (ou do valor oficial do banco, quando ela já fechou). Antes aparecia o saldo em aberto do cartão, que inclui as parcelas futuras e é praticamente o limite usado.
+- Vencimento sempre o próximo (antes podia mostrar uma data que já passou). Se a fatura fechou e ainda não foi paga, ela aparece primeiro.
+- Lançamentos e parcelas vão para a fatura que o banco informa, quando ele informa.
+- Estornos no cartão descontam do gasto do mês e da categoria, no app e nos avisos.
+
 ## 1.16.0 — 19/11/2026
 - Relatórios em duas abas, Mês e Ano (a Visão anual virou a aba Ano).
 - Aba Mês com resumo em frases, "Para onde vai a renda" e a evolução dos gastos separando contas fixas e dia a dia.
