@@ -389,3 +389,15 @@ test('fatura fechada que o banco informou e ainda vai vencer vem primeiro, pelo 
   assert.equal(b.amount, 1276.94);
   assert.equal(b.due, shift(2));
 });
+
+test('crédito no cartão com o valor da fatura do banco é pagamento, qualquer que seja a descrição', () => {
+  setCard({ close: shift(-5), due: shift(2) }, [
+    { id: 'm', cardId: 'c1', date: shift(-1), desc: 'Mercado', category: 'Mercado', amount: 1276.94, kind: 'out' },
+    { id: 'pg', cardId: 'c1', date: shift(-2), desc: 'DEB AUTOM ITAU', category: 'Outros', amount: 2180.05, kind: 'in' }
+  ], [{ id: 'b1', due: shift(2), total: 2180.05, min: 300 }]);
+  const [pg] = cls('pg');
+  assert.equal(pg.isPayment, true);
+  const b = billNow();
+  assert.equal(b.closed, false);                                   // a fechada já foi paga
+  assert.equal(Math.round(b.amount * 100) / 100, 1276.94);
+});

@@ -1920,6 +1920,10 @@ function allTx(){
   const paidFromBank = t => cardPays.some(p => Math.abs(p.amount - t.amount) < 0.01 && Math.abs(dayDiff(p.date, t.date)) <= 5);
   // Fatura de cada billId (o banco informa em que fatura a parcela entrou).
   const billDue = {}; for (const list of Object.values(data.bills || {})) for (const b of list || []) if (b.id && b.due) billDue[b.id] = ymOf(b.due);
+  // Crédito no cartão com o valor de uma fatura que o banco informou (até R$ 1 de diferença) é o pagamento dela,
+  // qualquer que seja a descrição (ex.: "DEB AUTOM", "PAGAMENTO EFETUADO").
+  const paysABill = t => t.kind === 'in' && t.acct !== 'bank' && t.cardId !== 'manual' &&
+    (data.bills?.[t.cardId] || []).some(b => b.total > 0 && Math.abs(b.total - t.amount) <= 1 && Math.abs(dayDiff(b.due, t.date)) <= 40);
   // Alguns bancos (ex.: Itaú) mandam todas as parcelas de uma compra com a data da compra. Se duas ou mais
   // parcelas da mesma compra têm a mesma data, a parcela N vai para a fatura da compra + (N − 1) meses.
   const instKey = t => [normDesc(t.desc), t.cardId, t.instT, Math.round(t.amount * 100)].join('|');
@@ -1940,7 +1944,7 @@ function allTx(){
       else if (t.kind === 'in' && looksLoan(t)) t.category = LOAN_IN;
       else if (looksInternal(t)) t.category = INTERNAL;
     }
-    else if (!t.isPayment && looksLikeBillPayment(t)) t.category = PAYMENT;
+    else if (!t.isPayment && (looksLikeBillPayment(t) || paysABill(t))) t.category = PAYMENT;
     if (!t.isPayment) { const fc = refineFood(t); if (fc && fc !== t.category) { t.autoFrom = t.category; t.category = fc; } }
     if (db.rules[t.key]) t.category = db.rules[t.key];
     const o = db.overrides[t.id];
@@ -2333,7 +2337,7 @@ function openCard(id){
     <label>Nome<input name="name" id="cardName" value="${esc(card.name)}" placeholder="${esc(autoCardName(card.rawName))}"></label>
     <div class="cols"><label>Visual<select name="theme" id="cardTheme"><option value="">Automático${detectTheme(card) ? ' (' + esc(CARD_THEMES[detectTheme(card)].label) + ')' : ''}</option>${Object.entries(CARD_THEMES).map(([k, t]) => `<option value="${k}" ${p.theme === k ? 'selected' : ''}>${esc(t.label)}</option>`).join('')}</select></label>
     <label>Bandeira<select name="network" id="cardNet"><option value="">Automática</option>${Object.entries(NETWORKS).map(([k, v]) => `<option value="${k}" ${p.network === k ? 'selected' : ''}>${v}</option>`).join('')}</select></label></div>
-    <label>Final do cartão<input name="number" inputmode="numeric" maxlength="4" pattern="\d{4}" value="${esc(p.number || '')}" placeholder="${esc(card.finals?.[0]?.[0] || card.bankNumber || '0000')}"></label>
+    <label>Final do cartão<input name="number" inputmode="numeric" maxlength="4" value="${esc(p.number || '')}" placeholder="${esc(card.finals?.[0]?.[0] || card.bankNumber || '0000')}"></label>
     <p class="hint">Nome no banco: ${esc(card.rawName)}${card.bank ? ' · ' + esc(card.bank) : ''}. Final informado pelo banco: ${esc(card.bankNumber || '—')}${card.finals?.length ? ` · finais nas compras: ${card.finals.map(([f, n]) => `${esc(f)} (${n})`).join(', ')}` : ''}. Fica salvo na sua conta.</p>
     <div class="dlg-actions"><button class="link" type="submit" value="reset">Voltar ao automático</button>
       <div class="right"><button class="btn ghost" type="submit" value="cancel">Cancelar</button><button class="btn" type="submit" value="save">Salvar</button></div></div>`,
@@ -2341,7 +2345,8 @@ function openCard(id){
     if (act === 'reset') delete db.cardPrefs[id];
     else {
       const name = String(f.get('name') || '').trim();
-      const num = String(f.get('number') || '').replace(/\D/g, '').slice(-4);
+      const num = String(f.get('number') || '').replace(/\D/g, '');
+      if (num && num.length !== 4) { toast('O final do cartão tem 4 números.'); return false; }
       const next = { name: name && name !== autoCardName(card.rawName) ? name : '', theme: f.get('theme') || '', network: f.get('network') || '', number: num.length === 4 ? num : '' };
       if (next.name || next.theme || next.network || next.number) db.cardPrefs[id] = next; else delete db.cardPrefs[id];
     }
@@ -3140,7 +3145,21 @@ function billCheck(card, key, close, due, list, proj){
       ${proj.length ? row(`Parcelas previstas pelo app (${proj.length})`, money(proj.reduce((a, p) => a + p.value, 0))) : ''}
       ${est.length ? row(`Estornos e créditos (${est.length})`, '− ' + money(sum(est))) : ''}
       ${ign ? row('Marcadas para ignorar', `${ign} (continuam na fatura)`) : ''}
-    </dl></details>`;
+    </dl>
+    ${(() => {
+      // Qual fatura o cartão da Visão geral mostra e por quê; pagamentos e créditos dos últimos 45 dias.
+      const bn = billNow(card), since = iso(new Date(Date.now() - 45 * 864e5));
+      const credits = allTx().filter(t => t.cardId === card.id && t.kind === 'in' && t.date >= since).sort((a, b) => b.date.localeCompare(a.date));
+      const pays = credits.filter(t => t.isPayment), others = credits.filter(t => !t.isPayment);
+      const lst = l => l.slice(0, 4).map(t => `${shortDate(t.date)} · ${esc(t.desc)} · ${money(t.amount)}`).join('<br>');
+      return `<p class="diag-t">O que aparece no cartão</p><dl class="diag-l">
+        ${row('Fatura mostrada', `${bn.closed ? 'fechada' : 'aberta'} de ${esc(mName(bn.key))} · ${money(bn.amount)}`)}
+        ${row('Por quê', bn.closed ? `fechou em ${dt(bn.close)}, vence ${dt(bn.due)} e o app não achou pagamento que a quite${bn.official ? ' (valor informado pelo banco)' : ''}` : 'não há fatura fechada aguardando pagamento')}
+        ${row(`Pagamentos reconhecidos (${pays.length})`, pays.length ? lst(pays) : 'nenhum nos últimos 45 dias')}
+        ${row(`Créditos tratados como estorno (${others.length})`, others.length ? lst(others) : 'nenhum')}
+      </dl>`;
+    })()}
+    </details>`;
 }
 
 /* ---------- Objetivos (caixinhas) ---------- */
