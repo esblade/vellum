@@ -2843,7 +2843,7 @@ function viewEmprestimos(){
         ${i.done ? '' : `<button class="btn sm" type="button" data-action="pay" data-id="${esc(l.id)}">Registrar ${l.dir === 'tomei' ? 'pagamento' : 'recebimento'}</button>`}
         <button class="btn ghost sm" type="button" data-action="editloan" data-id="${esc(l.id)}">Editar</button>
       </div>
-      ${(l.payments || []).length ? `<details><summary>Histórico (${l.payments.length})</summary><ul>${[...l.payments].sort((a, b) => b.date.localeCompare(a.date)).map(p => `<li><span>${fullDate(p.date)}</span><span class="num">${money(p.amount)} <button class="link danger" type="button" data-action="delpay" data-id="${esc(l.id)}" data-pay="${esc(p.id)}" aria-label="Remover pagamento">remover</button></span></li>`).join('')}</ul></details>` : ''}
+      ${(l.payments || []).length ? `<details><summary>Histórico (${l.payments.length})</summary><ul>${[...l.payments].sort((a, b) => b.date.localeCompare(a.date)).map(p => `<li><span>${cap(mName(ymOf(p.date)))} de ${p.date.slice(0, 4)}</span><span class="num">${money(p.amount)} <button class="link danger" type="button" data-action="delpay" data-id="${esc(l.id)}" data-pay="${esc(p.id)}" aria-label="Remover pagamento">remover</button></span></li>`).join('')}</ul></details>` : ''}
     </article>`;
   };
   const active = infos.filter(x => !x.i.done), done = infos.filter(x => x.i.done);
@@ -3607,12 +3607,14 @@ function payLoan(id){
   const i = loanInfo(l);
   modal(`<h2>Registrar ${l.dir === 'tomei' ? 'pagamento' : 'recebimento'}</h2><p class="hint">${esc(l.desc || l.who)} · restam ${money(i.left)}</p>
     <div class="cols"><label>Valor (R$)<input name="amount" type="number" step="0.01" min="0.01" inputmode="decimal" required value="${(i.value && i.value <= i.left ? i.value : i.left).toFixed(2)}" autofocus></label>
-    <label>Data<input name="date" type="date" required value="${today()}"></label></div>
+    <label>Mês da parcela<input name="date" type="month" required value="${(i.next || today()).slice(0, 7)}"></label></div>
     <div class="dlg-actions"><span></span><div class="right"><button class="btn ghost" type="submit" value="cancel">Cancelar</button><button class="btn" type="submit" value="save">Registrar</button></div></div>`,
   f => {
     const amount = num(f.get('amount'));
     if (!(amount > 0)) { toast('Informe um valor maior que zero.'); return false; }
-    (l.payments ||= []).push({ id: uid(), date: f.get('date'), amount });
+    const ym = String(f.get('date') || '').slice(0, 7);
+    if (!/^\d{4}-\d{2}$/.test(ym)) { toast('Informe o mês da parcela.'); return false; }
+    (l.payments ||= []).push({ id: uid(), date: ym, amount });
     saveDb('loans'); render(); toast(loanInfo(l).done ? 'Empréstimo quitado!' : 'Pagamento registrado.');
   });
 }
