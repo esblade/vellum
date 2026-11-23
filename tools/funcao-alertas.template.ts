@@ -30,12 +30,19 @@ const looksLikeBillPayment = t => t.kind === 'in' && t.cardId !== 'manual' &&
 const dayDiff = (a, b) => Math.round((Date.parse(a + 'T12:00:00') - Date.parse(b + 'T12:00:00')) / 864e5);
 const ymOf = d => String(d || '').slice(0, 7);
 
+// Data no fuso de Brasília (igual ao app): só a data fica como veio; com horário, converte.
+export function txDate(v){
+  const str = String(v || '');
+  if (!/T\d\d:\d\d/.test(str) || /T00:00(:00(\.0+)?)?(Z|[+-]00:?00)?$/.test(str)) return str.slice(0, 10);
+  const d = new Date(str); if (isNaN(d.getTime())) return str.slice(0, 10);
+  return d.toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
+}
 export function normTx(x, cardId, acct = 'card'){
   const m = x.creditCardMetadata || {};
   const inst = m.totalInstallments > 1;
   return {
     id: x.id, cardId, acct, catRaw: x.category || '',
-    date: String(x.date || '').slice(0, 10),
+    date: txDate(x.date),
     desc: x.description || x.merchant?.name || 'Sem descrição',
     category: CAT[x.category] || x.category || CAT[x.merchant?.category] || 'Outros',
     amount: Math.abs(x.amountInAccountCurrency ?? x.amount ?? 0),

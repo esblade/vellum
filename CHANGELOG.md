@@ -2,6 +2,12 @@
 
 Para lançar uma versão nova, escreva um item no topo desta lista: o número que estiver aqui em cima é a versão que o app mostra. As versões seguem o formato MAIOR.MENOR.CORREÇÃO: muda o MENOR quando chega algo novo e a CORREÇÃO quando é ajuste ou conserto.
 
+## 1.16.2 — 23/11/2026
+- Fatura: compras feitas no dia do fechamento entram na fatura seguinte, como nos bancos.
+- Compras marcadas para "ignorar nos totais" continuam na fatura, porque o banco cobra; só saem da análise dos gastos.
+- Datas com horário são lidas no fuso de Brasília (uma compra às 22h não pula mais para o dia seguinte).
+- O cartão mostra a fatura com centavos, e a tela Faturas diz quando o banco mandou os dados pela última vez.
+
 ## 1.16.1 — 23/11/2026
 - Cartão: o valor da fatura agora vem dos lançamentos da fatura (ou do valor oficial do banco, quando ela já fechou). Antes aparecia o saldo em aberto do cartão, que inclui as parcelas futuras e é praticamente o limite usado.
 - Vencimento sempre o próximo (antes podia mostrar uma data que já passou). Se a fatura fechou e ainda não foi paga, ela aparece primeiro.
