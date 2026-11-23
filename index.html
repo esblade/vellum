@@ -2090,9 +2090,10 @@ function monthPace(c, ym){
       const curDaily = sum(cur.filter(t => t.amount <= base.big && !(t.instT > 1))) / day;
       const rate = day >= 10 ? (base.rate + curDaily) / 2 : base.rate;
       const recPending = recurring(c).filter(r => !r.paidThisMonth).reduce((a, r) => a + r.avg, 0);
-      projection = total + (dim(ym) - day) * rate + recPending;
+      const L = loanMonth(c, ym);
+      projection = total + (dim(ym) - day) * rate + recPending + L.pending + L.paidOut;
       method = 'base';
-    } else projection = total / day * dim(ym);
+    } else { const L = loanMonth(c, ym); projection = total / day * dim(ym) + L.pending + L.paidOut; }
   }
   return { isCur, day, prev, cur, total, prevTotal, prevSameTotal, projection, oneOff, oneOffTotal: sum(oneOff), method, dayOf,
     delta: prevSameTotal > 0 ? (total - prevSameTotal) / prevSameTotal * 100 : null };
@@ -2146,11 +2147,33 @@ function recurringCalc(c){
 // O resto é o "dia a dia": mercado, delivery, transporte, compras… o que dá para controlar.
 const FIXED_CATS = new Set(['Aluguel', 'Moradia', 'Contas da casa', 'Condomínio', 'Telefone e internet', 'Plano de saúde', 'Seguros', 'Escola', 'Faculdade', 'TV por assinatura', 'Financiamento']);
 function fixedOf(c){ const keys = new Set(recurring(c).map(r => r.last.key)); return t => t.instT > 1 || FIXED_CATS.has(t.category) || keys.has(t.key); }
+// Parcelas de empréstimo que você deve e que vencem no mês. Só entram empréstimos com parcelas e 1º vencimento
+// definidos (sem prazo, não há como saber quando pagar). Se a parcela já aparece como gasto na conta ou no cartão
+// (mesmo valor, até 1% de diferença), ela já está contada e não entra de novo.
+function loanMonth(c, ym){
+  const out = { items: [], pending: 0, paidOut: 0 };
+  if (ui.card !== 'all') return out;
+  const spent = spendIn(c, ym).filter(t => !t.refund);
+  for (const l of db.loans || []) {
+    if (l.dir !== 'tomei' || !l.first || !(l.n > 0) || !(l.value > 0)) continue;
+    const k = diffM(ymOf(loanDue(l.first, 0)), ym); if (k < 0 || k >= l.n) continue;
+    const due = loanDue(l.first, k), v = l.value;
+    const inTx = spent.some(t => Math.abs(t.amount - v) <= Math.max(1, v * 0.01));
+    const paid = (l.payments || []).some(p => ymOf(p.date) === ym);
+    const state = inTx ? 'counted' : paid ? 'paidOut' : 'pending';
+    out.items.push({ loanId: l.id, desc: l.desc || l.who || 'Empréstimo', category: 'Empréstimo', amount: v, day: +due.slice(8, 10), due, state, loan: true });
+    if (state === 'pending') out.pending += v; else if (state === 'paidOut') out.paidOut += v;
+  }
+  return out;
+}
 function splitMonth(c, ym){
   const fx = fixedOf(c);
   const list = spendIn(c, ym), fixed = list.filter(fx), variable = list.filter(t => !fx(t));
-  const pending = ym === curYM() ? recurring(c).filter(r => !r.paidThisMonth).map(r => ({ desc: r.desc, category: r.category, amount: r.avg, day: +r.last.date.slice(8, 10), sub: r.sub })) : [];
-  return { list, fixed, variable, fixedTotal: sum(fixed), varTotal: sum(variable), pending, pendingTotal: pending.reduce((s, p) => s + p.amount, 0) };
+  const L = loanMonth(c, ym);
+  const pending = ym === curYM() ? [...recurring(c).filter(r => !r.paidThisMonth).map(r => ({ desc: r.desc, category: r.category, amount: r.avg, day: +r.last.date.slice(8, 10), sub: r.sub })),
+    ...L.items.filter(x => x.state === 'pending')] : [];
+  // parcela paga por fora das contas conectadas (registrada em Empréstimos) também é conta fixa do mês
+  return { list, fixed, variable, fixedTotal: sum(fixed) + L.paidOut, varTotal: sum(variable), pending, pendingTotal: pending.reduce((s, p) => s + p.amount, 0), loanOut: L.paidOut, loans: L.items };
 }
 
 // Vencimento da parcela k. Com só mês e ano ("2026-12"), vale o último dia do mês: só fica atrasada depois que o mês acaba.
@@ -2481,14 +2504,16 @@ function upcoming(c, S){
   const whenTxt = d => d === 0 ? 'hoje' : d === 1 ? 'amanhã' : d < 0 ? `atrasada ${-d} ${-d === 1 ? 'dia' : 'dias'}` : `em ${d} dias`;
   for (const p of S.pending) {
     const day = Math.min(p.day, dim(ym)), d = day - dToday;
-    out.push({ desc: p.desc, amount: p.amount, approx: true, d, when: d < 0 ? `costuma cair dia ${day}` : `dia ${day} · ${whenTxt(d)}`, kind: p.sub ? 'assinatura' : 'conta fixa', color: catColor(p.category) });
+    out.push({ desc: p.desc, amount: p.amount, approx: !p.loan, d, when: d < 0 ? `costuma cair dia ${day}` : `dia ${day} · ${whenTxt(d)}`, kind: p.loan ? 'empréstimo' : p.sub ? 'assinatura' : 'conta fixa', color: p.loan ? 'var(--c3)' : catColor(p.category) });
   }
   for (const card of c.shownCards) {
     const bn = billNow(card), d = daysUntil(bn.due);
     if (bn.amount > 0 && d >= 0 && d <= 31) out.push({ desc: `Fatura ${card.name}`, amount: bn.amount, approx: !bn.closed, d, when: `${shortDate(bn.due)} · ${whenTxt(d)}`, kind: bn.closed ? 'fatura fechada' : 'fatura aberta', color: card.color });
   }
   if (ui.card === 'all') for (const l of db.loans) {
+    if (S.pending.some(p => p.loanId === l.id)) continue;
     const li = loanInfo(l); if (!li.next || li.done) continue; const d = daysUntil(li.next);
+    if (ymOf(li.next) === ym && l.dir === 'tomei') continue;   // a do mês já está nas contas acima (paga ou já debitada)
     if (d <= 31) out.push({ desc: l.desc || l.who || 'Empréstimo', amount: li.value, d, when: li.monthOnly ? (d < 0 ? `atrasada desde ${mName(ymOf(li.next))}` : `vence em ${mName(ymOf(li.next))}`) : `${shortDate(li.next)} · ${whenTxt(d)}`, kind: l.dir === 'concedi' ? 'a receber' : 'empréstimo', color:'var(--c3)' });
   }
   return out.sort((a, b) => a.d - b.d).slice(0, 6);
@@ -2500,7 +2525,7 @@ function heroFree(P, S, I){
   const fixedAll = S.fixedTotal + S.pendingTotal;
   const left = I.total - fixedAll - S.varTotal;
   const daysLeft = Math.max(1, end - P.day + 1);
-  const endLeft = I.total - (isCur ? P.projection : P.total);
+  const endLeft = I.total - (isCur ? P.projection : P.total + (S.loanOut || 0));
   const base = Math.max(I.total, fixedAll + S.varTotal) || 1, w = v => Math.max(0, v / base * 100).toFixed(1);
   const d = P.delta;
   const pill = isCur
@@ -2885,10 +2910,10 @@ function viewRelatorios(c){
   const topStore = Object.values(merchAll).sort((x, y) => y.v - x.v)[0];
   const cm = commitments(c);
   const when = partial ? `no mesmo período de ${esc(prevName)}` : `em ${esc(prevName)}`;
-  const ins = [];
-  ins.push(`Você gastou <b>${money0(P.total)}</b>${partial ? ' até agora' : ''}: <b>${money0(S.fixedTotal)}</b> em contas fixas e parcelas e <b>${money0(S.varTotal)}</b> no dia a dia.`);
-  if (I.set) ins.push(partial ? `Isso é <b>${Math.round(P.total / I.total * 100)}% da renda</b>. No ritmo atual, o mês fecha em ${money0(P.projection)} (${Math.round(P.projection / I.total * 100)}% da renda).`
-    : `Isso foi <b>${Math.round(P.total / I.total * 100)}% da renda</b>; ${I.total >= P.total ? `sobraram ${money0(I.total - P.total)}` : `faltaram ${money0(P.total - I.total)}`}.`);
+  const ins = [], spentAll = P.total + (S.loanOut || 0);   // inclui parcela de empréstimo paga por fora
+  ins.push(`Você gastou <b>${money0(spentAll)}</b>${partial ? ' até agora' : ''}: <b>${money0(S.fixedTotal)}</b> em contas fixas e parcelas e <b>${money0(S.varTotal)}</b> no dia a dia.`);
+  if (I.set) ins.push(partial ? `Isso é <b>${Math.round(spentAll / I.total * 100)}% da renda</b>. No ritmo atual, o mês fecha em ${money0(P.projection)} (${Math.round(P.projection / I.total * 100)}% da renda).`
+    : `Isso foi <b>${Math.round(spentAll / I.total * 100)}% da renda</b>; ${I.total >= spentAll ? `sobraram ${money0(I.total - spentAll)}` : `faltaram ${money0(spentAll - I.total)}`}.`);
   for (const x of ups) ins.push(`<b>${esc(x.k)}</b>: ${money0(x.d)} a mais que ${when}.`);
   for (const x of downs) ins.push(`<b>${esc(x.k)}</b>: ${money0(-x.d)} a menos que ${when}.`);
   if (topStore) ins.push(`Onde mais gastou no dia a dia: <b>${esc(topStore.desc)}</b>, ${money0(topStore.v)} em ${plural(topStore.n, 'compra', 'compras')}.`);
