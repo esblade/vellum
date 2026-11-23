@@ -529,6 +529,19 @@ select[aria-expanded="true"]{border-color:var(--accent);box-shadow:0 0 0 4px col
 .day-bud .bud-track{margin-bottom:8px}
 .brow .bud-track{grid-column:1/-1}
 
+/* Conferir com o banco */
+.diag summary{cursor:pointer;font-weight:700;font-size:.92rem;list-style:none;display:flex;align-items:center;gap:8px}
+.diag summary::-webkit-details-marker{display:none}
+.diag summary svg.i{width:16px;height:16px;color:var(--muted)}
+.diag[open] summary{margin-bottom:10px}
+.diag-t{font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:14px 0 6px}
+.diag-l{margin:0;display:flex;flex-direction:column}
+.diag-l>div{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:12px;padding:7px 0;border-bottom:1px solid var(--line-2);font-size:.84rem}
+.diag-l>div:last-child{border-bottom:0}
+.diag-l dt{color:var(--muted)}
+.diag-l dd{margin:0;text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
+.diag-l small{font-weight:500;color:var(--muted)}
+
 /* Banner */
 .banner{padding:12px 18px;border-radius:16px;background:var(--accent-soft);display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;font-size:.9rem}
 .banner.err{background:var(--danger-soft)}
@@ -1780,6 +1793,7 @@ function normTx(x, cardId, acct = 'card'){
     instT: inst ? m.totalInstallments : 0,
     billMonth: m.billForecastDate ? String(m.billForecastDate).slice(0, 7) : (m.billPostDate ? String(m.billPostDate).slice(0, 7) : ''),
     mcc: m.payeeMCC || null,
+    cardNumber: m.cardNumber ? String(m.cardNumber).replace(/\D/g, '').slice(-4) || null : null,
     billId: m.billId || x.billId || null,
     isPayment: x.operationType === 'PAGAMENTO_FATURA' || x.category === 'Credit card payment'
   };
@@ -1906,12 +1920,19 @@ function allTx(){
   const paidFromBank = t => cardPays.some(p => Math.abs(p.amount - t.amount) < 0.01 && Math.abs(dayDiff(p.date, t.date)) <= 5);
   // Fatura de cada billId (o banco informa em que fatura a parcela entrou).
   const billDue = {}; for (const list of Object.values(data.bills || {})) for (const b of list || []) if (b.id && b.due) billDue[b.id] = ymOf(b.due);
+  // Alguns bancos (ex.: Itaú) mandam todas as parcelas de uma compra com a data da compra. Se duas ou mais
+  // parcelas da mesma compra têm a mesma data, a parcela N vai para a fatura da compra + (N − 1) meses.
+  const instKey = t => [normDesc(t.desc), t.cardId, t.instT, Math.round(t.amount * 100)].join('|');
+  const instGroups = {};
+  for (const t of raw) if (t.instT > 1 && t.instN > 0 && t.acct !== 'bank') (instGroups[instKey(t)] ||= []).push(t);
+  const purchaseDated = new Set(Object.entries(instGroups).filter(([, l]) => new Set(l.map(t => t.instN)).size >= 2 && new Set(l.map(t => t.date)).size === 1).map(([k]) => k));
   return raw.flatMap(t0 => {
     const t = { ...t0 };
     if (t.inst && !t.instT) { const m = String(t.inst).match(/(\d+)\/(\d+)/); if (m) { t.instN = +m[1]; t.instT = +m[2]; } }
     t.key = normDesc(t.desc);
     // Parcela conta no mês da fatura em que entrou (alguns bancos mandam todas com a data da compra).
-    t.cm = t.instT > 1 && (billDue[t.billId] || t.billMonth) ? (billDue[t.billId] || t.billMonth) : ymOf(t.date);
+    if (t.instT > 1 && t.instN > 1 && !billDue[t.billId] && !t.billMonth && purchaseDated.has(instKey(t))) t.instShift = t.instN - 1;
+    t.cm = t.instT > 1 && (billDue[t.billId] || t.billMonth) ? (billDue[t.billId] || t.billMonth) : addM(ymOf(t.date), t.instShift || 0);
     // Pagamento da fatura feito por Pix/transferência: a Pluggy às vezes não marca como pagamento de fatura
     // e classifica como "Transferência Pix". No cartão, um crédito assim é pagamento, não estorno.
     if (t.acct === 'bank' && !t.isPayment) {
@@ -2272,8 +2293,15 @@ function detectTier(card){
 }
 // Nome automático: o cartão "Croma" do Nubank aparece com o nome completo.
 const autoCardName = name => /croma/i.test(name || '') && !/nubank/i.test(name || '') ? 'NUBANK CROMA PLATINUM' : (name || 'Cartão');
+// Finais de cartão vistos nas compras (titular, adicional, virtual), do mais usado para o menos usado.
+function cardFinals(id){
+  const n = {}; for (const t of data?.tx || []) if (t.cardId === id && t.cardNumber) n[t.cardNumber] = (n[t.cardNumber] || 0) + 1;
+  return Object.entries(n).sort((a, b) => b[1] - a[1]);
+}
 function decorateCard(c, i){
   const p = db.cardPrefs?.[c.id] || {};
+  const finals = cardFinals(c.id), bankNumber = c.bankNumber ?? c.number;
+  c = { ...c, bankNumber, finals, number: p.number || finals[0]?.[0] || bankNumber };
   const theme = p.theme || detectTheme(c) || '';
   const T = CARD_THEMES[theme];
   const raw = { ...c, rawName: c.rawName || c.name };
@@ -2305,15 +2333,17 @@ function openCard(id){
     <label>Nome<input name="name" id="cardName" value="${esc(card.name)}" placeholder="${esc(autoCardName(card.rawName))}"></label>
     <div class="cols"><label>Visual<select name="theme" id="cardTheme"><option value="">Automático${detectTheme(card) ? ' (' + esc(CARD_THEMES[detectTheme(card)].label) + ')' : ''}</option>${Object.entries(CARD_THEMES).map(([k, t]) => `<option value="${k}" ${p.theme === k ? 'selected' : ''}>${esc(t.label)}</option>`).join('')}</select></label>
     <label>Bandeira<select name="network" id="cardNet"><option value="">Automática</option>${Object.entries(NETWORKS).map(([k, v]) => `<option value="${k}" ${p.network === k ? 'selected' : ''}>${v}</option>`).join('')}</select></label></div>
-    <p class="hint">Nome no banco: ${esc(card.rawName)}${card.bank ? ' · ' + esc(card.bank) : ''}. O nome e o visual ficam salvos na sua conta.</p>
+    <label>Final do cartão<input name="number" inputmode="numeric" maxlength="4" pattern="\d{4}" value="${esc(p.number || '')}" placeholder="${esc(card.finals?.[0]?.[0] || card.bankNumber || '0000')}"></label>
+    <p class="hint">Nome no banco: ${esc(card.rawName)}${card.bank ? ' · ' + esc(card.bank) : ''}. Final informado pelo banco: ${esc(card.bankNumber || '—')}${card.finals?.length ? ` · finais nas compras: ${card.finals.map(([f, n]) => `${esc(f)} (${n})`).join(', ')}` : ''}. Fica salvo na sua conta.</p>
     <div class="dlg-actions"><button class="link" type="submit" value="reset">Voltar ao automático</button>
       <div class="right"><button class="btn ghost" type="submit" value="cancel">Cancelar</button><button class="btn" type="submit" value="save">Salvar</button></div></div>`,
   (f, act) => {
     if (act === 'reset') delete db.cardPrefs[id];
     else {
       const name = String(f.get('name') || '').trim();
-      const next = { name: name && name !== autoCardName(card.rawName) ? name : '', theme: f.get('theme') || '', network: f.get('network') || '' };
-      if (next.name || next.theme || next.network) db.cardPrefs[id] = next; else delete db.cardPrefs[id];
+      const num = String(f.get('number') || '').replace(/\D/g, '').slice(-4);
+      const next = { name: name && name !== autoCardName(card.rawName) ? name : '', theme: f.get('theme') || '', network: f.get('network') || '', number: num.length === 4 ? num : '' };
+      if (next.name || next.theme || next.network || next.number) db.cardPrefs[id] = next; else delete db.cardPrefs[id];
     }
     saveDb('cardPrefs'); render(); toast('Cartão atualizado.');
   });
@@ -2952,7 +2982,7 @@ function bankPanel(c, ym){
 }
 
 /* ---------- Faturas ---------- */
-const dueDayOf = card => card.due ? +card.due.slice(8, 10) : 10;
+const dueDayOf = card => { const b = (data?.bills?.[card.id] || []).find(x => x.due); return b ? +b.due.slice(8, 10) : card.due ? +card.due.slice(8, 10) : 10; };
 function closeDayOf(card){
   if (card.close) return +card.close.slice(8, 10);
   let c = dueDayOf(card) - 7; if (c < 1) c += 28; return c;
@@ -2969,7 +2999,7 @@ function billDates(key, card){
   return { close:`${closeYM}-${pad(Math.min(cd, dim(closeYM)))}`, due:`${key}-${pad(Math.min(dd, dim(key)))}` };
 }
 const billOfId = (t, card) => { if (!t.billId) return ''; const b = (data?.bills?.[card.id] || []).find(x => x.id && x.id === t.billId); return b?.due ? ymOf(b.due) : ''; };
-const txBill = (t, card) => billOfId(t, card) || t.billMonth || billKeyFor(t.date, card);
+const txBill = (t, card) => billOfId(t, card) || t.billMonth || addM(billKeyFor(t.date, card), t.instShift || 0);
 // Faturas de um cartão montadas pelos lançamentos.
 function cardBills(card){
   // "Ignorar nos totais" vale para a análise dos gastos; na fatura a compra continua, porque o banco cobra.
@@ -2985,6 +3015,13 @@ function cardBills(card){
 }
 // A fatura para olhar agora: a fechada que ainda não venceu e não foi paga; se não houver, a aberta.
 function billNow(card){
+  // 1º: fatura que o banco já fechou e ainda vai vencer (valor oficial)
+  const offNext = (data?.bills?.[card.id] || []).filter(b => b.due && daysUntil(b.due) >= 0).sort((a, b) => a.due.localeCompare(b.due))[0];
+  if (offNext) {
+    const k = ymOf(offNext.due), close = billDates(k, card).close, B0 = cardBills(card);
+    const paid = sum(allTx().filter(t => t.cardId === card.id && t.kind === 'in' && t.isPayment && !t.ignored && t.date > close));
+    if (offNext.total > 0 && paid < offNext.total - 1) return { key: k, closed: true, amount: offNext.total - paid, total: offNext.total, due: offNext.due, close, official: true, B: B0 };
+  }
   const B = cardBills(card), prev = addM(B.open, -1), pd = billDates(prev, card), od = billDates(B.open, card);
   const off = B.official(prev), prevTotal = off ? off.total : B.totalOf(prev);
   const paid = sum(allTx().filter(t => t.cardId === card.id && t.kind === 'in' && t.isPayment && !t.ignored && t.date > pd.close));
@@ -3070,9 +3107,40 @@ function viewFaturas(c){
           <span class="progress thin"><span style="width:${(v / bc[0][1] * 100).toFixed(1)}%;background:${catColor(k)}"></span></span><span class="ft"><span>${Math.round(v / tot * 100)}% da fatura</span><span></span></span></li>`).join('')}</ul>`, { sub:'Onde foi o dinheiro desta fatura' }) : ''; })()}
       ${panel('Próximas faturas', `<ul class="rows">${next.map(billRow).join('')}</ul>`, { sub:'O que já está lançado mais as parcelas futuras' })}
       ${past.length ? panel('Faturas anteriores', `<ul class="rows">${past.map(k => billRow(k, maxPast)).join('')}</ul>`) : ''}
+      ${billCheck(card, key, close, due, list, proj)}
     </div>
   </div>`;
   return h;
+}
+
+// Mostra lado a lado o que o banco mandou e como o app chegou no valor da fatura, para conferir com o app do banco.
+function billCheck(card, key, close, due, list, proj){
+  const offs = data?.bills?.[card.id] || [];
+  const out = list.filter(t => t.kind === 'out');
+  const aVista = out.filter(t => !(t.instT > 1)), parc = out.filter(t => t.instT > 1), est = list.filter(t => t.kind === 'in');
+  const moved = parc.filter(t => t.instShift).length, ign = list.filter(t => t.ignored).length;
+  const row = (k, v) => `<div><dt>${k}</dt><dd>${v}</dd></div>`;
+  const dt = d => d ? fullDate(d) : '—';
+  return `<details class="panel diag"><summary>${ic('search')}Conferir com o banco</summary>
+    <p class="hint">Se o valor não bater com o app do banco, compare estes dados. Compras feitas depois da última atualização do Meu Pluggy ainda não entram.</p>
+    <p class="diag-t">O que o banco mandou</p>
+    <dl class="diag-l">
+      ${row('Final do cartão na conta', esc(card.bankNumber || '—'))}
+      ${row('Finais nas compras', card.finals?.length ? card.finals.map(([f, n]) => `${esc(f)} (${n})`).join(', ') : 'o banco não informa')}
+      ${row('Fechamento e vencimento', `${dt(card.close)} · ${dt(card.due)}`)}
+      ${row('Saldo em aberto (fatura + parcelas futuras)', card.outstanding != null ? money(card.outstanding) : '—')}
+      ${row('Faturas fechadas', offs.length ? offs.slice(0, 3).map(b => `vence ${shortDate(b.due)}: ${money(b.total)}`).join('<br>') : 'nenhuma ainda')}
+      ${card.bankAt ? row('Dados do banco de', new Date(card.bankAt).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })) : ''}
+    </dl>
+    <p class="diag-t">Como o app montou a fatura de ${esc(mName(key))}</p>
+    <dl class="diag-l">
+      ${row('Período', `fecha ${dt(close)} (compras desse dia já vão para a próxima) · vence ${dt(due)}`)}
+      ${row(`À vista (${aVista.length})`, money(sum(aVista)))}
+      ${row(`Parcelas lançadas (${parc.length})`, money(sum(parc)) + (moved ? `<br><small>${moved} com a data da compra, colocadas na fatura certa</small>` : ''))}
+      ${proj.length ? row(`Parcelas previstas pelo app (${proj.length})`, money(proj.reduce((a, p) => a + p.value, 0))) : ''}
+      ${est.length ? row(`Estornos e créditos (${est.length})`, '− ' + money(sum(est))) : ''}
+      ${ign ? row('Marcadas para ignorar', `${ign} (continuam na fatura)`) : ''}
+    </dl></details>`;
 }
 
 /* ---------- Objetivos (caixinhas) ---------- */
